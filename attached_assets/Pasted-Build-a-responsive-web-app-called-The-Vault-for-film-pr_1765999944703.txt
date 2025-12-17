@@ -1,0 +1,250 @@
+Build a responsive web app called “The Vault” for film production companies. The Vault is a secure, project-centric platform for storing, organizing, previewing, and tracking production and distribution documents across a film’s lifecycle. The primary goals are readability, visually clear layouts, fast navigation from film titles → broad categories → sub-categories, and a strong document experience (upload, download, preview on hover, metadata at a glance).
+
+Tech stack and architecture
+
+Use Next.js (App Router) + TypeScript.
+
+UI: TailwindCSS with a clean, professional, high-contrast layout.
+
+Components: use a modern component approach (cards, tables, tabs, breadcrumb).
+
+Backend: use a simple API layer inside Next.js route handlers.
+
+Database: use SQLite with Prisma (or Postgres if easier on Replit). Persist data.
+
+File storage: store uploaded files locally in a /uploads directory for MVP, with DB records storing file path + metadata. Design so storage can be swapped later (S3).
+
+Authentication: implement basic login for MVP (email + password) with sessions (NextAuth or a simple cookie-based session). Include roles.
+
+Core user experience requirements
+
+The app opens to a Projects dashboard listing film titles with search and filters.
+
+Clicking a film opens a Project Workspace with a left sidebar for categories, a top breadcrumb, and a main content panel.
+
+Navigation hierarchy must be clear:
+Projects → Project → Category → Subcategory → Items (documents, tasks, records)
+
+Every major page must be readable, uncluttered, and optimized for scanning.
+
+Data model (MVP)
+Create Prisma models (or equivalent) for:
+
+User: id, name, email, passwordHash, role (Admin, Producer, TeamMember, External)
+
+Project (Film): id, title, status (Development, Packaging, Financing, Production, Post, Distribution), logline, synopsis, genre, createdAt
+
+Category: id, projectId, name (Script, Producing Partners, Financing, Action Points, Final Documentation, Distribution, Company Entities)
+
+Subcategory: id, categoryId, name (e.g., under Script: Reader Analysis, Cast Wishlist, Script Versions; under Financing: Budget, Cashflow, Finance Plan, Schedule, Breakeven)
+
+Document: id, projectId, categoryId, subcategoryId, title, type (PDF/DOCX/XLSX/IMG/OTHER), filePath, fileSize, uploadedByUserId, uploadedAt, versionNumber, status (Draft/Final/Signed), tags (string array), notes
+
+DocumentMetadata: id, documentId, json (store extracted fields like: territory, counterparty, amount, dates, synopsis, score, etc.)
+
+ShareLink: id, documentId, token, expiresAt, passwordHash(optional), watermarkText(optional), createdByUserId, createdAt, accessCount
+
+Partner: id, projectId, type (CoProducer, SalesAgent, Bank, Investor), name, notes, pastProductions, fundingAccess, agreementStatus
+
+FinanceRecord: id, projectId, kind (Budget, Cashflow, FinancePlan, Breakeven), versionLabel, notes, attachedDocumentId(optional)
+
+Task: id, projectId, title, description, assignedToUserId, status (Open/Done), dueDate, createdAt, completedAt
+
+ActivityLog: id, projectId, actorUserId, actionType, targetType, targetId, createdAt, detailsJson
+
+UI layout and pages
+A) Auth
+
+Simple login page.
+
+After login, route to Projects dashboard.
+
+B) Projects dashboard
+
+Table or card list of film titles with:
+Title, Status, Last updated, Quick search, Filter by status.
+
+“Create Project” modal/page with fields: title, status, logline, synopsis, genre.
+
+Each project card shows quick links: Documents, Tasks, Partners.
+
+C) Project workspace (main app)
+Layout:
+
+Left sidebar: Category list (Script, Producing Partners, Financing, Action Points, Final Documentation, Distribution, Company Entities).
+
+When category is selected, show subcategories below it.
+
+Top breadcrumb: Projects / [Project Title] / [Category] / [Subcategory]
+
+Main panel:
+
+Header with title, quick actions (Upload, New Task, New Partner, Share)
+
+Content area with either a Document Library view, Tasks view, or structured records.
+
+D) Document Library view (this is critical)
+
+A clean table/grid toggle:
+
+Columns: Title, Type, Version, Status, Tags, Uploaded, Uploaded By, Actions.
+
+Upload:
+
+Drag-and-drop upload + button upload.
+
+On upload, prompt for category + subcategory + title + tags + status + notes.
+
+Download:
+
+One-click download.
+
+Hover preview / metadata (critical):
+
+When hovering a document row/card, show a preview panel:
+Option 1: PDF thumbnail preview (first page) in a side popover.
+Option 2: If preview is heavy, show a metadata card with key fields from DocumentMetadata.
+
+Clicking a document opens a detail page with:
+Preview viewer (PDF viewer), metadata, version history, activity log, share controls.
+
+Metadata:
+
+Allow editing key metadata fields in a structured way (key/value + recommended fields per category).
+
+Store in DocumentMetadata.json.
+
+E) Category/Subcategory mapping (seed this structure)
+Script
+
+Reader Analysis (fields: genre, synopsis, logline, scores)
+
+Cast Wish List
+
+Script Versions (watermark + share)
+
+Packaging Checklist (director, cast, writer, festival prospects, territory, co-producers)
+
+Producing Partners
+
+Co-Producers (past productions, local funding access, agreement status)
+
+Sales Agent (attached?, terms, status)
+
+Bank (loan status, cashflow elements, documentation status)
+
+Financing
+
+Budget (versions + notes)
+
+Cashflow
+
+Finance Plan
+
+Production Schedule (calendar view optional)
+
+Breakeven / Screen Advantage (simple calculations placeholder + reporting view)
+
+Company Entities (3SIX9 / Silver Screen vehicles)
+
+Investment by entity
+
+IPR held by entity
+
+Notes + attached documents
+
+Action Points
+
+Shared task list with assignees
+
+Done items strike-through but remain visible (filter: Open/Done/All)
+
+Notifications placeholder
+
+Daily summary email: implement as a button that generates an email preview (MVP), plus a cron-ready function stub for later automation.
+
+Final Documentation
+
+Signed Agreements
+
+Box Office Information
+
+Collection Statements
+
+Distribution Agreements
+
+Distribution
+
+Sales, territories, deliverables, agreements, collection statements
+
+F) External sharing (MVP)
+
+Allow creating a ShareLink for a document:
+
+optional password
+
+optional expiry date
+
+watermark text (e.g., recipient name + date)
+
+Share page route: /share/[token]
+
+If password protected, prompt.
+
+Render PDF in viewer with watermark overlay (simple overlay for MVP).
+
+Track accessCount and write ActivityLog.
+
+Permissions and safety (MVP)
+
+Role-based access:
+
+Admin/Producer: full access
+
+TeamMember: access assigned projects
+
+External: access only share links (no internal browsing)
+
+Basic security:
+
+Validate uploads (file size limit, allowed types)
+
+Sanitize filenames
+
+Prevent directory traversal
+
+Protect all project routes behind auth
+
+Quality and usability requirements
+
+Prioritize clarity: large readable typography, consistent spacing, clear headings.
+
+Fast navigation: search within a project’s documents, filter by tag/type/status, sort by updated/uploaded.
+
+Always show “where I am” via breadcrumb + highlighted sidebar.
+
+Provide sensible empty states (“No documents uploaded yet” with upload CTA).
+
+Keep styling cohesive and “premium professional” (film industry friendly; not playful).
+
+Make it easy to extend into a real SaaS later (multi-tenant, S3 storage, real email service).
+
+Deliverables to generate in the codebase
+
+Working Next.js app with routing and a seeded demo dataset (2–3 projects with sample categories and placeholder documents).
+
+Prisma schema + migrations.
+
+Upload/download working end-to-end.
+
+Document list with hover preview (or hover metadata card if preview is too heavy).
+
+Document detail page with viewer + metadata editor + version list.
+
+Tasks module (Action Points) within each project.
+
+Partner module (co-producers / sales agent / bank) with status fields and attachments.
+
+Share link system for external viewing.
+
+Build this as an MVP that is immediately usable and visually clear, with strong information architecture and a document-first workflow. After generating, include instructions in README for running locally on Replit, seeding the DB, and where uploaded files are stored.
