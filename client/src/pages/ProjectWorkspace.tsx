@@ -8,6 +8,7 @@ import DevelopmentView from "@/components/stages/DevelopmentView";
 import ProductionView from "@/components/stages/ProductionView";
 import FinancingView from "@/components/stages/FinancingView";
 import LegalView from "@/components/stages/LegalView";
+import SchedulesView from "@/components/stages/SchedulesView";
 import { UploadDocumentDialog } from "@/components/features/UploadDocumentDialog";
 import { Button } from "@/components/ui/button";
 import { 
@@ -237,6 +238,17 @@ export default function ProjectWorkspace() {
     if (currentCategory?.slug === 'legal') {
       return (
         <LegalView 
+          project={project} 
+          currentSubcategory={currentSubcategory?.name}
+          subcategoryId={currentSubcategory?.id}
+        />
+      );
+    }
+
+    // SPECIAL CASE: Schedules Dashboard
+    if (currentCategory?.slug === 'schedules') {
+      return (
+        <SchedulesView 
           project={project} 
           currentSubcategory={currentSubcategory?.name}
           subcategoryId={currentSubcategory?.id}

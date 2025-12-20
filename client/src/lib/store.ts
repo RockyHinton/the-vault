@@ -84,6 +84,24 @@ export interface Project {
     }[];
     riskAssessment: { category: string; riskLevel: 'Low' | 'Medium' | 'High'; description: string }[];
   };
+
+  // Production Schedule Data (New)
+  schedule?: {
+    startDate: string;
+    endDate: string;
+    currentDay: number;
+    totalDays: number;
+    locations: { id: string; name: string; address: string; status: 'Secured' | 'Scouting' | 'Permit Pending' }[];
+    shootDays: {
+      dayNumber: number;
+      date: string;
+      locationId: string;
+      scenes: string[]; // e.g., "1A", "4", "12"
+      pages: number;
+      status: 'Complete' | 'Scheduled' | 'Rescheduled';
+      callSheetStatus: 'Published' | 'Draft' | 'Pending';
+    }[];
+  };
 }
 
 export interface Category {
@@ -255,6 +273,24 @@ const MOCK_PROJECTS: Project[] = [
         { category: 'Copyright', riskLevel: 'Low', description: 'Original screenplay, clean chain of title.' },
         { category: 'Defamation', riskLevel: 'Medium', description: 'Script references real political figures.' },
         { category: 'Safety', riskLevel: 'High', description: 'Stunt heavy production in urban environment.' },
+      ]
+    },
+    schedule: {
+      startDate: '2024-03-01',
+      endDate: '2024-04-15',
+      currentDay: 12,
+      totalDays: 35,
+      locations: [
+        { id: 'loc1', name: 'Neon Plaza', address: 'Shibuya Crossing, Tokyo', status: 'Secured' },
+        { id: 'loc2', name: 'Kaito Apt', address: 'Soundstage 4', status: 'Secured' },
+        { id: 'loc3', name: 'Industrial Zone', address: 'Yokohama Port', status: 'Permit Pending' },
+      ],
+      shootDays: [
+        { dayNumber: 10, date: '2024-03-14', locationId: 'loc1', scenes: ['22A', '24'], pages: 3.5, status: 'Complete', callSheetStatus: 'Published' },
+        { dayNumber: 11, date: '2024-03-15', locationId: 'loc1', scenes: ['25', '26', '28'], pages: 4.2, status: 'Complete', callSheetStatus: 'Published' },
+        { dayNumber: 12, date: '2024-03-16', locationId: 'loc2', scenes: ['4', '5', '8'], pages: 5.1, status: 'Scheduled', callSheetStatus: 'Published' }, // Today
+        { dayNumber: 13, date: '2024-03-17', locationId: 'loc2', scenes: ['9', '11'], pages: 3.0, status: 'Scheduled', callSheetStatus: 'Draft' },
+        { dayNumber: 14, date: '2024-03-18', locationId: 'loc3', scenes: ['45', '46A'], pages: 2.4, status: 'Rescheduled', callSheetStatus: 'Pending' },
       ]
     }
   },
