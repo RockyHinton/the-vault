@@ -35,7 +35,7 @@ import { cn } from "@/lib/utils";
 interface NotesPanelProps {
   scriptId: string;
   onAnnotationClick: (page: number, id: string) => void;
-  selectedAnnotationId: string | null;
+  selectedAnnotationIds: string[];
   isCreating: boolean;
   onCancelCreate: () => void;
   onCreateNote: (text: string, type: NoteType, tag: NoteTag) => void;
@@ -59,7 +59,7 @@ const typeColors: Record<NoteType, string> = {
 export default function NotesPanel({ 
   scriptId, 
   onAnnotationClick, 
-  selectedAnnotationId,
+  selectedAnnotationIds,
   isCreating,
   onCancelCreate,
   onCreateNote,
@@ -81,6 +81,18 @@ export default function NotesPanel({
     return true;
   });
 
+  // Sort: Selected notes first, then by timestamp (newest first)
+  const sortedAnnotations = [...filteredAnnotations].sort((a, b) => {
+    const aSelected = selectedAnnotationIds.includes(a.id);
+    const bSelected = selectedAnnotationIds.includes(b.id);
+    
+    if (aSelected && !bSelected) return -1;
+    if (!aSelected && bSelected) return 1;
+    
+    // If both selected or both not selected, sort by date (newest first)
+    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+  });
+
   const handleSave = () => {
     if (!noteText.trim()) return;
     onCreateNote(noteText, noteType, noteTag);
@@ -89,13 +101,15 @@ export default function NotesPanel({
 
   // Auto-scroll to selected annotation
   useEffect(() => {
-    if (selectedAnnotationId) {
-      const element = document.getElementById(`note-${selectedAnnotationId}`);
+    // Scroll to the first selected annotation
+    const firstSelectedId = selectedAnnotationIds[0];
+    if (firstSelectedId) {
+      const element = document.getElementById(`note-${firstSelectedId}`);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
-  }, [selectedAnnotationId]);
+  }, [selectedAnnotationIds]);
 
   return (
     <div className="flex flex-col h-full bg-card border-l border-border">
@@ -105,7 +119,7 @@ export default function NotesPanel({
         <h3 className="font-display font-semibold flex items-center gap-2">
           <MessageSquare className="h-4 w-4" />
           Notes
-          <Badge variant="secondary" className="ml-2 text-xs">{filteredAnnotations.length}</Badge>
+          <Badge variant="secondary" className="ml-2 text-xs">{sortedAnnotations.length}</Badge>
         </h3>
         
         <DropdownMenu>
@@ -199,14 +213,14 @@ export default function NotesPanel({
       {/* List */}
       <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
         <div className="space-y-3">
-          {filteredAnnotations.length === 0 ? (
+          {sortedAnnotations.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground text-sm">
               <p>No notes found for this filter.</p>
             </div>
           ) : (
-            filteredAnnotations.map((note) => {
+            sortedAnnotations.map((note) => {
               const Icon = typeIcons[note.type] || MessageSquare;
-              const isSelected = selectedAnnotationId === note.id;
+              const isSelected = selectedAnnotationIds.includes(note.id);
               const isMyNote = user?.id === note.authorId;
 
               return (

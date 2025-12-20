@@ -34,7 +34,7 @@ export default function ScriptAnalysisPage() {
   const [draftPos, setDraftPos] = useState<{x: number, y: number} | null>(null);
   
   // Selection State
-  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
+  const [selectedAnnotationIds, setSelectedAnnotationIds] = useState<string[]>([]);
 
   // Review Form State
   const [creativeScore, setCreativeScore] = useState(5);
@@ -46,6 +46,7 @@ export default function ScriptAnalysisPage() {
   const scriptId = params?.id;
   const document = documents.find(d => d.id === scriptId);
   const project = document ? projects.find(p => p.id === document.projectId) : null;
+  const annotations = documents && document ? useStore.getState().getScriptAnnotations(document.id) : [];
 
   if (!document || !project) return <div>Script not found</div>;
 
@@ -63,13 +64,23 @@ export default function ScriptAnalysisPage() {
 
   const handleSelection = (x: number, y: number) => {
     // If we're selecting a new area, clear previous selection
-    setSelectedAnnotationId(null);
+    setSelectedAnnotationIds([]);
     setDraftPos({ x, y });
     setIsCreatingNote(true);
   };
 
   const handleAnnotationClick = (id: string) => {
-    setSelectedAnnotationId(id);
+    const clickedNote = annotations.find(a => a.id === id);
+    if (!clickedNote) return;
+
+    // Find all notes on the same page within a close Y proximity (e.g. 2%)
+    // This groups notes that are visually "at the same section"
+    const nearbyNotes = annotations.filter(a => 
+      a.pageNumber === clickedNote.pageNumber && 
+      Math.abs(a.y - clickedNote.y) < 2
+    ).map(a => a.id);
+
+    setSelectedAnnotationIds(nearbyNotes);
     setIsCreatingNote(false);
     setDraftPos(null);
   };
@@ -95,6 +106,12 @@ export default function ScriptAnalysisPage() {
   };
 
   const handleCancelNote = () => {
+    setIsCreatingNote(false);
+    setDraftPos(null);
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedAnnotationIds([]);
     setIsCreatingNote(false);
     setDraftPos(null);
   };
@@ -204,8 +221,9 @@ export default function ScriptAnalysisPage() {
                onPageChange={setCurrentPage} 
                onSelection={handleSelection}
                onAnnotationClick={handleAnnotationClick}
+               onBackgroundClick={handleDeselectAll}
                selectionPos={draftPos}
-               selectedAnnotationId={selectedAnnotationId}
+               selectedAnnotationIds={selectedAnnotationIds}
              />
           </main>
 
@@ -215,9 +233,9 @@ export default function ScriptAnalysisPage() {
                scriptId={document.id} 
                onAnnotationClick={(page, id) => {
                  setCurrentPage(page);
-                 setSelectedAnnotationId(id);
+                 handleAnnotationClick(id);
                }} 
-               selectedAnnotationId={selectedAnnotationId}
+               selectedAnnotationIds={selectedAnnotationIds}
                isCreating={isCreatingNote}
                onCancelCreate={handleCancelNote}
                onCreateNote={handleCreateNote}
@@ -229,3 +247,4 @@ export default function ScriptAnalysisPage() {
     </div>
   );
 }
+

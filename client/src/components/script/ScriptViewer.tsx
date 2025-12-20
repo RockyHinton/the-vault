@@ -13,8 +13,9 @@ interface ScriptViewerProps {
   onPageChange: (page: number) => void;
   onSelection: (x: number, y: number) => void;
   onAnnotationClick: (id: string) => void;
+  onBackgroundClick: () => void;
   selectionPos: { x: number, y: number } | null;
-  selectedAnnotationId: string | null;
+  selectedAnnotationIds: string[];
 }
 
 // Mock script pages as images (placeholder)
@@ -26,14 +27,16 @@ export default function ScriptViewer({
   onPageChange,
   onSelection,
   onAnnotationClick,
+  onBackgroundClick,
   selectionPos,
-  selectedAnnotationId
+  selectedAnnotationIds
 }: ScriptViewerProps) {
   const { getScriptAnnotations } = useStore();
   const annotations = getScriptAnnotations(activeScript.id);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handlePageClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Stop propagation to background
     if (!containerRef.current) return;
     
     // Get relative coordinates
@@ -53,32 +56,36 @@ export default function ScriptViewer({
 
   // Auto-scroll to selected annotation in the script view
   useEffect(() => {
-    if (selectedAnnotationId && containerRef.current) {
-      const annotation = annotations.find(a => a.id === selectedAnnotationId);
+    // Scroll to the first selected annotation on the current page
+    const firstSelectedId = selectedAnnotationIds[0];
+    if (firstSelectedId && containerRef.current) {
+      const annotation = annotations.find(a => a.id === firstSelectedId);
       if (annotation && annotation.pageNumber === currentPage) {
-        // Calculate pixel position (y is percentage)
         const rect = containerRef.current.getBoundingClientRect();
         const pixelY = (annotation.y / 100) * rect.height;
         
-        // Scroll the parent container (which has overflow-auto)
-        // We need to find the scrollable parent. containerRef is the inner div.
-        // The parent is the one with flex-1 overflow-auto.
         const scrollContainer = containerRef.current.parentElement;
         if (scrollContainer) {
           scrollContainer.scrollTo({
-            top: pixelY - 100, // Scroll with some offset to show context
+            top: pixelY - 100, // Scroll with some offset
             behavior: 'smooth'
           });
         }
       }
     }
-  }, [selectedAnnotationId, currentPage, annotations]);
+  }, [selectedAnnotationIds, currentPage, annotations]);
 
   return (
-    <div className="flex flex-col h-full bg-zinc-900/50 relative overflow-hidden">
+    <div 
+      className="flex flex-col h-full bg-zinc-900/50 relative overflow-hidden"
+      onClick={onBackgroundClick} // Handle background clicks
+    >
       
       {/* Toolbar / Page Controls */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-background/90 backdrop-blur-md px-4 py-2 rounded-full border border-border shadow-2xl">
+      <div 
+        className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-background/90 backdrop-blur-md px-4 py-2 rounded-full border border-border shadow-2xl"
+        onClick={(e) => e.stopPropagation()} // Prevent clicking toolbar from deselecting
+      >
          <Button 
            variant="ghost" 
            size="sm" 
@@ -128,7 +135,7 @@ export default function ScriptViewer({
                key={a.id}
                className={cn(
                  "absolute w-full h-6 border-l-4 transition-colors cursor-pointer group z-10",
-                 selectedAnnotationId === a.id 
+                 selectedAnnotationIds.includes(a.id)
                    ? "border-primary bg-primary/30" 
                    : "border-primary/50 bg-primary/10 hover:bg-primary/20"
                )}
@@ -140,7 +147,7 @@ export default function ScriptViewer({
                <div className="absolute -left-12 top-0 h-6 w-6 flex items-center justify-center">
                  <div className={cn(
                    "h-2 w-2 rounded-full transition-transform", 
-                   selectedAnnotationId === a.id ? "bg-primary scale-125 ring-2 ring-background" : "bg-primary"
+                   selectedAnnotationIds.includes(a.id) ? "bg-primary scale-125 ring-2 ring-background" : "bg-primary"
                  )} />
                </div>
              </div>
@@ -163,3 +170,4 @@ export default function ScriptViewer({
     </div>
   );
 }
+
