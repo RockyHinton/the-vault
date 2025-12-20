@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { format } from 'date-fns';
 
 // --- Types ---
@@ -462,7 +463,9 @@ interface AppState {
   addReview: (review: Omit<ScriptReview, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
 }
 
-export const useStore = create<AppState>((set, get) => ({
+export const useStore = create<AppState>()(
+  persist(
+    (set, get) => ({
   user: null, 
   projects: MOCK_PROJECTS,
   categories: MOCK_CATEGORIES,
@@ -615,4 +618,10 @@ export const useStore = create<AppState>((set, get) => ({
     }]
   }))
 
-}));
+}),
+{
+  name: 'vault-storage',
+  storage: createJSONStorage(() => localStorage),
+}
+)
+);

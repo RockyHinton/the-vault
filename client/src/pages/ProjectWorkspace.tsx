@@ -130,8 +130,10 @@ export default function ProjectWorkspace() {
                     isActive && !safeParams?.subcategory ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground"
                   )}
                   onClick={() => {
+                    // Always navigate to the category root to show potential dashboard
+                    setLocation(`/project/${project?.id}/${category.slug}`);
+                    // If it has subcategories, also toggle them open/closed
                     if (hasSubcategories) toggleCategory(category.slug);
-                    if (!hasSubcategories) setLocation(`/project/${project?.id}/${category.slug}`);
                   }}
                 >
                   <div className="flex items-center gap-3">
