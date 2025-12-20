@@ -61,6 +61,16 @@ export interface Project {
     bankingReady: boolean;
     legalDocsInPlace: boolean;
   };
+
+  // Financing Data (New)
+  financing?: {
+    totalBudget: number;
+    secured: number;
+    currency: string;
+    breakdown: { category: string; amount: number; percentage: number }[];
+    cashflow: { month: string; in: number; out: number }[];
+    approvals: { item: string; status: 'Approved' | 'Pending' | 'Rejected'; date?: string }[];
+  };
 }
 
 export interface Category {
@@ -193,6 +203,28 @@ const MOCK_PROJECTS: Project[] = [
       castAttached: [
         { name: 'Hiroyuki Sanada', role: 'Detective Kaito' },
         { name: 'Ana de Armas', role: 'Elena' }
+      ]
+    },
+    financing: {
+      totalBudget: 45000000,
+      secured: 38000000,
+      currency: 'USD',
+      breakdown: [
+        { category: 'Above the Line', amount: 12000000, percentage: 26.6 },
+        { category: 'Production', amount: 18000000, percentage: 40.0 },
+        { category: 'Post-Production', amount: 8000000, percentage: 17.7 },
+        { category: 'Other (Ins/Legal)', amount: 7000000, percentage: 15.5 },
+      ],
+      cashflow: [
+        { month: 'Jan', in: 5000000, out: 2000000 },
+        { month: 'Feb', in: 0, out: 4000000 },
+        { month: 'Mar', in: 10000000, out: 8000000 },
+        { month: 'Apr', in: 0, out: 6000000 },
+      ],
+      approvals: [
+        { item: 'Top Sheet Budget v4', status: 'Approved', date: '2023-12-01' },
+        { item: 'Bond Completion', status: 'Pending' },
+        { item: 'Tax Credit Application', status: 'Approved', date: '2023-11-15' },
       ]
     }
   },

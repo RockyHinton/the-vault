@@ -6,6 +6,7 @@ import DocumentLibrary from "@/pages/DocumentLibrary";
 import EvaluationView from "@/components/stages/EvaluationView";
 import DevelopmentView from "@/components/stages/DevelopmentView";
 import ProductionView from "@/components/stages/ProductionView";
+import FinancingView from "@/components/stages/FinancingView";
 import { UploadDocumentDialog } from "@/components/features/UploadDocumentDialog";
 import { Button } from "@/components/ui/button";
 import { 
@@ -196,6 +197,17 @@ export default function ProjectWorkspace() {
 
   // Decide what to render in Main Area
   const renderMainContent = () => {
+    // SPECIAL CASE: Financing Dashboard (Top Level Category)
+    if (currentCategory?.slug === 'financing') {
+      return (
+        <FinancingView 
+          project={project} 
+          currentSubcategory={currentSubcategory?.name}
+          subcategoryId={currentSubcategory?.id}
+        />
+      );
+    }
+
     // If deep-linked to a folder, show the folder (Document Library)
     if (currentCategory || currentSubcategory) {
       return (
