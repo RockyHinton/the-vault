@@ -72,6 +72,18 @@ export interface Project {
     cashflow: { month: string; in: number; out: number }[];
     approvals: { item: string; status: 'Approved' | 'Pending' | 'Rejected'; date?: string }[];
   };
+
+  // Legal Data (New)
+  legal?: {
+    chainOfTitle: { item: string; status: 'Clean' | 'Issues' | 'Pending'; notes?: string }[];
+    keyAgreements: { 
+      type: string; 
+      party: string; 
+      status: 'Drafting' | 'Negotiation' | 'Executed'; 
+      dueDate?: string;
+    }[];
+    riskAssessment: { category: string; riskLevel: 'Low' | 'Medium' | 'High'; description: string }[];
+  };
 }
 
 export interface Category {
@@ -227,6 +239,23 @@ const MOCK_PROJECTS: Project[] = [
         { item: 'Bond Completion', status: 'Pending' },
         { item: 'Tax Credit Application', status: 'Approved', date: '2023-11-15' },
       ]
+    },
+    legal: {
+      chainOfTitle: [
+        { item: 'Option Agreement', status: 'Clean', notes: 'Executed 2022' },
+        { item: 'Writer Agreement', status: 'Clean', notes: 'WGA standard' },
+        { item: 'Life Rights', status: 'Pending', notes: 'Negotiating with family estate' },
+      ],
+      keyAgreements: [
+        { type: 'Director Agreement', party: 'Ridley Scott Jr.', status: 'Executed', dueDate: '2023-10-01' },
+        { type: 'Cast Agreement', party: 'Hiroyuki Sanada', status: 'Negotiation', dueDate: '2023-12-28' },
+        { type: 'Location Agreement', party: 'City of Tokyo', status: 'Drafting', dueDate: '2024-01-15' },
+      ],
+      riskAssessment: [
+        { category: 'Copyright', riskLevel: 'Low', description: 'Original screenplay, clean chain of title.' },
+        { category: 'Defamation', riskLevel: 'Medium', description: 'Script references real political figures.' },
+        { category: 'Safety', riskLevel: 'High', description: 'Stunt heavy production in urban environment.' },
+      ]
     }
   },
   {
@@ -296,7 +325,7 @@ const MOCK_CATEGORIES: Category[] = [
   { id: 'c2', projectId: 'p1', name: 'Producing Partners', slug: 'producing-partners', icon: 'Users' },
   { id: 'c8', projectId: 'p1', name: 'Actors & Directors', slug: 'talent', icon: 'User' }, // New
   { id: 'c3', projectId: 'p1', name: 'Financing', slug: 'financing', icon: 'CircleDollarSign' },
-  { id: 'c9', projectId: 'p1', name: 'Documentation', slug: 'documentation', icon: 'FolderCheck' }, // New (Dev+)
+  { id: 'c9', projectId: 'p1', name: 'Legal & Contracts', slug: 'legal', icon: 'Scale' }, // Renamed from Documentation
   { id: 'c6', projectId: 'p1', name: 'Distribution', slug: 'distribution', icon: 'Globe' },
   { id: 'c10', projectId: 'p1', name: 'Schedules', slug: 'schedules', icon: 'Calendar' }, // New (Prod+)
 ];
@@ -536,7 +565,7 @@ export const useStore = create<AppState>()(
     visibleSlugs.add('talent');
 
     if (stage === 'Development' || stage === 'Production' || stage === 'Archived') {
-      visibleSlugs.add('documentation');
+      visibleSlugs.add('legal'); // Was documentation
     }
 
     if (stage === 'Production' || stage === 'Archived') {

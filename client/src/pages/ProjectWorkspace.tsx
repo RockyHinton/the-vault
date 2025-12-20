@@ -7,6 +7,7 @@ import EvaluationView from "@/components/stages/EvaluationView";
 import DevelopmentView from "@/components/stages/DevelopmentView";
 import ProductionView from "@/components/stages/ProductionView";
 import FinancingView from "@/components/stages/FinancingView";
+import LegalView from "@/components/stages/LegalView";
 import { UploadDocumentDialog } from "@/components/features/UploadDocumentDialog";
 import { Button } from "@/components/ui/button";
 import { 
@@ -28,7 +29,8 @@ import {
   Archive,
   ArrowRight,
   User,
-  Calendar
+  Calendar,
+  Scale
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -52,7 +54,8 @@ const iconMap: Record<string, any> = {
   Globe,
   Building2,
   User,
-  Calendar
+  Calendar,
+  Scale
 };
 
 export default function ProjectWorkspace() {
@@ -223,6 +226,17 @@ export default function ProjectWorkspace() {
     if (currentCategory?.slug === 'financing') {
       return (
         <FinancingView 
+          project={project} 
+          currentSubcategory={currentSubcategory?.name}
+          subcategoryId={currentSubcategory?.id}
+        />
+      );
+    }
+
+    // SPECIAL CASE: Legal Dashboard
+    if (currentCategory?.slug === 'legal') {
+      return (
+        <LegalView 
           project={project} 
           currentSubcategory={currentSubcategory?.name}
           subcategoryId={currentSubcategory?.id}
