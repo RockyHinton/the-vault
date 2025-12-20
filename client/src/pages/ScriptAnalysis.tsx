@@ -29,9 +29,12 @@ export default function ScriptAnalysisPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
 
-  // New Note State (Lifted up)
+  // New Note State
   const [isCreatingNote, setIsCreatingNote] = useState(false);
   const [draftPos, setDraftPos] = useState<{x: number, y: number} | null>(null);
+  
+  // Selection State
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
 
   // Review Form State
   const [creativeScore, setCreativeScore] = useState(5);
@@ -59,6 +62,19 @@ export default function ScriptAnalysisPage() {
   };
 
   const handleSelection = (x: number, y: number) => {
+    // If we're selecting a new area, clear previous selection
+    setSelectedAnnotationId(null);
+    setDraftPos({ x, y });
+    setIsCreatingNote(true);
+  };
+
+  const handleAnnotationClick = (id: string) => {
+    setSelectedAnnotationId(id);
+    setIsCreatingNote(false);
+    setDraftPos(null);
+  };
+
+  const handleAddNoteAtLocation = (x: number, y: number) => {
     setDraftPos({ x, y });
     setIsCreatingNote(true);
   };
@@ -187,7 +203,9 @@ export default function ScriptAnalysisPage() {
                currentPage={currentPage} 
                onPageChange={setCurrentPage} 
                onSelection={handleSelection}
+               onAnnotationClick={handleAnnotationClick}
                selectionPos={draftPos}
+               selectedAnnotationId={selectedAnnotationId}
              />
           </main>
 
@@ -195,10 +213,15 @@ export default function ScriptAnalysisPage() {
           <aside className="w-[400px] shrink-0 z-20 shadow-2xl bg-card">
              <NotesPanel 
                scriptId={document.id} 
-               onAnnotationClick={setCurrentPage} 
+               onAnnotationClick={(page) => {
+                 setCurrentPage(page);
+                 // We don't necessarily select it here unless we want bidirectional sync on click
+               }} 
+               selectedAnnotationId={selectedAnnotationId}
                isCreating={isCreatingNote}
                onCancelCreate={handleCancelNote}
                onCreateNote={handleCreateNote}
+               onAddNoteAtLocation={handleAddNoteAtLocation}
              />
           </aside>
         </div>

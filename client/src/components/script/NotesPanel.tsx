@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useStore, NoteType, NoteTag } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,7 +17,8 @@ import {
   Palette,
   AlertCircle,
   HelpCircle,
-  Save
+  Save,
+  Plus
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -29,13 +30,16 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 interface NotesPanelProps {
   scriptId: string;
   onAnnotationClick: (page: number) => void;
+  selectedAnnotationId: string | null;
   isCreating: boolean;
   onCancelCreate: () => void;
   onCreateNote: (text: string, type: NoteType, tag: NoteTag) => void;
+  onAddNoteAtLocation: (x: number, y: number) => void;
 }
 
 const typeIcons: Record<NoteType, any> = {
@@ -55,12 +59,15 @@ const typeColors: Record<NoteType, string> = {
 export default function NotesPanel({ 
   scriptId, 
   onAnnotationClick, 
+  selectedAnnotationId,
   isCreating,
   onCancelCreate,
-  onCreateNote
+  onCreateNote,
+  onAddNoteAtLocation
 }: NotesPanelProps) {
-  const { getScriptAnnotations, deleteAnnotation } = useStore();
+  const { getScriptAnnotations, deleteAnnotation, user } = useStore();
   const annotations = getScriptAnnotations(scriptId);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   const [filterType, setFilterType] = useState<NoteType | 'All'>('All');
   
@@ -79,6 +86,16 @@ export default function NotesPanel({
     onCreateNote(noteText, noteType, noteTag);
     setNoteText("");
   };
+
+  // Auto-scroll to selected annotation
+  useEffect(() => {
+    if (selectedAnnotationId) {
+      const element = document.getElementById(`note-${selectedAnnotationId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [selectedAnnotationId]);
 
   return (
     <div className="flex flex-col h-full bg-card border-l border-border">
@@ -180,7 +197,7 @@ export default function NotesPanel({
       )}
 
       {/* List */}
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
         <div className="space-y-3">
           {filteredAnnotations.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground text-sm">
@@ -189,10 +206,19 @@ export default function NotesPanel({
           ) : (
             filteredAnnotations.map((note) => {
               const Icon = typeIcons[note.type] || MessageSquare;
+              const isSelected = selectedAnnotationId === note.id;
+              const isMyNote = user?.id === note.authorId;
+
               return (
                 <div 
+                  id={`note-${note.id}`}
                   key={note.id} 
-                  className="bg-card hover:bg-secondary/40 border border-border rounded-lg p-3 transition-colors cursor-pointer group relative"
+                  className={cn(
+                    "border rounded-lg p-3 transition-all cursor-pointer group relative",
+                    isSelected 
+                      ? "bg-primary/5 border-primary shadow-sm" 
+                      : "bg-card hover:bg-secondary/40 border-border"
+                  )}
                   onClick={() => onAnnotationClick(note.pageNumber)}
                 >
                   <div className="flex items-start justify-between mb-2">
@@ -224,23 +250,44 @@ export default function NotesPanel({
                     )}
                   </div>
 
-                  <p className="text-sm text-foreground/90 leading-relaxed">
+                  <p className="text-sm text-foreground/90 leading-relaxed mb-2">
                     {note.text}
                   </p>
 
-                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                     <Button 
-                       variant="ghost" 
-                       size="icon" 
-                       className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                       onClick={(e) => {
-                         e.stopPropagation();
-                         if(confirm("Delete this note?")) deleteAnnotation(note.id);
-                       }}
-                     >
-                       <Trash2 className="h-3 w-3" />
-                     </Button>
-                  </div>
+                  {/* Actions when selected */}
+                  {isSelected && (
+                    <div className="flex justify-end pt-2 border-t border-border/50 gap-2">
+                       <Button 
+                         variant="ghost" 
+                         size="sm" 
+                         className="h-6 text-[10px] gap-1 px-2"
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           onAddNoteAtLocation(note.x, note.y);
+                         }}
+                       >
+                         <Plus className="h-3 w-3" />
+                         Reply / Add Here
+                       </Button>
+                    </div>
+                  )}
+
+                  {/* Delete Button - Top right but better positioned */}
+                  {isMyNote && (
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <Button 
+                         variant="ghost" 
+                         size="icon" 
+                         className="h-6 w-6 text-muted-foreground hover:text-destructive bg-card/80 backdrop-blur-sm"
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           if(confirm("Delete this note?")) deleteAnnotation(note.id);
+                         }}
+                       >
+                         <Trash2 className="h-3 w-3" />
+                       </Button>
+                    </div>
+                  )}
                 </div>
               )
             })

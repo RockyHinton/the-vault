@@ -12,7 +12,9 @@ interface ScriptViewerProps {
   currentPage: number;
   onPageChange: (page: number) => void;
   onSelection: (x: number, y: number) => void;
+  onAnnotationClick: (id: string) => void;
   selectionPos: { x: number, y: number } | null;
+  selectedAnnotationId: string | null;
 }
 
 // Mock script pages as images (placeholder)
@@ -23,7 +25,9 @@ export default function ScriptViewer({
   currentPage, 
   onPageChange,
   onSelection,
-  selectionPos 
+  onAnnotationClick,
+  selectionPos,
+  selectedAnnotationId
 }: ScriptViewerProps) {
   const { getScriptAnnotations } = useStore();
   const annotations = getScriptAnnotations(activeScript.id);
@@ -38,6 +42,11 @@ export default function ScriptViewer({
     const y = ((e.clientY - rect.top) / rect.height) * 100;
     
     onSelection(x, y);
+  };
+
+  const handleAnnotationClick = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation(); // Prevent triggering page selection
+    onAnnotationClick(id);
   };
 
   const pageAnnotations = annotations.filter(a => a.pageNumber === currentPage);
@@ -94,13 +103,22 @@ export default function ScriptViewer({
            {pageAnnotations.map((a) => (
              <div
                key={a.id}
-               className="absolute w-full h-6 border-l-4 border-primary bg-primary/10 hover:bg-primary/20 transition-colors cursor-pointer group"
+               className={cn(
+                 "absolute w-full h-6 border-l-4 transition-colors cursor-pointer group z-10",
+                 selectedAnnotationId === a.id 
+                   ? "border-primary bg-primary/30" 
+                   : "border-primary/50 bg-primary/10 hover:bg-primary/20"
+               )}
                style={{ top: `${a.y}%`, left: 0 }}
                title={a.text}
+               onClick={(e) => handleAnnotationClick(e, a.id)}
              >
                {/* Margin Indicator */}
                <div className="absolute -left-12 top-0 h-6 w-6 flex items-center justify-center">
-                 <div className="h-2 w-2 rounded-full bg-primary" />
+                 <div className={cn(
+                   "h-2 w-2 rounded-full transition-transform", 
+                   selectedAnnotationId === a.id ? "bg-primary scale-125 ring-2 ring-background" : "bg-primary"
+                 )} />
                </div>
              </div>
            ))}
