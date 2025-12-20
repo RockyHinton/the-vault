@@ -25,7 +25,9 @@ import {
   Briefcase, 
   Clapperboard, 
   Archive,
-  ArrowRight
+  ArrowRight,
+  User,
+  Calendar
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -47,7 +49,9 @@ const iconMap: Record<string, any> = {
   CheckSquare,
   FolderCheck,
   Globe,
-  Building2
+  Building2,
+  User,
+  Calendar
 };
 
 export default function ProjectWorkspace() {

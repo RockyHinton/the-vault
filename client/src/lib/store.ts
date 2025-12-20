@@ -202,11 +202,14 @@ const MOCK_PROJECTS: Project[] = [
 const MOCK_CATEGORIES: Category[] = [
   { id: 'c1', projectId: 'p1', name: 'Script', slug: 'script', icon: 'FileText' },
   { id: 'c2', projectId: 'p1', name: 'Producing Partners', slug: 'producing-partners', icon: 'Users' },
+  { id: 'c8', projectId: 'p1', name: 'Actors & Directors', slug: 'talent', icon: 'User' }, // New
   { id: 'c3', projectId: 'p1', name: 'Financing', slug: 'financing', icon: 'CircleDollarSign' },
-  { id: 'c4', projectId: 'p1', name: 'Action Points', slug: 'action-points', icon: 'CheckSquare' },
-  { id: 'c5', projectId: 'p1', name: 'Final Documentation', slug: 'final-docs', icon: 'FolderCheck' },
+  { id: 'c9', projectId: 'p1', name: 'Documentation', slug: 'documentation', icon: 'FolderCheck' }, // New (Dev+)
   { id: 'c6', projectId: 'p1', name: 'Distribution', slug: 'distribution', icon: 'Globe' },
-  { id: 'c7', projectId: 'p1', name: 'Company Entities', slug: 'entities', icon: 'Building2' },
+  { id: 'c10', projectId: 'p1', name: 'Schedules', slug: 'schedules', icon: 'Calendar' }, // New (Prod+)
+  // Hidden/Legacy for now based on strict request, or we can map them if needed
+  // { id: 'c4', projectId: 'p1', name: 'Action Points', slug: 'action-points', icon: 'CheckSquare' },
+  // { id: 'c7', projectId: 'p1', name: 'Company Entities', slug: 'entities', icon: 'Building2' },
 ];
 
 const MOCK_SUBCATEGORIES: Subcategory[] = [
@@ -218,6 +221,22 @@ const MOCK_SUBCATEGORIES: Subcategory[] = [
   { id: 'sc4', categoryId: 'c3', name: 'Budget', slug: 'budget' },
   { id: 'sc5', categoryId: 'c3', name: 'Cashflow', slug: 'cashflow' },
   { id: 'sc6', categoryId: 'c3', name: 'Finance Plan', slug: 'finance-plan' },
+  // Talent
+  { id: 'sc7', categoryId: 'c8', name: 'Cast Lists', slug: 'cast-lists' },
+  { id: 'sc8', categoryId: 'c8', name: 'Director Options', slug: 'director-options' },
+  // Documentation (Development)
+  { id: 'sc9', categoryId: 'c9', name: 'Investment Agreements', slug: 'investment-agreements' },
+  { id: 'sc10', categoryId: 'c9', name: 'Co-Production', slug: 'co-production' },
+  { id: 'sc11', categoryId: 'c9', name: 'Producers Agreements', slug: 'producers-agreements' },
+  { id: 'sc12', categoryId: 'c9', name: 'Director Agreements', slug: 'director-agreements' },
+  { id: 'sc13', categoryId: 'c9', name: 'Cast Agreements', slug: 'cast-agreements' },
+  { id: 'sc14', categoryId: 'c9', name: 'Banking Docs', slug: 'banking-docs' },
+  { id: 'sc15', categoryId: 'c9', name: 'Funding / Tax Credit', slug: 'funding-tax-credit' },
+  { id: 'sc16', categoryId: 'c9', name: 'Sales Agency', slug: 'sales-agency' },
+  { id: 'sc17', categoryId: 'c9', name: 'CAMA', slug: 'cama' },
+  // Schedules (Production)
+  { id: 'sc18', categoryId: 'c10', name: 'Shooting Schedule', slug: 'shooting-schedule' },
+  { id: 'sc19', categoryId: 'c10', name: 'Daily Call Sheets', slug: 'call-sheets' },
 ];
 
 const MOCK_DOCUMENTS: Document[] = [
@@ -352,8 +371,37 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   getProjectCategories: (projectId) => {
-    const { categories } = get();
-    return categories.map(c => ({...c, projectId})); 
+    const { categories, projects } = get();
+    const project = projects.find(p => p.id === projectId);
+    
+    // Default categories if project not found
+    if (!project) return categories.map(c => ({...c, projectId}));
+
+    const stage = project.stage;
+    
+    // Define visible categories based on stage
+    const visibleSlugs = new Set<string>();
+
+    // Evaluation: Script, Financing, Producers, Actors + Directors
+    visibleSlugs.add('script');
+    visibleSlugs.add('financing');
+    visibleSlugs.add('producing-partners');
+    visibleSlugs.add('talent');
+
+    // Development: All above + Documentation
+    if (stage === 'Development' || stage === 'Production' || stage === 'Archived') {
+      visibleSlugs.add('documentation');
+    }
+
+    // Production: All above + Distribution, Schedules
+    if (stage === 'Production' || stage === 'Archived') {
+      visibleSlugs.add('distribution');
+      visibleSlugs.add('schedules');
+    }
+
+    return categories
+      .filter(c => visibleSlugs.has(c.slug))
+      .map(c => ({...c, projectId})); 
   },
 
   getCategorySubcategories: (categoryId) => {
