@@ -96,7 +96,7 @@ export default function ProjectWorkspace() {
         onClick={(e) => {
           // If clicking the empty space container (self), deselect
           if (e.target === e.currentTarget) {
-             setLocation(`/project/${project?.id}`);
+             // setLocation(`/project/${project?.id}`); // REMOVED per user request
              setExpandedCategories({});
           }
         }}
@@ -146,11 +146,14 @@ export default function ProjectWorkspace() {
                     e.stopPropagation(); // Prevent bubbling to container
 
                     if (isActive) {
-                       // Deselect if already active (Toggle Off)
-                       setLocation(`/project/${project?.id}`);
+                       // Deselect if already active (Toggle Off) -> stay on current page, just update UI
+                       // setLocation(`/project/${project?.id}`); // REMOVED
                        if (hasSubcategories) {
                            setExpandedCategories(prev => ({ ...prev, [category.slug]: false }));
                        }
+                       // If we want to strictly 'deselect', we could arguably go to project root, 
+                       // but user requested: "this should not take me back to the home page, it should leave me on the page i am already on"
+                       // So we do nothing to location.
                     } else {
                        // Select (Toggle On)
                        setLocation(`/project/${project?.id}/${category.slug}`);
