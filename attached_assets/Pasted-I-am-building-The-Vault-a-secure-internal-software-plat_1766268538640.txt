@@ -1,0 +1,177 @@
+I am building The Vault, a secure internal software platform for film production companies that handles highly confidential documents, scripts, financing information, and legal agreements.
+
+This Repl should be treated as the master version of The Vault.
+
+The core intent is that:
+
+This master version will be remixed for each client
+
+Each remix will be deployed as a private, isolated instance
+
+Each client will have their own users, data, and deployment
+
+There is no multi-tenant shared data model in this version
+
+Design and structure the system accordingly.
+
+Primary Architectural Principle
+
+Security and isolation are the top priorities.
+
+Assume:
+
+Each deployment serves a single production company
+
+All data belongs to one client only
+
+No cross-client access is ever required
+
+This is not a public SaaS application.
+
+Security Requirements (MVP but serious)
+Authentication & Access
+
+All routes must require authentication by default
+
+Users must log in with email + password
+
+Passwords must be hashed securely (bcrypt or equivalent)
+
+Sessions must be secure and scoped to the deployment
+
+File Protection
+
+Uploaded files must:
+
+Not be publicly accessible
+
+Require authentication to access
+
+Be served via protected routes
+
+Direct file URLs should not expose raw storage paths
+
+Prevent unauthorized downloads or access
+
+Authorization
+
+Simple role-based access control:
+
+Admin / Producer
+
+Team Member
+
+Read-only (optional)
+
+Only authorized roles can:
+
+upload documents
+
+delete documents
+
+move projects between stages
+
+access financial or legal sections
+
+Keep permissions simple but enforce them strictly.
+
+Data Isolation & Safety
+
+Assume one database per deployment
+
+No shared external services between clients
+
+Environment variables must be used for:
+
+secrets
+
+storage paths
+
+deployment-specific config
+
+Structure the code so remixed deployments can easily change:
+
+client name
+
+branding
+
+environment variables
+without touching core logic.
+
+Remix & Rebranding Friendly Design
+
+This codebase must be easy to remix and customize.
+
+Design so:
+
+Branding (logo, colours, name) is configurable
+
+No hardcoded client identifiers
+
+All client-specific text is centralized
+
+Initial setup for a new client is simple and repeatable
+
+Assume this will be remixed many times.
+
+Deployment Model
+
+Each client deployment:
+
+has its own private URL
+
+is not indexed publicly
+
+is shared only with authorized users
+
+No public signups
+
+No shared accounts across deployments
+
+Logging & Auditing (Lightweight)
+
+Log:
+
+logins
+
+document uploads
+
+document deletions
+
+project stage changes
+
+Logs are internal only and per deployment
+
+This supports trust and accountability.
+
+Design Philosophy
+
+This is an internal, professional tool
+
+Prioritize clarity over flash
+
+Security over convenience
+
+Isolation over scale
+
+Build the foundation so this can later evolve into:
+
+an enterprise tier
+
+or a multi-tenant SaaS if required
+
+But do not design for multi-tenancy now.
+
+Goal
+
+Create a secure, remixable master version of The Vault that:
+
+can be safely deployed per client
+
+protects highly sensitive film production data
+
+is easy to customize per studio
+
+feels trustworthy to serious producers
+
+This master version should serve as the foundation for all future private deployments.

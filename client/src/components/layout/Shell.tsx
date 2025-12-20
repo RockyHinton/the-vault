@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { APP_CONFIG } from "@/config/app-config";
 import { 
   Film, 
   LayoutGrid, 
@@ -47,7 +48,7 @@ export function Shell({ children, sidebar }: ShellProps) {
       <div className="md:hidden flex items-center justify-between p-4 border-b border-border bg-card">
         <div className="flex items-center gap-2 font-display font-bold text-xl tracking-tight text-primary">
           <Film className="h-6 w-6" />
-          <span>The Vault</span>
+          <span>{APP_CONFIG.clientName}</span>
         </div>
         <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
           <SheetTrigger asChild>
@@ -60,7 +61,7 @@ export function Shell({ children, sidebar }: ShellProps) {
               <div className="p-6 border-b border-sidebar-border">
                 <div className="flex items-center gap-2 font-display font-bold text-xl tracking-tight text-sidebar-primary">
                   <Film className="h-6 w-6" />
-                  <span>The Vault</span>
+                  <span>{APP_CONFIG.clientName}</span>
                 </div>
               </div>
               <div className="flex-1 overflow-auto py-4">
@@ -77,7 +78,7 @@ export function Shell({ children, sidebar }: ShellProps) {
           <Link href="/projects">
             <div className="flex items-center gap-2 font-display font-bold text-xl tracking-tight text-sidebar-primary cursor-pointer hover:opacity-80 transition-opacity">
               <Film className="h-6 w-6" />
-              <span>The Vault</span>
+              <span>{APP_CONFIG.clientName}</span>
             </div>
           </Link>
         </div>
@@ -93,10 +94,12 @@ export function Shell({ children, sidebar }: ShellProps) {
                   Projects
                 </Button>
               </Link>
-              <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground">
-                <Settings className="h-4 w-4" />
-                Settings
-              </Button>
+              <Link href="/admin">
+                <Button variant={location === "/admin" ? "secondary" : "ghost"} className="w-full justify-start gap-3">
+                  <Settings className="h-4 w-4" />
+                  Settings & Admin
+                </Button>
+              </Link>
             </nav>
           )}
         </div>

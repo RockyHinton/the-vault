@@ -8,6 +8,7 @@ import AuthPage from "@/pages/Auth";
 import ProjectsPage from "@/pages/Projects";
 import ProjectWorkspace from "@/pages/ProjectWorkspace";
 import ScriptAnalysisPage from "@/pages/ScriptAnalysis";
+import AdminSettings from "@/pages/AdminSettings";
 import { useStore } from "@/lib/store";
 import { useEffect } from "react";
 
@@ -25,6 +26,7 @@ function Router() {
     <Switch>
       <Route path="/" component={AuthPage} />
       <Route path="/projects" component={ProjectsPage} />
+      <Route path="/admin" component={AdminSettings} />
       <Route path="/project/:id" component={ProjectWorkspace} />
       <Route path="/project/:id/:category" component={ProjectWorkspace} />
       <Route path="/project/:id/:category/:subcategory" component={ProjectWorkspace} />
