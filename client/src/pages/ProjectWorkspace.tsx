@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useRoute, useLocation } from "wouter";
 import { useStore } from "@/lib/store";
 import { Shell } from "@/components/layout/Shell";
@@ -12,7 +12,6 @@ import SchedulesView from "@/components/stages/SchedulesView";
 import { UploadDocumentDialog } from "@/components/features/UploadDocumentDialog";
 import { Button } from "@/components/ui/button";
 import { 
-  ChevronRight, 
   Folder, 
   ChevronDown, 
   FileText,
@@ -22,16 +21,16 @@ import {
   FolderCheck,
   Globe,
   Building2,
-  MoreVertical,
   Plus,
   Eye, 
   Briefcase, 
   Clapperboard, 
   Archive,
-  ArrowRight,
-  User,
+  Scale,
   Calendar,
-  Scale
+  User,
+  MoreVertical,
+  ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -59,11 +58,217 @@ const iconMap: Record<string, any> = {
   Scale
 };
 
+// --- Extracted Sidebar Component ---
+// Defined outside to prevent re-mounting on parent re-renders
+const ProjectSidebar = ({ 
+  project, 
+  categories, 
+  currentCategorySlug, 
+  currentSubcategorySlug,
+  getCategorySubcategories
+}: {
+  project: any;
+  categories: any[];
+  currentCategorySlug?: string;
+  currentSubcategorySlug?: string;
+  getCategorySubcategories: (id: string) => any[];
+}) => {
+  const [location, setLocation] = useLocation();
+  
+  // Local state for expansion
+  // We initialize based on current URL, but then user has full control
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  // Sync expansion with URL ONLY when entering a new category that isn't expanded yet
+  // This ensures deep-linking works, but doesn't force re-expansion if user collapsed it
+  useEffect(() => {
+    if (currentCategorySlug && expanded[currentCategorySlug] === undefined) {
+      setExpanded(prev => ({ ...prev, [currentCategorySlug]: true }));
+    }
+  }, [currentCategorySlug]);
+
+  const toggleExpand = (slug: string, force?: boolean) => {
+    setExpanded(prev => ({
+      ...prev,
+      [slug]: force !== undefined ? force : !prev[slug]
+    }));
+  };
+
+  return (
+    <div 
+      className="space-y-4 min-h-full cursor-default select-none" 
+      onClick={(e) => {
+        // Clicking empty space deselects / clears focus visually (optional)
+        if (e.target === e.currentTarget) {
+          // No navigation, just chill
+        }
+      }}
+    >
+      {project && (
+        <div className="px-4 py-3 bg-secondary/5 border-y border-border/40 mb-2">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">Project Stage</div>
+          <div className="flex items-center gap-2 text-foreground font-bold text-sm">
+             {project.stage === 'Evaluation' && <Eye className="h-4 w-4 text-orange-500" />}
+             {project.stage === 'Development' && <Briefcase className="h-4 w-4 text-blue-500" />}
+             {project.stage === 'Production' && <Clapperboard className="h-4 w-4 text-green-500" />}
+             {project.stage === 'Archived' && <Archive className="h-4 w-4 text-gray-500" />}
+             {project.stage}
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-1 px-2">
+        {/* New Item Button */}
+        {(!project || project.stage === 'Development' || project.stage === 'Production') && (
+          <div className="px-1 pb-3 pt-1">
+             {project && (
+               <UploadDocumentDialog projectId={project.id}>
+                 <Button className="w-full justify-start gap-2 bg-background border-dashed border-2 hover:border-solid hover:bg-secondary/20 text-muted-foreground hover:text-foreground transition-all duration-200" variant="outline" size="sm">
+                   <Plus className="h-4 w-4" />
+                   New Item
+                 </Button>
+               </UploadDocumentDialog>
+             )}
+          </div>
+        )}
+        
+        {categories.map(category => {
+          const Icon = category.icon && iconMap[category.icon] ? iconMap[category.icon] : Folder;
+          const isSelected = currentCategorySlug === category.slug;
+          const isExpanded = expanded[category.slug];
+          const subcategories = getCategorySubcategories(category.id);
+          const hasSubcategories = subcategories.length > 0;
+
+          // If selected and no subcategory selected, highlight main
+          const isMainActive = isSelected && !currentSubcategorySlug;
+
+          return (
+            <div key={category.id} className="space-y-0.5">
+              <div 
+                className={cn(
+                  "group flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 text-sm font-medium",
+                  isMainActive 
+                    ? "bg-primary/10 text-primary hover:bg-primary/15" 
+                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
+                  // Add subtle left border for active state visual
+                  isMainActive && "shadow-sm"
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+
+                  // LOGIC:
+                  // 1. If has children:
+                  //    - If collapsed: Expand & Navigate
+                  //    - If expanded: 
+                  //        - If we are NOT on this page (e.g. on a different category), Navigate & ensure expanded
+                  //        - If we ARE on this page (or a child), Collapse?
+                  
+                  if (hasSubcategories) {
+                    if (!isExpanded) {
+                      // Open it up and go there
+                      toggleExpand(category.slug, true);
+                      setLocation(`/project/${project?.id}/${category.slug}`);
+                    } else {
+                      // Already expanded
+                      if (currentCategorySlug !== category.slug) {
+                         // If we are coming from another category, just go there, keep expanded
+                         setLocation(`/project/${project?.id}/${category.slug}`);
+                      } else {
+                         // We are already here (or in a child).
+                         // User wants to toggle collapse if they click the header of an open folder
+                         toggleExpand(category.slug, false);
+                         // Optional: If we collapse, do we navigate up to root? 
+                         // User said "don't take me to home page".
+                         // If we are in a subcategory and collapse parent, we are technically still viewing the subcategory page, just hiding the menu.
+                         // If we are on the parent page, we stay there.
+                         // This feels right.
+                      }
+                    }
+                  } else {
+                    // No children, simple navigation
+                    setLocation(`/project/${project?.id}/${category.slug}`);
+                  }
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <Icon className={cn(
+                    "h-4 w-4 transition-colors", 
+                    isMainActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                  )} />
+                  <span>{category.name}</span>
+                </div>
+                
+                {/* Chevron is strictly for toggling, but the whole row triggers it too now. 
+                    We keep it as a visual indicator. 
+                    Clicking specifically the chevron could just toggle without navigation?
+                    Let's make the chevron distinct if needed, but row-click is usually better for touch/usability.
+                */}
+                {hasSubcategories && (
+                  <div 
+                    className="p-1 rounded-sm hover:bg-black/5 dark:hover:bg-white/10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleExpand(category.slug); // Just toggle
+                    }}
+                  >
+                    <ChevronDown 
+                      className={cn(
+                        "h-3.5 w-3.5 text-muted-foreground/70 transition-transform duration-300",
+                        isExpanded ? "transform rotate-0" : "transform -rotate-90"
+                      )} 
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Subcategories List */}
+              <AnimatePresence initial={false}>
+                {isExpanded && hasSubcategories && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pl-9 pr-2 space-y-0.5 pb-2 pt-0.5">
+                      {/* Optional: Add a subtle line to guide the eye */}
+                      <div className="relative border-l border-border/40 ml-[-13px] pl-[13px] space-y-0.5">
+                        {subcategories.map(sub => {
+                           const isSubActive = currentSubcategorySlug === sub.slug;
+                           return (
+                             <Link 
+                               key={sub.id} 
+                               href={`/project/${project?.id}/${category.slug}/${sub.slug}`}
+                             >
+                               <div className={cn(
+                                 "block px-3 py-1.5 rounded-md text-sm transition-all duration-200 cursor-pointer truncate",
+                                 isSubActive 
+                                   ? "text-primary font-medium bg-primary/5" 
+                                   : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+                               )}>
+                                 {sub.name}
+                               </div>
+                             </Link>
+                           )
+                        })}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 export default function ProjectWorkspace() {
   const [match, params] = useRoute("/project/:id/:category?/:subcategory?");
   const { projects, getProjectCategories, getCategorySubcategories, setCurrentProject } = useStore();
-  const [location, setLocation] = useLocation();
-
+  
   // Cast params
   const safeParams = params as { id: string; category?: string; subcategory?: string } | null;
 
@@ -75,154 +280,6 @@ export default function ProjectWorkspace() {
   useEffect(() => {
     if (safeParams?.id) setCurrentProject(safeParams.id);
   }, [safeParams?.id, setCurrentProject]);
-
-  // Sidebar Component - Conditional Rendering based on Stage?
-  // For MVP, we keep the sidebar for all stages but maybe highlight "This is Evaluation Mode"
-  const SidebarContent = () => {
-    const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>(
-      safeParams?.category ? { [safeParams.category]: true } : {}
-    );
-
-    const toggleCategory = (slug: string) => {
-      setExpandedCategories(prev => ({
-        ...prev,
-        [slug]: !prev[slug]
-      }));
-    };
-
-    return (
-      <div 
-        className="space-y-4 min-h-full cursor-default" 
-        onClick={(e) => {
-          // If clicking the empty space container (self), deselect
-          if (e.target === e.currentTarget) {
-             // setLocation(`/project/${project?.id}`); // REMOVED per user request
-             setExpandedCategories({});
-          }
-        }}
-      >
-        {project && (
-          <div className="px-4 py-2 bg-secondary/10 border-y border-border/50 mb-4">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Current Stage</div>
-            <div className="flex items-center gap-2 text-primary font-bold">
-               {project.stage === 'Evaluation' && <Eye className="h-4 w-4" />}
-               {project.stage === 'Development' && <Briefcase className="h-4 w-4" />}
-               {project.stage === 'Production' && <Clapperboard className="h-4 w-4" />}
-               {project.stage}
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-1">
-          {/* Only show "New Item" if in generic mode, otherwise views handle it */}
-          {(!project || project.stage === 'Development' || project.stage === 'Production') && (
-            <div className="px-3 pb-2">
-               {project && (
-                 <UploadDocumentDialog projectId={project.id}>
-                   <Button className="w-full justify-start gap-2 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary border-primary/20" variant="outline" size="sm">
-                     <Plus className="h-4 w-4" />
-                     New Item
-                   </Button>
-                 </UploadDocumentDialog>
-               )}
-            </div>
-          )}
-          
-          {categories.map(category => {
-            const Icon = category.icon && iconMap[category.icon] ? iconMap[category.icon] : Folder;
-            const isActive = safeParams?.category === category.slug;
-            const isExpanded = expandedCategories[category.slug] || isActive;
-            const subcategories = getCategorySubcategories(category.id);
-            const hasSubcategories = subcategories.length > 0;
-
-            return (
-              <div key={category.id} className="space-y-0.5">
-                <div 
-                  className={cn(
-                    "group flex items-center justify-between px-3 py-2 rounded-md hover:bg-sidebar-accent/50 cursor-pointer transition-colors text-sm font-medium",
-                    isActive && !safeParams?.subcategory ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground"
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevent bubbling to container
-
-                    if (isActive) {
-                       // If we are deep in a subcategory, navigating to parent category "resets" the view to dashboard
-                       if (safeParams?.subcategory) {
-                           setLocation(`/project/${project?.id}/${category.slug}`);
-                           // Ensure it stays expanded
-                           if (hasSubcategories) {
-                               setExpandedCategories(prev => ({ ...prev, [category.slug]: true }));
-                           }
-                       } else {
-                           // If we are already at root category, toggle expansion (collapse/expand)
-                           if (hasSubcategories) {
-                               setExpandedCategories(prev => ({ 
-                                   ...prev, 
-                                   [category.slug]: !prev[category.slug] 
-                               }));
-                           }
-                       }
-                    } else {
-                       // Select (Toggle On)
-                       setLocation(`/project/${project?.id}/${category.slug}`);
-                       if (hasSubcategories) {
-                           setExpandedCategories(prev => ({ ...prev, [category.slug]: true }));
-                       }
-                    }
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className={cn("h-4 w-4", isActive ? "text-sidebar-primary" : "text-muted-foreground")} />
-                    <span>{category.name}</span>
-                  </div>
-                  {hasSubcategories && (
-                    <ChevronDown 
-                      className={cn(
-                        "h-3 w-3 text-muted-foreground transition-transform duration-200",
-                        isExpanded ? "" : "-rotate-90"
-                      )} 
-                    />
-                  )}
-                </div>
-
-                <AnimatePresence>
-                  {isExpanded && hasSubcategories && (
-                    <motion.div 
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="pl-9 pr-2 space-y-0.5 pb-2">
-                        {subcategories.map(sub => {
-                           const isSubActive = safeParams?.subcategory === sub.slug;
-                           return (
-                             <Link 
-                               key={sub.id} 
-                               href={`/project/${project?.id}/${category.slug}/${sub.slug}`}
-                             >
-                               <div className={cn(
-                                 "block px-3 py-1.5 rounded-md text-sm transition-colors cursor-pointer hover:bg-sidebar-accent/50 truncate border-l border-transparent",
-                                 isSubActive 
-                                   ? "text-sidebar-primary font-medium bg-sidebar-accent/30 border-sidebar-primary" 
-                                   : "text-muted-foreground hover:text-sidebar-foreground"
-                               )}>
-                                 {sub.name}
-                               </div>
-                             </Link>
-                           )
-                        })}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
 
   if (!project) return <div>Project not found</div>;
 
@@ -327,7 +384,15 @@ export default function ProjectWorkspace() {
   };
 
   return (
-    <Shell sidebar={<SidebarContent />}>
+    <Shell sidebar={
+      <ProjectSidebar 
+        project={project} 
+        categories={categories}
+        currentCategorySlug={safeParams?.category}
+        currentSubcategorySlug={safeParams?.subcategory}
+        getCategorySubcategories={getCategorySubcategories}
+      />
+    }>
       <div className="max-w-[1600px] mx-auto space-y-6">
         
         {/* Breadcrumb Navigation */}
