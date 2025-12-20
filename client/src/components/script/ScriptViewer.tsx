@@ -51,6 +51,29 @@ export default function ScriptViewer({
 
   const pageAnnotations = annotations.filter(a => a.pageNumber === currentPage);
 
+  // Auto-scroll to selected annotation in the script view
+  useEffect(() => {
+    if (selectedAnnotationId && containerRef.current) {
+      const annotation = annotations.find(a => a.id === selectedAnnotationId);
+      if (annotation && annotation.pageNumber === currentPage) {
+        // Calculate pixel position (y is percentage)
+        const rect = containerRef.current.getBoundingClientRect();
+        const pixelY = (annotation.y / 100) * rect.height;
+        
+        // Scroll the parent container (which has overflow-auto)
+        // We need to find the scrollable parent. containerRef is the inner div.
+        // The parent is the one with flex-1 overflow-auto.
+        const scrollContainer = containerRef.current.parentElement;
+        if (scrollContainer) {
+          scrollContainer.scrollTo({
+            top: pixelY - 100, // Scroll with some offset to show context
+            behavior: 'smooth'
+          });
+        }
+      }
+    }
+  }, [selectedAnnotationId, currentPage, annotations]);
+
   return (
     <div className="flex flex-col h-full bg-zinc-900/50 relative overflow-hidden">
       

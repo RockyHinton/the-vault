@@ -34,7 +34,7 @@ import { cn } from "@/lib/utils";
 
 interface NotesPanelProps {
   scriptId: string;
-  onAnnotationClick: (page: number) => void;
+  onAnnotationClick: (page: number, id: string) => void;
   selectedAnnotationId: string | null;
   isCreating: boolean;
   onCancelCreate: () => void;
@@ -219,7 +219,7 @@ export default function NotesPanel({
                       ? "bg-primary/5 border-primary shadow-sm" 
                       : "bg-card hover:bg-secondary/40 border-border"
                   )}
-                  onClick={() => onAnnotationClick(note.pageNumber)}
+                  onClick={() => onAnnotationClick(note.pageNumber, note.id)}
                 >
                   <div className="flex items-start justify-between mb-2">
                      <div className="flex items-center gap-2">

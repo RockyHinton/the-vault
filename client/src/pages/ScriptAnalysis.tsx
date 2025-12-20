@@ -213,9 +213,9 @@ export default function ScriptAnalysisPage() {
           <aside className="w-[400px] shrink-0 z-20 shadow-2xl bg-card">
              <NotesPanel 
                scriptId={document.id} 
-               onAnnotationClick={(page) => {
+               onAnnotationClick={(page, id) => {
                  setCurrentPage(page);
-                 // We don't necessarily select it here unless we want bidirectional sync on click
+                 setSelectedAnnotationId(id);
                }} 
                selectedAnnotationId={selectedAnnotationId}
                isCreating={isCreatingNote}
