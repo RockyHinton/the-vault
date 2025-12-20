@@ -1,0 +1,141 @@
+I need to improve the Script Analysis & Review system in The Vault to fix several critical usability and functional issues. These changes are required for the tool to be usable by real film producers and readers.
+
+Do not redesign the entire system — refine and correct the existing implementation.
+
+1. Annotation Rendering (Do NOT block text)
+
+Current issue:
+
+Annotation icons are rendered directly on top of the PDF and block script text.
+
+Required behavior:
+
+Annotations must NEVER obstruct script readability.
+
+Implement one of the following (preferred order):
+
+Use subtle, non-blocking highlights (underline or light background tint)
+
+Or render annotation indicators in the margin / overlay layer
+
+Or show markers only on hover or when “Show Annotations” is enabled
+
+At all times:
+
+The script text must remain fully readable
+
+Reading mode must feel clean and uninterrupted
+
+2. Note Creation UI (Do NOT block the document)
+
+Current issue:
+
+Creating a note opens a modal in the center of the screen, blocking the script.
+
+Required behavior:
+
+Remove all center-screen modals for note creation
+
+When a user selects text and clicks “Add Note”:
+
+Open the note editor in the right-side analysis panel
+
+Keep the PDF fully visible
+
+Show a small preview of the selected text inside the panel
+
+The user must never lose visual context of where they are in the script.
+
+3. Full-Screen Script Analysis Mode
+
+Implement a dedicated Script Analysis Mode:
+
+When entering script analysis:
+
+Hide the main application navigation and project sidebar
+
+Expand the script viewer and notes panel to full width
+
+Provide a clearly visible:
+
+“Exit Script Review” or “Back to Project” button
+
+When exiting:
+
+Restore normal app layout
+
+This mode should feel like a focused, professional reading environment.
+
+4. Note Management (Delete & Edit)
+
+Required functionality:
+
+Every note in the notes panel must include:
+
+Delete action (trash icon)
+
+Optional edit action
+
+Deleting a note:
+
+Removes it from the list
+
+Removes its visual indicator from the script
+
+Does NOT affect the PDF file
+
+This is mandatory for MVP usability.
+
+5. Script Upload & Rendering Bug Fix
+
+Current issue:
+
+Uploading a new PDF still displays a default script.
+
+Required behavior:
+
+When a user uploads a PDF:
+
+It becomes the active script version
+
+The PDF viewer must immediately load and display the uploaded file
+
+Remove any hardcoded or default PDF references
+
+The viewer must always render:
+
+the selected script version’s file URL or ID
+
+If multiple script versions exist:
+
+Allow switching between them
+
+Viewer updates accordingly
+
+6. UX & Interaction Principles
+
+Script must always remain readable
+
+Notes and tools must feel secondary to the document
+
+No popups that block reading
+
+Clear, predictable interactions
+
+Fast feedback when adding/removing notes
+
+This is a professional evaluation tool, not a demo.
+
+Goal
+
+After these changes:
+
+Script review should feel focused, calm, and efficient
+
+Multiple users can annotate without interfering with reading
+
+The system should feel credible for real-world script evaluation
+
+Uploaded scripts must always render correctly
+
+Fix these issues cleanly and pragmatically without over-engineering.

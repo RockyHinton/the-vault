@@ -394,6 +394,7 @@ interface AppState {
   // Script Analysis Actions
   getScriptAnnotations: (scriptId: string) => ScriptAnnotation[];
   addAnnotation: (annotation: Omit<ScriptAnnotation, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
+  deleteAnnotation: (annotationId: string) => void;
   getScriptReviews: (scriptId: string) => ScriptReview[];
   addReview: (review: Omit<ScriptReview, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
 }
@@ -528,6 +529,10 @@ export const useStore = create<AppState>((set, get) => ({
       authorName: state.user?.name || 'Unknown User',
       timestamp: new Date().toISOString(),
     }]
+  })),
+
+  deleteAnnotation: (annotationId) => set((state) => ({
+    annotations: state.annotations.filter(a => a.id !== annotationId)
   })),
 
   getScriptReviews: (scriptId) => {

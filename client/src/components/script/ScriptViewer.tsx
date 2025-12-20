@@ -1,48 +1,33 @@
 import { useState, useRef, useEffect } from "react";
-import { useStore, NoteType, NoteTag } from "@/lib/store";
+import { useStore, NoteType, NoteTag, Document } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Plus, MessageSquare, StickyNote } from "lucide-react";
+  MessageSquare, 
+  StickyNote 
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ScriptViewerProps {
-  scriptId: string;
+  activeScript: Document;
   currentPage: number;
   onPageChange: (page: number) => void;
+  onSelection: (x: number, y: number) => void;
+  selectionPos: { x: number, y: number } | null;
 }
 
 // Mock script pages as images (placeholder)
-// In a real app, this would be a PDF Canvas or similar
 const MOCK_PAGES = 3; 
 
-export default function ScriptViewer({ scriptId, currentPage, onPageChange }: ScriptViewerProps) {
-  const { getScriptAnnotations, addAnnotation } = useStore();
-  const annotations = getScriptAnnotations(scriptId);
+export default function ScriptViewer({ 
+  activeScript, 
+  currentPage, 
+  onPageChange,
+  onSelection,
+  selectionPos 
+}: ScriptViewerProps) {
+  const { getScriptAnnotations } = useStore();
+  const annotations = getScriptAnnotations(activeScript.id);
   const containerRef = useRef<HTMLDivElement>(null);
-  
-  // Annotation Creation State
-  const [isAddingNote, setIsAddingNote] = useState(false);
-  const [clickPos, setClickPos] = useState<{x: number, y: number} | null>(null);
-  const [noteText, setNoteText] = useState("");
-  const [noteType, setNoteType] = useState<NoteType>("Creative");
-  const [noteTag, setNoteTag] = useState<NoteTag>("Dialogue");
 
   const handlePageClick = (e: React.MouseEvent) => {
     if (!containerRef.current) return;
@@ -52,35 +37,16 @@ export default function ScriptViewer({ scriptId, currentPage, onPageChange }: Sc
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
     
-    setClickPos({ x, y });
-    setIsAddingNote(true);
-  };
-
-  const handleSaveNote = () => {
-    if (!clickPos) return;
-    
-    addAnnotation({
-      scriptVersionId: scriptId,
-      pageNumber: currentPage,
-      x: clickPos.x,
-      y: clickPos.y,
-      text: noteText,
-      type: noteType,
-      tag: noteTag,
-    });
-
-    setIsAddingNote(false);
-    setNoteText("");
-    setClickPos(null);
+    onSelection(x, y);
   };
 
   const pageAnnotations = annotations.filter(a => a.pageNumber === currentPage);
 
   return (
-    <div className="flex flex-col h-full bg-secondary/10 relative overflow-hidden">
+    <div className="flex flex-col h-full bg-zinc-900/50 relative overflow-hidden">
       
       {/* Toolbar / Page Controls */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-background/80 backdrop-blur-md px-4 py-2 rounded-full border border-border shadow-sm">
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-background/90 backdrop-blur-md px-4 py-2 rounded-full border border-border shadow-2xl">
          <Button 
            variant="ghost" 
            size="sm" 
@@ -89,7 +55,7 @@ export default function ScriptViewer({ scriptId, currentPage, onPageChange }: Sc
          >
            Prev
          </Button>
-         <span className="text-sm font-mono">Page {currentPage} of {MOCK_PAGES}</span>
+         <span className="text-sm font-mono text-foreground">Page {currentPage} of {MOCK_PAGES}</span>
          <Button 
            variant="ghost" 
            size="sm" 
@@ -101,109 +67,57 @@ export default function ScriptViewer({ scriptId, currentPage, onPageChange }: Sc
       </div>
 
       {/* Script Page Render */}
-      <div className="flex-1 overflow-auto flex justify-center p-8 custom-scrollbar">
+      <div className="flex-1 overflow-auto flex justify-center p-8 custom-scrollbar bg-[#1a1a1a]">
         <div 
           ref={containerRef}
-          className="relative w-[850px] min-h-[1100px] bg-white shadow-xl cursor-text transition-shadow hover:shadow-2xl"
+          className="relative w-[850px] min-h-[1100px] bg-white shadow-2xl cursor-text transition-shadow"
           onClick={handlePageClick}
         >
            {/* Mock PDF Content (Text Lines) */}
-           <div className="p-16 font-mono text-xs text-black space-y-4 select-none pointer-events-none opacity-80">
-              <div className="text-center font-bold text-lg mb-8 underline">NEON NIGHTS</div>
-              <p>SCENE 1 - EXT. NEW TOKYO - NIGHT</p>
-              <p>Rain lashes against the neon-soaked pavement. Steam rises from the vents, obscuring the towering holograms of the corporate district.</p>
-              <p className="pl-16 font-bold mt-4">KAITO (V.O.)</p>
-              <p className="pl-8 w-2/3">They say this city never sleeps. But it dreams. It dreams of electric sheep and synthetic gods.</p>
-              <p className="mt-4">A black sedan hovers silently around the corner, its headlights cutting through the smog.</p>
-              <p className="pl-16 font-bold mt-4">ELENA</p>
-              <p className="pl-8 w-2/3">Are you seeing this? The signal is coming from the 42nd floor.</p>
+           <div className="p-16 font-mono text-xs text-black space-y-4 select-none pointer-events-none opacity-90 leading-relaxed">
+              <div className="text-center font-bold text-lg mb-8 underline uppercase">{activeScript.title.replace(/_/g, ' ').replace('.PDF', '')}</div>
+              <p>SCENE {currentPage} - EXT. LOCATION - NIGHT</p>
+              <p>The rain continues to fall. It's heavier now. The city lights blur into streaks of neon.</p>
+              <p className="pl-16 font-bold mt-4">CHARACTER A</p>
+              <p className="pl-8 w-2/3">This is where it happens. Right here on page {currentPage}.</p>
+              <p className="mt-4">Action line describing something intense. The camera pans to reveal a hidden detail.</p>
+              <p className="pl-16 font-bold mt-4">CHARACTER B</p>
+              <p className="pl-8 w-2/3">I didn't think we'd make it this far.</p>
               
               {/* Fake Content Filler for Visuals */}
-              {Array.from({ length: 20 }).map((_, i) => (
-                 <div key={i} className="h-2 bg-gray-100 rounded w-full opacity-50 my-2" />
+              {Array.from({ length: 25 }).map((_, i) => (
+                 <div key={i} className="h-2 bg-gray-100 rounded w-full opacity-60 my-3" />
               ))}
            </div>
 
-           {/* Annotations Overlay */}
+           {/* Annotations Overlay - Non Blocking */}
            {pageAnnotations.map((a) => (
              <div
                key={a.id}
-               className="absolute w-6 h-6 -ml-3 -mt-3 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold shadow-lg ring-2 ring-background z-10 hover:scale-110 transition-transform cursor-pointer"
-               style={{ left: `${a.x}%`, top: `${a.y}%` }}
+               className="absolute w-full h-6 border-l-4 border-primary bg-primary/10 hover:bg-primary/20 transition-colors cursor-pointer group"
+               style={{ top: `${a.y}%`, left: 0 }}
                title={a.text}
              >
-               <StickyNote className="h-3 w-3" />
+               {/* Margin Indicator */}
+               <div className="absolute -left-12 top-0 h-6 w-6 flex items-center justify-center">
+                 <div className="h-2 w-2 rounded-full bg-primary" />
+               </div>
              </div>
            ))}
 
-           {/* New Annotation Marker (Pending) */}
-           {clickPos && (
+           {/* Active Selection Marker */}
+           {selectionPos && (
              <div 
-               className="absolute w-4 h-4 -ml-2 -mt-2 rounded-full border-2 border-primary bg-transparent animate-ping z-20"
-               style={{ left: `${clickPos.x}%`, top: `${clickPos.y}%` }}
-             />
+               className="absolute w-full h-6 border-l-4 border-dashed border-primary/50 bg-primary/5 z-10 pointer-events-none"
+               style={{ top: `${selectionPos.y}%`, left: 0 }}
+             >
+                <div className="absolute -left-4 top-0 bg-primary text-primary-foreground text-[10px] px-1 rounded animate-pulse">
+                  New Note
+                </div>
+             </div>
            )}
         </div>
       </div>
-
-      {/* Add Note Dialog */}
-      <Dialog open={isAddingNote} onOpenChange={(open) => !open && setIsAddingNote(false)}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Add Annotation</DialogTitle>
-            <DialogDescription>
-              Page {currentPage} at {Math.round(clickPos?.y || 0)}%
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-             <div className="grid grid-cols-2 gap-4">
-               <div className="space-y-2">
-                 <Label>Type</Label>
-                 <Select value={noteType} onValueChange={(v) => setNoteType(v as NoteType)}>
-                   <SelectTrigger>
-                     <SelectValue />
-                   </SelectTrigger>
-                   <SelectContent>
-                     <SelectItem value="Creative">Creative</SelectItem>
-                     <SelectItem value="Commercial">Commercial</SelectItem>
-                     <SelectItem value="Question">Question</SelectItem>
-                     <SelectItem value="Concern">Concern</SelectItem>
-                   </SelectContent>
-                 </Select>
-               </div>
-               <div className="space-y-2">
-                 <Label>Tag</Label>
-                 <Select value={noteTag} onValueChange={(v) => setNoteTag(v as NoteTag)}>
-                   <SelectTrigger>
-                     <SelectValue />
-                   </SelectTrigger>
-                   <SelectContent>
-                     <SelectItem value="Dialogue">Dialogue</SelectItem>
-                     <SelectItem value="Structure">Structure</SelectItem>
-                     <SelectItem value="Character">Character</SelectItem>
-                     <SelectItem value="Pacing">Pacing</SelectItem>
-                     <SelectItem value="Budget Impact">Budget Impact</SelectItem>
-                     <SelectItem value="Other">Other</SelectItem>
-                   </SelectContent>
-                 </Select>
-               </div>
-             </div>
-             <div className="space-y-2">
-               <Label>Note</Label>
-               <Textarea 
-                 placeholder="Type your observation here..." 
-                 value={noteText}
-                 onChange={(e) => setNoteText(e.target.value)}
-                 className="resize-none h-24"
-               />
-             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddingNote(false)}>Cancel</Button>
-            <Button onClick={handleSaveNote} disabled={!noteText}>Save Note</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
     </div>
   );

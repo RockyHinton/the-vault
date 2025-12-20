@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Link, useRoute } from "wouter";
-import { useStore, Document } from "@/lib/store";
-import { Shell } from "@/components/layout/Shell";
+import { Link, useRoute, useLocation } from "wouter";
+import { useStore, Document, NoteType, NoteTag } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,7 +11,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { ChevronLeft, Share2, Download, CheckCircle, FileText } from "lucide-react";
+import { ChevronLeft, Share2, Download, CheckCircle, FileText, X } from "lucide-react";
 
 import ScriptViewer from "@/components/script/ScriptViewer";
 import NotesPanel from "@/components/script/NotesPanel";
@@ -25,9 +24,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export default function ScriptAnalysisPage() {
   const [match, params] = useRoute("/script/:id");
-  const { documents, projects, addReview } = useStore();
+  const [location, setLocation] = useLocation();
+  const { documents, projects, addReview, addAnnotation } = useStore();
   const [currentPage, setCurrentPage] = useState(1);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+
+  // New Note State (Lifted up)
+  const [isCreatingNote, setIsCreatingNote] = useState(false);
+  const [draftPos, setDraftPos] = useState<{x: number, y: number} | null>(null);
 
   // Review Form State
   const [creativeScore, setCreativeScore] = useState(5);
@@ -54,47 +58,57 @@ export default function ScriptAnalysisPage() {
     setIsReviewOpen(false);
   };
 
+  const handleSelection = (x: number, y: number) => {
+    setDraftPos({ x, y });
+    setIsCreatingNote(true);
+  };
+
+  const handleCreateNote = (text: string, type: NoteType, tag: NoteTag) => {
+    if (!draftPos) return;
+    addAnnotation({
+      scriptVersionId: document.id,
+      pageNumber: currentPage,
+      x: draftPos.x,
+      y: draftPos.y,
+      text,
+      type,
+      tag,
+    });
+    setIsCreatingNote(false);
+    setDraftPos(null);
+  };
+
+  const handleCancelNote = () => {
+    setIsCreatingNote(false);
+    setDraftPos(null);
+  };
+
   return (
-    <Shell>
-      <div className="flex flex-col h-[calc(100vh-80px)] -m-6">
+    <div className="h-screen w-screen bg-background flex flex-col overflow-hidden">
         
-        {/* Header Bar */}
-        <header className="h-16 bg-background border-b border-border flex items-center justify-between px-6 shrink-0">
+        {/* Full Screen Header */}
+        <header className="h-16 bg-background border-b border-border flex items-center justify-between px-6 shrink-0 z-50">
           <div className="flex items-center gap-4">
              <Link href={`/project/${project.id}/script`}>
-               <Button variant="ghost" size="icon">
-                 <ChevronLeft className="h-5 w-5" />
+               <Button variant="ghost" className="gap-2">
+                 <ChevronLeft className="h-4 w-4" />
+                 Exit Review
                </Button>
              </Link>
-             <div>
-                <Breadcrumb>
-                  <BreadcrumbList>
-                    <BreadcrumbItem>
-                      <BreadcrumbLink href={`/project/${project.id}`}>{project.title}</BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator />
-                    <BreadcrumbItem>
-                      <BreadcrumbPage className="font-semibold text-foreground">{document.title}</BreadcrumbPage>
-                    </BreadcrumbItem>
-                  </BreadcrumbList>
-                </Breadcrumb>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                   <Badge variant="outline" className="text-[10px] py-0 h-4">v{document.version}</Badge>
-                   <span>Last updated {new Date(document.uploadedAt).toLocaleDateString()}</span>
-                </div>
+             <div className="h-6 w-[1px] bg-border" />
+             <div className="flex items-center gap-3">
+               <h1 className="text-lg font-bold font-display">{document.title}</h1>
+               <Badge variant="outline" className="font-mono text-xs">v{document.version}</Badge>
              </div>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm">
               <Share2 className="mr-2 h-4 w-4" /> Share
             </Button>
-            <Button variant="ghost" size="sm">
-              <Download className="mr-2 h-4 w-4" /> Download
-            </Button>
             <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
               <DialogTrigger asChild>
                 <Button>
-                  <CheckCircle className="mr-2 h-4 w-4" /> Submit Review
+                  <CheckCircle className="mr-2 h-4 w-4" /> Submit Score
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
@@ -164,27 +178,31 @@ export default function ScriptAnalysisPage() {
         <div className="flex-1 flex overflow-hidden">
           
           {/* Main Panel: PDF Viewer */}
-          <main className="flex-1 relative flex flex-col min-w-0">
-             <div className="p-4 z-10 bg-background/50 backdrop-blur-sm">
+          <main className="flex-1 relative flex flex-col min-w-0 bg-secondary/5">
+             <div className="p-4 z-10">
                 <ReviewSummary scriptId={document.id} />
              </div>
              <ScriptViewer 
-               scriptId={document.id} 
+               activeScript={document}
                currentPage={currentPage} 
                onPageChange={setCurrentPage} 
+               onSelection={handleSelection}
+               selectionPos={draftPos}
              />
           </main>
 
           {/* Right Panel: Notes */}
-          <aside className="w-[350px] shrink-0 z-20 shadow-xl">
+          <aside className="w-[400px] shrink-0 z-20 shadow-2xl bg-card">
              <NotesPanel 
                scriptId={document.id} 
                onAnnotationClick={setCurrentPage} 
+               isCreating={isCreatingNote}
+               onCancelCreate={handleCancelNote}
+               onCreateNote={handleCreateNote}
              />
           </aside>
         </div>
 
-      </div>
-    </Shell>
+    </div>
   );
 }
