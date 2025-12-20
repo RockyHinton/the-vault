@@ -146,14 +146,22 @@ export default function ProjectWorkspace() {
                     e.stopPropagation(); // Prevent bubbling to container
 
                     if (isActive) {
-                       // Deselect if already active (Toggle Off) -> stay on current page, just update UI
-                       // setLocation(`/project/${project?.id}`); // REMOVED
-                       if (hasSubcategories) {
-                           setExpandedCategories(prev => ({ ...prev, [category.slug]: false }));
+                       // If we are deep in a subcategory, navigating to parent category "resets" the view to dashboard
+                       if (safeParams?.subcategory) {
+                           setLocation(`/project/${project?.id}/${category.slug}`);
+                           // Ensure it stays expanded
+                           if (hasSubcategories) {
+                               setExpandedCategories(prev => ({ ...prev, [category.slug]: true }));
+                           }
+                       } else {
+                           // If we are already at root category, toggle expansion (collapse/expand)
+                           if (hasSubcategories) {
+                               setExpandedCategories(prev => ({ 
+                                   ...prev, 
+                                   [category.slug]: !prev[category.slug] 
+                               }));
+                           }
                        }
-                       // If we want to strictly 'deselect', we could arguably go to project root, 
-                       // but user requested: "this should not take me back to the home page, it should leave me on the page i am already on"
-                       // So we do nothing to location.
                     } else {
                        // Select (Toggle On)
                        setLocation(`/project/${project?.id}/${category.slug}`);
