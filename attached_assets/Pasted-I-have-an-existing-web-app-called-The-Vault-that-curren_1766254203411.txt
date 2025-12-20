@@ -1,0 +1,351 @@
+I have an existing web app called The Vault that currently manages film projects with basic file uploads. I want to evolve this system into a stage-aware production intelligence platform that mirrors how films are actually evaluated, developed (pre-production), and produced.
+
+Do NOT rebuild from scratch.
+Extend and restructure the current system logically.
+
+Core Concept
+
+Projects are no longer flat or equal.
+Every project exists in one and only one stage at any time:
+
+Evaluation
+
+Development
+
+Production
+
+Archived (failed or paused projects)
+
+The UI, available sections, and focus of each project change depending on its stage.
+
+Global Project List Changes
+
+Update the main project dashboard to:
+
+Display project stage clearly
+
+Allow filtering by:
+
+Evaluation
+
+Development
+
+Production
+
+Archived
+
+Make it immediately obvious where attention is needed
+
+Projects should be movable between stages via explicit actions, not drag-and-drop.
+
+Project State Logic
+
+Each project has:
+
+stage field (Evaluation / Development / Production / Archived)
+
+Full history preserved across stages
+
+No data loss when moving stages
+
+Moving a project forward:
+
+Is intentional (button + confirmation)
+
+Preserves all documents, notes, and metadata
+
+Unlocks new tools and sections
+
+Archiving:
+
+Removes project from active workflows
+
+Keeps all data searchable and readable
+
+Allows revival later
+
+Evaluation Stage — Decision Support Environment
+Purpose
+
+This stage exists to answer:
+
+“Is this project worth moving forward?”
+
+UX Priority
+
+The Script and creative evaluation is the primary focus.
+
+Evaluation Project View
+
+Opening a project in Evaluation should show a Project Evaluation dashboard, not a generic file list.
+
+Include structured sections:
+
+Project Evaluation Overview (Top Panel)
+
+Writer (name + notes)
+
+Director attached (yes/no, name, IMDb link)
+
+Cast attached (list with IMDb links)
+
+Producers attached
+
+Finance type:
+
+Grant
+
+Subsidy
+
+Tax credit
+
+Private
+
+Finance committed vs speculative
+
+Planned budget (headline number)
+
+This is a summary panel, always visible.
+
+Evaluation Sections
+
+Use structured sections, not generic folders:
+
+Script (PRIMARY ZONE)
+
+Script uploads
+
+Reader notes
+
+Reviews
+
+Scores (creative + financial)
+
+Inline annotations or linked notes
+
+This is the most visually prominent area
+
+Finance (High-level only)
+
+Type of finance
+
+Commitment status
+
+Budget estimate
+
+Producers
+
+Names
+
+Notes
+
+Role/context
+
+Actors + Director
+
+Attached talent
+
+IMDb links
+
+Status notes
+
+Evaluation Outcomes
+
+Provide two clear actions:
+
+Approve → Move to Development
+
+Reject → Archive Project
+
+Rejected projects:
+
+Are archived
+
+Retain all evaluation data
+
+Can be reactivated later
+
+Development Stage — Packaging & Pre-Production
+Purpose
+
+This stage answers:
+
+“Can this project be fully packaged, financed, and legally prepared for production?”
+
+Carryover
+
+All Evaluation data remains visible and editable.
+
+New Elements Introduced
+Deal & Investment
+
+Heads of Terms document
+
+Investment summaries
+
+Notes on deal structure
+
+Task Manager / Noticeboard (Important)
+
+Add a project-level task system:
+
+Tasks assigned to users
+
+Status (open / complete)
+
+Linked to documents or milestones
+
+Visible to all relevant collaborators
+
+This becomes the operational backbone.
+
+Closing Checklist
+
+Introduce a closing checklist per project:
+
+Key agreements signed
+
+Finance closed
+
+Talent confirmed
+
+Banking ready
+
+Legal documentation in place
+
+Checklist must be ticked before moving to Production.
+
+Development Documentation (Non-Final)
+
+Create a structured documentation area for in-progress agreements:
+
+Investment agreement
+
+Co-production agreement
+
+Producers agreement
+
+Director agreement
+
+Cast agreements
+
+Banking documentation
+
+Subsidy / Grant / Tax credit documents
+
+Sales agency agreement
+
+CAMA
+
+Each document:
+
+Has status (draft / under review / agreed)
+
+Supports versions
+
+Allows notes and comments
+
+These are working documents, not final archives.
+
+Production Stage — Live Execution
+Purpose
+
+This stage answers:
+
+“How do we run this production efficiently, transparently, and on schedule?”
+
+Focus
+
+Operational clarity, not evaluation.
+
+Production Sections
+
+Enable the following sections:
+
+Distribution
+
+Sales agents
+
+Territories
+
+Deliverables
+
+Shooting Schedules
+
+Production Cashflow
+
+Daily Shoot Schedule
+
+These should be easy to update and clearly readable.
+
+Task Manager / Noticeboard (Expanded)
+
+In Production:
+
+Task manager becomes central
+
+Used for daily coordination
+
+Supports comments or updates
+
+Clearly shows priorities
+
+This feels like a control room, not a file browser.
+
+Permissions & Safety (MVP Level)
+
+Only authorized users can move projects between stages
+
+Archived projects are read-only
+
+Production data is editable only by production-level users
+
+Keep permissions simple but logical.
+
+UX & Design Principles
+
+Clear hierarchy
+
+No clutter
+
+Stage-aware UI (what you see depends on where you are)
+
+Script evaluation visually prioritized in Evaluation
+
+Tasks visually prioritized in Development & Production
+
+Breadcrumbs always show:
+
+Project
+
+Stage
+
+Section
+
+Technical Notes
+
+Reuse existing project and file models where possible
+
+Add a stage field and conditional UI rendering
+
+Preserve backward compatibility
+
+Do not over-engineer permissions
+
+Ensure performance remains fast
+
+Goal
+
+Transform The Vault from a flat file repository into a stage-aware production intelligence system that:
+
+Reflects real producer workflows
+
+Supports creative decision-making
+
+Guides projects toward production readiness
+
+Maintains full historical context
+
+Scales to multiple projects and teams
+
+This should feel like a professional internal tool used by serious producers, not a generic file manager.
