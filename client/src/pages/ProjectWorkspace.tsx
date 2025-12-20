@@ -87,7 +87,16 @@ export default function ProjectWorkspace() {
     };
 
     return (
-      <div className="space-y-4">
+      <div 
+        className="space-y-4 min-h-full cursor-default" 
+        onClick={(e) => {
+          // If clicking the empty space container (self), deselect
+          if (e.target === e.currentTarget) {
+             setLocation(`/project/${project?.id}`);
+             setExpandedCategories({});
+          }
+        }}
+      >
         {project && (
           <div className="px-4 py-2 bg-secondary/10 border-y border-border/50 mb-4">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Current Stage</div>
@@ -129,11 +138,22 @@ export default function ProjectWorkspace() {
                     "group flex items-center justify-between px-3 py-2 rounded-md hover:bg-sidebar-accent/50 cursor-pointer transition-colors text-sm font-medium",
                     isActive && !safeParams?.subcategory ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground"
                   )}
-                  onClick={() => {
-                    // Always navigate to the category root to show potential dashboard
-                    setLocation(`/project/${project?.id}/${category.slug}`);
-                    // If it has subcategories, also toggle them open/closed
-                    if (hasSubcategories) toggleCategory(category.slug);
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent bubbling to container
+
+                    if (isActive) {
+                       // Deselect if already active (Toggle Off)
+                       setLocation(`/project/${project?.id}`);
+                       if (hasSubcategories) {
+                           setExpandedCategories(prev => ({ ...prev, [category.slug]: false }));
+                       }
+                    } else {
+                       // Select (Toggle On)
+                       setLocation(`/project/${project?.id}/${category.slug}`);
+                       if (hasSubcategories) {
+                           setExpandedCategories(prev => ({ ...prev, [category.slug]: true }));
+                       }
+                    }
                   }}
                 >
                   <div className="flex items-center gap-3">
