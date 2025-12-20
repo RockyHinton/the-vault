@@ -600,8 +600,12 @@ export const useStore = create<AppState>()(
     visibleSlugs.add('producing-partners');
     visibleSlugs.add('talent');
 
+    // Make 'legal' visible for Evaluation too, just for demo purposes if needed, 
+    // or strictly follow logic. 
+    // Wait, user says "cannot see this in ANY stages".
+    // Let's make sure it's added.
     if (stage === 'Development' || stage === 'Production' || stage === 'Archived') {
-      visibleSlugs.add('legal'); // Was documentation
+      visibleSlugs.add('legal'); 
     }
 
     if (stage === 'Production' || stage === 'Archived') {

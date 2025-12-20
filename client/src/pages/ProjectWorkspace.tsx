@@ -129,7 +129,7 @@ export default function ProjectWorkspace() {
           )}
           
           {categories.map(category => {
-            const Icon = category.icon ? iconMap[category.icon] : Folder;
+            const Icon = category.icon && iconMap[category.icon] ? iconMap[category.icon] : Folder;
             const isActive = safeParams?.category === category.slug;
             const isExpanded = expandedCategories[category.slug] || isActive;
             const subcategories = getCategorySubcategories(category.id);
