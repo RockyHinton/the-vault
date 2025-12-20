@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/Auth";
 import ProjectsPage from "@/pages/Projects";
 import ProjectWorkspace from "@/pages/ProjectWorkspace";
+import ScriptAnalysisPage from "@/pages/ScriptAnalysis";
 import { useStore } from "@/lib/store";
 import { useEffect } from "react";
 
@@ -27,6 +28,7 @@ function Router() {
       <Route path="/project/:id" component={ProjectWorkspace} />
       <Route path="/project/:id/:category" component={ProjectWorkspace} />
       <Route path="/project/:id/:category/:subcategory" component={ProjectWorkspace} />
+      <Route path="/script/:id" component={ScriptAnalysisPage} />
       <Route component={NotFound} />
     </Switch>
   );

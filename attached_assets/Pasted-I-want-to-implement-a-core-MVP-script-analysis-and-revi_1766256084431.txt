@@ -1,0 +1,251 @@
+I want to implement a core MVP script analysis and review system that supports collaborative, multi-user script evaluation while preserving the integrity of the original script document.
+
+This system will be used primarily in the Evaluation and Development stages of a project.
+
+Core Design Principle
+
+The script PDF is the canonical document and must remain unchanged.
+
+All reviews, notes, scores, and communication live in a Vault-specific structured review layer that sits on top of and alongside the PDF.
+
+Do not allow inline editing of script text.
+
+Script Storage & Versions
+
+Scripts are uploaded as PDF files
+
+Each script upload creates a Script Version
+
+Older versions remain accessible and readable
+
+Notes and reviews are always attached to a specific version
+
+Main Script Review Interface (Primary Screen)
+Layout
+
+Create a focused two-panel layout:
+
+Center Panel: Script PDF Viewer
+
+Right Panel: Review & Notes Panel
+
+The script must remain the visual anchor at all times.
+
+Script PDF Viewer (Center Panel)
+
+Render the PDF cleanly with:
+
+page navigation
+
+zoom controls
+
+Allow users to:
+
+select text or an area on the PDF
+
+click “Add Note”
+
+When adding a note, capture:
+
+script version ID
+
+page number
+
+approximate coordinates
+
+author (logged-in user)
+
+timestamp
+
+This selection becomes an annotation anchor.
+
+Annotation System (Line-Level Notes)
+
+Each annotation must include:
+
+Author
+
+Timestamp
+
+Note text
+
+Note type:
+
+Creative
+
+Commercial
+
+Question
+
+Concern
+
+Optional tag:
+
+Dialogue
+
+Structure
+
+Character
+
+Pacing
+
+Budget impact
+
+Other (free text)
+
+Annotations should:
+
+Appear visually when their script location is hovered or selected
+
+Be clickable from the notes panel to jump to the correct page/location
+
+Never overwrite or alter the PDF itself
+
+Notes & Review Panel (Right Panel)
+
+Display a scrollable list of all annotations for the selected script version.
+
+Each note card shows:
+
+Author name
+
+Note type
+
+Short preview of the note
+
+Page number
+
+Timestamp
+
+Clicking a note:
+
+Focuses the PDF viewer on the relevant page/location
+
+Filtering & Focus Tools (Very Important)
+
+Provide filters to:
+
+Show notes by specific user(s)
+
+Show notes by type (Creative, Commercial, etc.)
+
+Show notes by tag
+
+Toggle all annotations on/off
+
+This is essential for producers reviewing multiple readers’ input.
+
+Script-Level Review & Scoring
+
+Each user can submit one structured review per script version, containing:
+
+Creative Score (1–10)
+
+Commercial Score (1–10)
+
+Budget Feasibility Score (1–10)
+
+Overall Recommendation:
+
+Pass
+
+Consider
+
+Develop
+
+Script-level summary notes (free text)
+
+Store each review separately per user.
+
+Review Summary View
+
+At the top of the Script Review page, show:
+
+Number of reviews submitted
+
+Average scores for each category
+
+Distribution of recommendations
+
+This gives producers instant decision context.
+
+Multi-User Collaboration Rules
+
+Multiple users can review the same script concurrently
+
+Notes are never overwritten
+
+Edits to notes create a new version or update timestamp
+
+All notes and reviews are attributed to users
+
+This must feel safe and professional.
+
+Permissions (MVP Level)
+
+Only logged-in users with project access can:
+
+add notes
+
+submit reviews
+
+All users can view notes and reviews
+
+Archived scripts are read-only
+
+Keep permissions simple and logical.
+
+Data Models (High-Level)
+
+Implement models for:
+
+Script
+
+ScriptVersion
+
+ScriptAnnotation
+
+ScriptReview
+
+AnnotationTag
+
+User
+
+Each annotation and review must link to:
+
+script version
+
+project
+
+user
+
+UX Requirements
+
+Clean, readable typography
+
+No clutter
+
+Clear separation between document and commentary
+
+Fast navigation between notes and script
+
+No gimmicks or heavy animations
+
+This is a professional evaluation tool, not a writing app.
+
+MVP Goal
+
+Deliver a working script analysis system that:
+
+Supports real collaborative script evaluation
+
+Preserves document integrity
+
+Enables structured decision-making
+
+Scales to multiple readers and projects
+
+Feels credible to serious film producers
+
+Do not over-engineer.
+Prioritize clarity, structure, and reliability.

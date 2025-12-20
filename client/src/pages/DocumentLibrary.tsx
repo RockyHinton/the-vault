@@ -1,5 +1,6 @@
 import { useStore, Document } from "@/lib/store";
 import { format } from "date-fns";
+import { Link } from "wouter";
 import { 
   FileText, 
   File, 
@@ -217,6 +218,16 @@ export default function DocumentLibrary({ projectId, categoryId, subcategoryId }
                         <DropdownMenuItem className="gap-2">
                           <Eye className="h-4 w-4" /> View Details
                         </DropdownMenuItem>
+
+                        {/* Script Analysis Action for PDFs */}
+                        {doc.type === 'PDF' && (
+                          <Link href={`/script/${doc.id}`}>
+                            <DropdownMenuItem className="gap-2 font-medium text-primary focus:text-primary">
+                              <FileText className="h-4 w-4" /> Script Analysis
+                            </DropdownMenuItem>
+                          </Link>
+                        )}
+
                         <DropdownMenuItem className="gap-2">
                           <Download className="h-4 w-4" /> Download
                         </DropdownMenuItem>

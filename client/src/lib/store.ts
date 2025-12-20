@@ -98,6 +98,38 @@ export interface Document {
   stageContext?: ProjectStage; // Which stage does this document belong to?
 }
 
+// --- Script Analysis Types ---
+
+export type NoteType = 'Creative' | 'Commercial' | 'Question' | 'Concern';
+export type NoteTag = 'Dialogue' | 'Structure' | 'Character' | 'Pacing' | 'Budget Impact' | 'Other';
+
+export interface ScriptAnnotation {
+  id: string;
+  scriptVersionId: string; // Links to a Document (PDF)
+  pageNumber: number;
+  x: number; // Percentage coordinate
+  y: number; // Percentage coordinate
+  authorId: string;
+  authorName: string;
+  text: string;
+  type: NoteType;
+  tag?: NoteTag;
+  timestamp: string;
+}
+
+export interface ScriptReview {
+  id: string;
+  scriptVersionId: string;
+  authorId: string;
+  authorName: string;
+  creativeScore: number; // 1-10
+  commercialScore: number; // 1-10
+  budgetScore: number; // 1-10
+  recommendation: 'Pass' | 'Consider' | 'Develop';
+  summaryNotes: string;
+  timestamp: string;
+}
+
 // --- Mock Data ---
 
 const MOCK_USER: User = {
@@ -207,9 +239,6 @@ const MOCK_CATEGORIES: Category[] = [
   { id: 'c9', projectId: 'p1', name: 'Documentation', slug: 'documentation', icon: 'FolderCheck' }, // New (Dev+)
   { id: 'c6', projectId: 'p1', name: 'Distribution', slug: 'distribution', icon: 'Globe' },
   { id: 'c10', projectId: 'p1', name: 'Schedules', slug: 'schedules', icon: 'Calendar' }, // New (Prod+)
-  // Hidden/Legacy for now based on strict request, or we can map them if needed
-  // { id: 'c4', projectId: 'p1', name: 'Action Points', slug: 'action-points', icon: 'CheckSquare' },
-  // { id: 'c7', projectId: 'p1', name: 'Company Entities', slug: 'entities', icon: 'Building2' },
 ];
 
 const MOCK_SUBCATEGORIES: Subcategory[] = [
@@ -290,6 +319,50 @@ const MOCK_DOCUMENTS: Document[] = [
   },
 ];
 
+const MOCK_ANNOTATIONS: ScriptAnnotation[] = [
+  {
+    id: 'a1',
+    scriptVersionId: 'd1',
+    pageNumber: 1,
+    x: 10,
+    y: 15,
+    authorId: 'u1',
+    authorName: 'Sarah Producer',
+    text: 'Great opening hook, really sets the tone immediately.',
+    type: 'Creative',
+    tag: 'Pacing',
+    timestamp: '2023-12-11T10:00:00Z',
+  },
+  {
+    id: 'a2',
+    scriptVersionId: 'd1',
+    pageNumber: 1,
+    x: 50,
+    y: 30,
+    authorId: 'u2',
+    authorName: 'Mike Finance',
+    text: 'This location (New Tokyo aerial) will be expensive. Can we establish this differently?',
+    type: 'Commercial',
+    tag: 'Budget Impact',
+    timestamp: '2023-12-11T11:30:00Z',
+  }
+];
+
+const MOCK_REVIEWS: ScriptReview[] = [
+  {
+    id: 'r1',
+    scriptVersionId: 'd1',
+    authorId: 'u1',
+    authorName: 'Sarah Producer',
+    creativeScore: 9,
+    commercialScore: 8,
+    budgetScore: 7,
+    recommendation: 'Develop',
+    summaryNotes: 'Strongest draft yet. Kaito\'s arc is clear. Third act needs a bit of trimming but ready for packaging.',
+    timestamp: '2023-12-12T09:00:00Z',
+  }
+];
+
 // --- Store ---
 
 interface AppState {
@@ -299,6 +372,8 @@ interface AppState {
   subcategories: Subcategory[];
   documents: Document[];
   tasks: Task[];
+  annotations: ScriptAnnotation[];
+  reviews: ScriptReview[];
   currentProjectId: string | null;
   
   login: (email: string) => void;
@@ -310,12 +385,17 @@ interface AppState {
   getProjectCategories: (projectId: string) => Category[];
   getCategorySubcategories: (categoryId: string) => Subcategory[];
   
-  // New Actions
   setProjectStage: (projectId: string, stage: ProjectStage) => void;
   updateClosingChecklist: (projectId: string, checklist: Partial<Project['closingChecklist']>) => void;
   addTask: (task: Omit<Task, 'id'>) => void;
   toggleTaskStatus: (taskId: string) => void;
   getProjectTasks: (projectId: string) => Task[];
+
+  // Script Analysis Actions
+  getScriptAnnotations: (scriptId: string) => ScriptAnnotation[];
+  addAnnotation: (annotation: Omit<ScriptAnnotation, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
+  getScriptReviews: (scriptId: string) => ScriptReview[];
+  addReview: (review: Omit<ScriptReview, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -325,6 +405,8 @@ export const useStore = create<AppState>((set, get) => ({
   subcategories: MOCK_SUBCATEGORIES,
   documents: MOCK_DOCUMENTS,
   tasks: MOCK_TASKS,
+  annotations: MOCK_ANNOTATIONS,
+  reviews: MOCK_REVIEWS,
   currentProjectId: null,
 
   login: (email) => set({ 
@@ -374,26 +456,20 @@ export const useStore = create<AppState>((set, get) => ({
     const { categories, projects } = get();
     const project = projects.find(p => p.id === projectId);
     
-    // Default categories if project not found
     if (!project) return categories.map(c => ({...c, projectId}));
 
     const stage = project.stage;
     
-    // Define visible categories based on stage
     const visibleSlugs = new Set<string>();
-
-    // Evaluation: Script, Financing, Producers, Actors + Directors
     visibleSlugs.add('script');
     visibleSlugs.add('financing');
     visibleSlugs.add('producing-partners');
     visibleSlugs.add('talent');
 
-    // Development: All above + Documentation
     if (stage === 'Development' || stage === 'Production' || stage === 'Archived') {
       visibleSlugs.add('documentation');
     }
 
-    // Production: All above + Distribution, Schedules
     if (stage === 'Production' || stage === 'Archived') {
       visibleSlugs.add('distribution');
       visibleSlugs.add('schedules');
@@ -437,5 +513,36 @@ export const useStore = create<AppState>((set, get) => ({
   getProjectTasks: (projectId) => {
     const { tasks } = get();
     return tasks.filter(t => t.projectId === projectId);
-  }
+  },
+
+  getScriptAnnotations: (scriptId) => {
+    const { annotations } = get();
+    return annotations.filter(a => a.scriptVersionId === scriptId);
+  },
+
+  addAnnotation: (annotation) => set((state) => ({
+    annotations: [...state.annotations, {
+      ...annotation,
+      id: `a${Date.now()}`,
+      authorId: state.user?.id || 'unknown',
+      authorName: state.user?.name || 'Unknown User',
+      timestamp: new Date().toISOString(),
+    }]
+  })),
+
+  getScriptReviews: (scriptId) => {
+    const { reviews } = get();
+    return reviews.filter(r => r.scriptVersionId === scriptId);
+  },
+
+  addReview: (review) => set((state) => ({
+    reviews: [...state.reviews, {
+      ...review,
+      id: `r${Date.now()}`,
+      authorId: state.user?.id || 'unknown',
+      authorName: state.user?.name || 'Unknown User',
+      timestamp: new Date().toISOString(),
+    }]
+  }))
+
 }));
