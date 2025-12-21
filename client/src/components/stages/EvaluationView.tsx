@@ -159,7 +159,7 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
                  
                  <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Director Vision</span>
+                      <span className="text-muted-foreground">Director</span>
                       <span className="font-bold">{avgDirector}/10</span>
                     </div>
                     <Progress value={parseFloat(avgDirector) * 10} className="h-2" />
@@ -167,7 +167,7 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
 
                  <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Cast / Attachments</span>
+                      <span className="text-muted-foreground">Cast</span>
                       <span className="font-bold">{avgCast}/10</span>
                     </div>
                     <Progress value={parseFloat(avgCast) * 10} className="h-2" />
@@ -175,7 +175,7 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
 
                  <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Financing / Commercials</span>
+                      <span className="text-muted-foreground">Financing</span>
                       <span className="font-bold">{avgFinancing}/10</span>
                     </div>
                     <Progress value={parseFloat(avgFinancing) * 10} className="h-2" />
@@ -204,18 +204,6 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
                  <p className="text-[10px] text-muted-foreground mt-1 text-center">Average across all criteria</p>
               </div>
 
-            </div>
-            
-            <div>
-              <span className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">Attached Talent</span>
-              <div className="flex flex-wrap gap-2">
-                {project.evaluation.castAttached?.map((actor, i) => (
-                  <Badge key={i} variant="secondary" className="px-3 py-1 text-sm bg-secondary/50">
-                    <User className="h-3 w-3 mr-2 opacity-50" />
-                    {actor.name} <span className="opacity-50 ml-1">as {actor.role}</span>
-                  </Badge>
-                )) || <span className="text-muted-foreground italic">No cast attached yet</span>}
-              </div>
             </div>
           </CardContent>
         </Card>

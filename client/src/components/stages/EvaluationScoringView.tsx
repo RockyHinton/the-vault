@@ -156,7 +156,7 @@ export default function EvaluationScoringView({ project, onBack }: EvaluationSco
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-2 text-base font-semibold">
-                    <Film className="h-4 w-4 text-primary" /> Director / Vision
+                    <Film className="h-4 w-4 text-primary" /> Director
                   </Label>
                   <span className="font-mono font-bold text-xl">{scores.director}/10</span>
                 </div>
@@ -176,7 +176,7 @@ export default function EvaluationScoringView({ project, onBack }: EvaluationSco
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-2 text-base font-semibold">
-                    <User className="h-4 w-4 text-primary" /> Cast & Attachments
+                    <User className="h-4 w-4 text-primary" /> Cast
                   </Label>
                   <span className="font-mono font-bold text-xl">{scores.cast}/10</span>
                 </div>
@@ -196,7 +196,7 @@ export default function EvaluationScoringView({ project, onBack }: EvaluationSco
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-2 text-base font-semibold">
-                    <CircleDollarSign className="h-4 w-4 text-primary" /> Financing & Commercials
+                    <CircleDollarSign className="h-4 w-4 text-primary" /> Financing
                   </Label>
                   <span className="font-mono font-bold text-xl">{scores.financing}/10</span>
                 </div>
