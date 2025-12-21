@@ -1,0 +1,146 @@
+I want to refactor the Development stage landing page for a project in The Vault so it feels calm, intuitive, and decision-oriented rather than overwhelming.
+
+Do not remove existing features.
+Reorganise and reprioritise them.
+
+Primary Goal
+
+When a producer lands on a Development project, they should immediately understand:
+
+How close the project is to greenlight
+
+What is blocking progress
+
+What needs attention next
+
+This page should feel like a pre-production control panel, not a workspace full of tools.
+
+1. Add a Development Status Overview (Top of Page)
+
+At the top of the Development landing page, add a Status Overview card that includes:
+
+Project stage: “In Development”
+
+Closing checklist completion (e.g. “3 of 5 complete” or percentage)
+
+Current greenlight readiness state:
+
+Ready
+
+Nearly Ready
+
+Blocked
+
+Last updated timestamp
+
+This card should be the primary visual anchor on the page.
+
+2. Reframe the Closing Checklist as the Core Driver
+
+The Closing Checklist should remain, but:
+
+Position it directly below the Status Overview
+
+Clearly label it as:
+“Greenlight Requirements”
+
+Emphasise incomplete items visually
+
+Keep the “Complete checklist to proceed” logic
+
+The checklist is the backbone of Development and should feel central.
+
+3. Collapse Operational Workstreams by Default
+
+Instead of showing all document upload areas and task boards immediately, group them into collapsed workstreams:
+
+Workstreams:
+
+Packaging & Agreements
+
+Financing
+
+Legal & Banking
+
+Tasks & Coordination
+
+Each workstream card should show:
+
+Completion state or document count
+
+Last updated info
+
+A clear “Open” action
+
+Details inside each workstream remain unchanged — they are just hidden until opened.
+
+4. De-emphasise the Task Board on Landing
+
+The Task Board should:
+
+Not appear as a full input interface on page load
+
+Be summarised as:
+
+“X open tasks”
+
+Expand into full task management only when selected
+
+Tasks are execution tools, not the landing focus.
+
+5. Remove Empty-State Noise from Landing View
+
+Do not display:
+
+Empty document upload placeholders
+
+Large “No documents yet” boxes
+
+Multiple upload buttons
+
+These should appear inside their respective workstreams only.
+
+6. Maintain Existing Navigation & Data
+
+Do not:
+
+Change project data models
+
+Remove existing sections
+
+Alter permissions
+
+Add new workflows
+
+This is a presentation and hierarchy refactor, not a rebuild.
+
+UX & Tone Guidelines
+
+Calm, professional, and controlled
+
+Clear visual hierarchy
+
+Minimal cognitive load
+
+Strong sense of progress and readiness
+
+A producer should feel:
+
+“This project is under control.”
+
+Success Criteria
+
+After this refactor:
+
+The page feels significantly less overwhelming
+
+A producer can assess status in under 5 seconds
+
+Next actions are obvious
+
+Detailed tools are accessible but not intrusive
+
+Scope Control
+
+Do not redesign Evaluation or Production pages.
+Focus only on improving the Development landing experience.
