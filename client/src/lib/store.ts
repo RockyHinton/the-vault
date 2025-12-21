@@ -474,34 +474,7 @@ const MOCK_ANNOTATIONS: ScriptAnnotation[] = [
   }
 ];
 
-const MOCK_REVIEWS: ScriptReview[] = [
-  {
-    id: 'r1',
-    projectId: 'p1',
-    authorId: 'u1',
-    authorName: 'Sarah Producer',
-    scriptScore: 9,
-    directorScore: 8,
-    castScore: 7,
-    financingScore: 8,
-    recommendation: 'Develop',
-    summaryNotes: 'Strongest draft yet. Kaito\'s arc is clear. Third act needs a bit of trimming but ready for packaging.',
-    timestamp: '2023-12-12T09:00:00Z',
-  },
-  {
-    id: 'r2',
-    projectId: 'p1',
-    authorId: 'u2',
-    authorName: 'Mike Finance',
-    scriptScore: 7,
-    directorScore: 6,
-    castScore: 8,
-    financingScore: 5,
-    recommendation: 'Consider',
-    summaryNotes: 'Budget concerns on the locations, but the cast value is high.',
-    timestamp: '2023-12-13T10:00:00Z',
-  }
-];
+const MOCK_REVIEWS: ScriptReview[] = [];
 
 // --- Store ---
 

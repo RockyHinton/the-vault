@@ -17,11 +17,13 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  CircleDollarSign
+  CircleDollarSign,
+  Save
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner"; // Assuming sonner is installed or we can use another toast
 
 interface EvaluationScoringViewProps {
   project: Project;
@@ -77,7 +79,8 @@ export default function EvaluationScoringView({ project, onBack }: EvaluationSco
         summaryNotes: notes
       });
       setIsSubmitting(false);
-      onBack(); // Go back after submitting
+      toast.success("Review saved successfully");
+      // onBack(); // Stay on page
     }, 600);
   };
 
