@@ -34,10 +34,14 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
   const avgCast = reviewCount > 0 
     ? (reviews.reduce((acc, r) => acc + r.castScore, 0) / reviewCount).toFixed(1)
     : "0.0";
+
+  const avgFinancing = reviewCount > 0 
+    ? (reviews.reduce((acc, r) => acc + (r.financingScore || 0), 0) / reviewCount).toFixed(1)
+    : "0.0";
     
   // Overall Weighted Average
   const overallScore = reviewCount > 0
-    ? ((parseFloat(avgScript) + parseFloat(avgDirector) + parseFloat(avgCast)) / 3).toFixed(1)
+    ? ((parseFloat(avgScript) + parseFloat(avgDirector) + parseFloat(avgCast) + parseFloat(avgFinancing)) / 4).toFixed(1)
     : "0.0";
 
   // Local state for the evaluation checklist
@@ -144,6 +148,14 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
                       <span className="font-bold">{avgCast}/10</span>
                     </div>
                     <Progress value={parseFloat(avgCast) * 10} className="h-2" />
+                 </div>
+
+                 <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Financing / Commercials</span>
+                      <span className="font-bold">{avgFinancing}/10</span>
+                    </div>
+                    <Progress value={parseFloat(avgFinancing) * 10} className="h-2" />
                  </div>
                  
                  <div className="pt-2">

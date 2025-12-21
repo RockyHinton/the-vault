@@ -16,7 +16,8 @@ import {
   MessageSquare, 
   CheckCircle2,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  CircleDollarSign
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -35,10 +36,25 @@ export default function EvaluationScoringView({ project, onBack }: EvaluationSco
   const [scores, setScores] = useState({
     script: 5,
     director: 5,
-    cast: 5
+    cast: 5,
+    financing: 5
   });
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Initialize form if user already has a review
+  useState(() => {
+    const existingReview = reviews.find(r => r.authorId === user?.id);
+    if (existingReview) {
+      setScores({
+        script: existingReview.scriptScore,
+        director: existingReview.directorScore,
+        cast: existingReview.castScore,
+        financing: existingReview.financingScore || 5
+      });
+      setNotes(existingReview.summaryNotes);
+    }
+  });
 
   // Expanded Review State
   const [expandedReviews, setExpandedReviews] = useState<Record<string, boolean>>({});
@@ -56,24 +72,24 @@ export default function EvaluationScoringView({ project, onBack }: EvaluationSco
         scriptScore: scores.script,
         directorScore: scores.director,
         castScore: scores.cast,
+        financingScore: scores.financing,
         recommendation: calculateRecommendation(scores),
         summaryNotes: notes
       });
       setIsSubmitting(false);
-      setNotes("");
-      setScores({ script: 5, director: 5, cast: 5 });
+      onBack(); // Go back after submitting
     }, 600);
   };
 
   const calculateRecommendation = (s: typeof scores): 'Pass' | 'Consider' | 'Develop' => {
-    const avg = (s.script + s.director + s.cast) / 3;
+    const avg = (s.script + s.director + s.cast + s.financing) / 4;
     if (avg >= 8) return 'Develop';
     if (avg >= 5) return 'Consider';
     return 'Pass';
   };
 
-  const getOverallScore = (r: { scriptScore: number; directorScore: number; castScore: number }) => {
-    return ((r.scriptScore + r.directorScore + r.castScore) / 3).toFixed(1);
+  const getOverallScore = (r: { scriptScore: number; directorScore: number; castScore: number; financingScore: number }) => {
+    return ((r.scriptScore + r.directorScore + r.castScore + (r.financingScore || 0)) / 4).toFixed(1);
   };
 
   return (
@@ -158,6 +174,26 @@ export default function EvaluationScoringView({ project, onBack }: EvaluationSco
 
               <Separator />
 
+              {/* Financing Score */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center gap-2 text-base font-semibold">
+                    <CircleDollarSign className="h-4 w-4 text-primary" /> Financing & Commercials
+                  </Label>
+                  <span className="font-mono font-bold text-xl">{scores.financing}/10</span>
+                </div>
+                <Slider 
+                  value={[scores.financing]} 
+                  onValueChange={(v) => setScores(prev => ({ ...prev, financing: v[0] }))} 
+                  max={10} 
+                  step={1} 
+                  className="py-2"
+                />
+                <p className="text-xs text-muted-foreground">Assess budget feasibility, ROI potential, and funding security.</p>
+              </div>
+
+              <Separator />
+
               {/* Notes */}
               <div className="space-y-2">
                 <Label htmlFor="notes">Summary Notes</Label>
@@ -220,10 +256,11 @@ export default function EvaluationScoringView({ project, onBack }: EvaluationSco
                        </div>
 
                        {/* Summary of breakdown always visible? Or minimal? Let's show minimal badges */}
-                       <div className="flex gap-2 mt-2">
+                       <div className="flex flex-wrap gap-2 mt-2">
                           <Badge variant="outline" className="text-[10px] font-normal bg-secondary/20">Script: {review.scriptScore}</Badge>
                           <Badge variant="outline" className="text-[10px] font-normal bg-secondary/20">Dir: {review.directorScore}</Badge>
                           <Badge variant="outline" className="text-[10px] font-normal bg-secondary/20">Cast: {review.castScore}</Badge>
+                          <Badge variant="outline" className="text-[10px] font-normal bg-secondary/20">Finance: {review.financingScore}</Badge>
                        </div>
 
                        {isExpanded && (

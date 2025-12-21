@@ -166,6 +166,7 @@ export interface ScriptReview {
   scriptScore: number;   // 1-10
   directorScore: number; // 1-10
   castScore: number;     // 1-10
+  financingScore: number; // 1-10
   recommendation: 'Pass' | 'Consider' | 'Develop';
   summaryNotes: string;
   timestamp: string;
@@ -482,6 +483,7 @@ const MOCK_REVIEWS: ScriptReview[] = [
     scriptScore: 9,
     directorScore: 8,
     castScore: 7,
+    financingScore: 8,
     recommendation: 'Develop',
     summaryNotes: 'Strongest draft yet. Kaito\'s arc is clear. Third act needs a bit of trimming but ready for packaging.',
     timestamp: '2023-12-12T09:00:00Z',
@@ -494,6 +496,7 @@ const MOCK_REVIEWS: ScriptReview[] = [
     scriptScore: 7,
     directorScore: 6,
     castScore: 8,
+    financingScore: 5,
     recommendation: 'Consider',
     summaryNotes: 'Budget concerns on the locations, but the cast value is high.',
     timestamp: '2023-12-13T10:00:00Z',
@@ -689,15 +692,40 @@ export const useStore = create<AppState>()(
     return reviews.filter(r => r.projectId === projectId);
   },
 
-  addReview: (review) => set((state) => ({
-    reviews: [...state.reviews, {
-      ...review,
-      id: `r${Date.now()}`,
-      authorId: state.user?.id || 'unknown',
-      authorName: state.user?.name || 'Unknown User',
-      timestamp: new Date().toISOString(),
-    }]
-  }))
+  addReview: (review) => set((state) => {
+    // Check if user already submitted a review for this project
+    const currentUserId = state.user?.id;
+    const existingReviewIndex = state.reviews.findIndex(
+      r => r.projectId === review.projectId && r.authorId === currentUserId
+    );
+
+    if (existingReviewIndex >= 0) {
+      // Replace existing review
+      const updatedReviews = [...state.reviews];
+      updatedReviews[existingReviewIndex] = {
+        ...review,
+        id: updatedReviews[existingReviewIndex].id, // Keep same ID
+        timestamp: new Date().toISOString(),
+        authorId: state.user?.id || 'unknown',
+        authorName: state.user?.name || 'Unknown User'
+      };
+      return { reviews: updatedReviews };
+    } else {
+      // Add new review
+      return {
+        reviews: [
+          { 
+            ...review, 
+            id: `r${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            authorId: state.user?.id || 'unknown',
+            authorName: state.user?.name || 'Unknown User'
+          },
+          ...state.reviews
+        ]
+      };
+    }
+  })
 
 }),
 {
