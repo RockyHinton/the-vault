@@ -160,12 +160,12 @@ export interface ScriptAnnotation {
 
 export interface ScriptReview {
   id: string;
-  scriptVersionId: string;
+  projectId: string; // Changed from scriptVersionId to generic project association
   authorId: string;
   authorName: string;
-  creativeScore: number; // 1-10
-  commercialScore: number; // 1-10
-  budgetScore: number; // 1-10
+  scriptScore: number;   // 1-10
+  directorScore: number; // 1-10
+  castScore: number;     // 1-10
   recommendation: 'Pass' | 'Consider' | 'Develop';
   summaryNotes: string;
   timestamp: string;
@@ -476,15 +476,27 @@ const MOCK_ANNOTATIONS: ScriptAnnotation[] = [
 const MOCK_REVIEWS: ScriptReview[] = [
   {
     id: 'r1',
-    scriptVersionId: 'd1',
+    projectId: 'p1',
     authorId: 'u1',
     authorName: 'Sarah Producer',
-    creativeScore: 9,
-    commercialScore: 8,
-    budgetScore: 7,
+    scriptScore: 9,
+    directorScore: 8,
+    castScore: 7,
     recommendation: 'Develop',
     summaryNotes: 'Strongest draft yet. Kaito\'s arc is clear. Third act needs a bit of trimming but ready for packaging.',
     timestamp: '2023-12-12T09:00:00Z',
+  },
+  {
+    id: 'r2',
+    projectId: 'p1',
+    authorId: 'u2',
+    authorName: 'Mike Finance',
+    scriptScore: 7,
+    directorScore: 6,
+    castScore: 8,
+    recommendation: 'Consider',
+    summaryNotes: 'Budget concerns on the locations, but the cast value is high.',
+    timestamp: '2023-12-13T10:00:00Z',
   }
 ];
 
@@ -524,7 +536,7 @@ interface AppState {
   getScriptAnnotations: (scriptId: string) => ScriptAnnotation[];
   addAnnotation: (annotation: Omit<ScriptAnnotation, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
   deleteAnnotation: (annotationId: string) => void;
-  getScriptReviews: (scriptId: string) => ScriptReview[];
+  getProjectReviews: (projectId: string) => ScriptReview[];
   addReview: (review: Omit<ScriptReview, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
 }
 
@@ -672,9 +684,9 @@ export const useStore = create<AppState>()(
     annotations: state.annotations.filter(a => a.id !== annotationId)
   })),
 
-  getScriptReviews: (scriptId) => {
+  getProjectReviews: (projectId) => {
     const { reviews } = get();
-    return reviews.filter(r => r.scriptVersionId === scriptId);
+    return reviews.filter(r => r.projectId === projectId);
   },
 
   addReview: (review) => set((state) => ({

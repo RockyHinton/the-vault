@@ -4,19 +4,42 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { FileText, User, Users, DollarSign, BarChart3, Upload, CheckCircle, XCircle, CheckSquare, Square } from "lucide-react";
+import { FileText, User, Users, DollarSign, BarChart3, Upload, CheckCircle, XCircle, CheckSquare, Square, Star, Plus } from "lucide-react";
 import { UploadDocumentDialog } from "@/components/features/UploadDocumentDialog";
 import DocumentLibrary from "@/pages/DocumentLibrary";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import EvaluationScoringView from "./EvaluationScoringView";
 
 interface EvaluationViewProps {
   project: Project;
 }
 
 export default function EvaluationView({ project }: EvaluationViewProps) {
-  const { setProjectStage } = useStore();
+  const { setProjectStage, getProjectReviews } = useStore();
+  const [isScoringMode, setIsScoringMode] = useState(false);
   
+  // Calculate Scores from Reviews
+  const reviews = getProjectReviews(project.id);
+  const reviewCount = reviews.length;
+  
+  const avgScript = reviewCount > 0 
+    ? (reviews.reduce((acc, r) => acc + r.scriptScore, 0) / reviewCount).toFixed(1)
+    : "0.0";
+    
+  const avgDirector = reviewCount > 0 
+    ? (reviews.reduce((acc, r) => acc + r.directorScore, 0) / reviewCount).toFixed(1)
+    : "0.0";
+    
+  const avgCast = reviewCount > 0 
+    ? (reviews.reduce((acc, r) => acc + r.castScore, 0) / reviewCount).toFixed(1)
+    : "0.0";
+    
+  // Overall Weighted Average
+  const overallScore = reviewCount > 0
+    ? ((parseFloat(avgScript) + parseFloat(avgDirector) + parseFloat(avgCast)) / 3).toFixed(1)
+    : "0.0";
+
   // Local state for the evaluation checklist
   const [checklist, setChecklist] = useState({
     scriptReviewed: false,
@@ -44,6 +67,10 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
     }
   };
 
+  if (isScoringMode) {
+    return <EvaluationScoringView project={project} onBack={() => setIsScoringMode(false)} />;
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       
@@ -51,9 +78,16 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="md:col-span-3 bg-secondary/5 border-secondary">
           <CardHeader>
-             <CardTitle className="text-lg flex items-center gap-2">
-               <BarChart3 className="h-5 w-5 text-primary" />
-               Project Evaluation Overview
+             <CardTitle className="text-lg flex items-center justify-between">
+               <div className="flex items-center gap-2">
+                 <BarChart3 className="h-5 w-5 text-primary" />
+                 Project Evaluation Overview
+               </div>
+               {reviewCount > 0 && (
+                 <Badge variant="outline" className="bg-background text-foreground font-mono">
+                   {reviewCount} Reviews
+                 </Badge>
+               )}
              </CardTitle>
           </CardHeader>
           <CardContent>
@@ -83,22 +117,58 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
             
             <Separator className="my-6" />
 
-            {/* Scores Moved Here */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Creative Score</span>
-                  <span className="font-bold">{project.evaluation.scores?.creative || 0}/10</span>
-                </div>
-                <Progress value={(project.evaluation.scores?.creative || 0) * 10} className="h-2" />
+            {/* Scores Display */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-6">
+              
+              {/* Score Bars */}
+              <div className="lg:col-span-8 space-y-5">
+                 <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Script Quality</span>
+                      <span className="font-bold">{avgScript}/10</span>
+                    </div>
+                    <Progress value={parseFloat(avgScript) * 10} className="h-2" />
+                 </div>
+                 
+                 <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Director Vision</span>
+                      <span className="font-bold">{avgDirector}/10</span>
+                    </div>
+                    <Progress value={parseFloat(avgDirector) * 10} className="h-2" />
+                 </div>
+
+                 <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Cast / Attachments</span>
+                      <span className="font-bold">{avgCast}/10</span>
+                    </div>
+                    <Progress value={parseFloat(avgCast) * 10} className="h-2" />
+                 </div>
+                 
+                 <div className="pt-2">
+                   <Button 
+                     size="sm" 
+                     variant="outline" 
+                     className="gap-2 border-primary/20 hover:border-primary hover:bg-primary/5 text-primary"
+                     onClick={() => setIsScoringMode(true)}
+                   >
+                     <Star className="h-4 w-4" />
+                     {reviewCount === 0 ? "Be the first to rate" : "Add Your Rating & Notes"}
+                   </Button>
+                 </div>
               </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Financial Score</span>
-                  <span className="font-bold">{project.evaluation.scores?.financial || 0}/10</span>
-                </div>
-                <Progress value={(project.evaluation.scores?.financial || 0) * 10} className="h-2" />
+
+              {/* Overall Score Circle */}
+              <div className="lg:col-span-4 flex flex-col items-center justify-center p-4 bg-background/50 rounded-xl border border-border/50">
+                 <div className="relative flex items-center justify-center h-24 w-24 rounded-full border-4 border-primary/20 mb-2">
+                    <span className="text-3xl font-black text-foreground">{overallScore}</span>
+                    <div className="absolute inset-0 rounded-full border-t-4 border-primary opacity-50 rotate-45" />
+                 </div>
+                 <span className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Overall Score</span>
+                 <p className="text-[10px] text-muted-foreground mt-1 text-center">Average across all criteria</p>
               </div>
+
             </div>
             
             <div>
