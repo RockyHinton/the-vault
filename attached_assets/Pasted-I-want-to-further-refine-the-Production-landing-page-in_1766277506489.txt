@@ -1,0 +1,154 @@
+I want to further refine the Production landing page in The Vault to reduce clutter and create a clear, calm “Today in Production” overview.
+
+This page should no longer function as a dashboard of all production systems.
+It should function as a daily briefing view.
+
+Primary Goal
+
+When a producer opens a Production project, they should immediately see:
+
+What day of production it is
+
+Today’s call sheet
+
+Today’s priorities / tasks
+
+Current status (at a glance)
+
+Nothing else should compete for attention.
+
+1. Keep and Emphasise the Production Header
+
+Keep the top Production header, but ensure it remains the clear anchor:
+
+Production day (e.g. Day 12 of 35)
+
+Date
+
+Status (On Schedule / Delayed / At Risk)
+
+Current location (if available)
+
+Primary actions:
+
+View Today’s Call Sheet
+
+Update Production Status
+
+This header should feel like the “morning briefing”.
+
+2. Remove Status Summary Cards from Landing Page
+
+Remove the following from the Production landing page:
+
+Schedule status cards
+
+Budget status cards
+
+Deliverables status cards
+
+These details are:
+
+Already understood by the team
+
+Better suited to their dedicated sections
+
+They should not appear on the landing overview.
+
+3. Focus the Page on Two Core Sections Only
+
+Below the header, the page should focus on only two primary sections:
+
+A. Today’s Call Sheet & Key Documents
+
+Show the current or next call sheet
+
+Show the latest shooting schedule only if directly relevant
+
+Clear “View” action
+
+No tabs, no extra metadata
+
+This section is about what’s happening today.
+
+B. Today’s Priorities
+
+Show only:
+
+High-priority tasks
+
+Tasks due today or tomorrow
+
+Include:
+
+Task owner
+
+Priority indicator
+
+Allow marking tasks complete
+
+Provide a simple “View All Tasks” link
+
+Do NOT show:
+
+Long task lists
+
+Low-priority items
+
+Full task management UI
+
+4. Remove Secondary Operations from Landing Page
+
+Remove the following from the Production landing page entirely:
+
+Secondary operations panels
+
+Logistics & Deliverables shortcuts
+
+Crew & Vendor access
+
+Distribution access
+
+All of these remain accessible via the left-hand navigation only.
+
+The landing page must not act as a shortcut menu.
+
+5. Visual & UX Principles
+
+Fewer panels
+
+Larger spacing
+
+Clear hierarchy
+
+Strong vertical flow
+
+No competing visual weights
+
+A producer should be able to scan this page in 3–5 seconds and understand the day.
+
+6. Scope Control
+
+Do not:
+
+Remove underlying features
+
+Delete data
+
+Change navigation structure
+
+Add new workflows
+
+This is a presentation simplification only.
+
+Success Criteria
+
+After this refinement:
+
+The page feels noticeably calmer
+
+Attention is directed to today’s work only
+
+The page reads like a daily production briefing
+
+There is no sense of overload

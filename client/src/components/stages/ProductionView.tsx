@@ -144,248 +144,121 @@ export default function ProductionView({ project }: ProductionViewProps) {
         </CardContent>
       </Card>
 
-      {/* 2. Production Health Indicators */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-card/50 border-border/60 shadow-sm">
-          <CardContent className="p-4 flex items-center justify-between">
-             <div className="flex items-center gap-4">
-               <div className="p-2.5 bg-green-500/10 text-green-600 rounded-lg">
-                 <Calendar className="h-5 w-5" />
-               </div>
-               <div>
-                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Schedule</p>
-                 <p className="text-sm font-bold text-foreground">On Track</p>
-               </div>
-             </div>
-             <Badge variant="secondary" className="bg-green-500/10 text-green-700 hover:bg-green-500/20 border-green-200">Stable</Badge>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card/50 border-border/60 shadow-sm">
-          <CardContent className="p-4 flex items-center justify-between">
-             <div className="flex items-center gap-4">
-               <div className="p-2.5 bg-blue-500/10 text-blue-600 rounded-lg">
-                 <TrendingUp className="h-5 w-5" />
-               </div>
-               <div>
-                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Budget</p>
-                 <p className="text-sm font-bold text-foreground">Under Estimate</p>
-               </div>
-             </div>
-             <Badge variant="secondary" className="bg-blue-500/10 text-blue-700 hover:bg-blue-500/20 border-blue-200">~1.2% Var</Badge>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card/50 border-border/60 shadow-sm">
-          <CardContent className="p-4 flex items-center justify-between">
-             <div className="flex items-center gap-4">
-               <div className="p-2.5 bg-amber-500/10 text-amber-600 rounded-lg">
-                 <Box className="h-5 w-5" />
-               </div>
-               <div>
-                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Deliverables</p>
-                 <p className="text-sm font-bold text-foreground">2 Pending Review</p>
-               </div>
-             </div>
-             <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 border-amber-200">Action Req</Badge>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+      {/* 2. Two Core Sections Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
         
-        {/* 3. Main Operational Column */}
-        <div className="xl:col-span-8 space-y-8">
-           
-           {/* First-Class Schedules */}
-           <div className="space-y-4">
-             <div className="flex items-center justify-between">
-               <h3 className="text-lg font-bold font-display flex items-center gap-2">
-                 <Clapperboard className="h-5 w-5 text-primary" />
-                 Production Documents
-               </h3>
-               <Button variant="ghost" size="sm" className="text-muted-foreground">View All Documents</Button>
-             </div>
-
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               {/* Shooting Schedule Card */}
-               <Card className="hover:border-primary/50 transition-colors cursor-pointer group">
-                 <CardContent className="p-5 flex items-start gap-4">
-                    <div className="h-12 w-12 rounded-lg bg-orange-500/10 text-orange-600 flex items-center justify-center shrink-0">
-                       <Calendar className="h-6 w-6" />
-                    </div>
-                    <div className="space-y-1 flex-1">
-                       <div className="flex justify-between items-start">
-                         <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">Shooting Schedule v4.2</h4>
-                         <Badge variant="secondary" className="text-[10px]">LATEST</Badge>
-                       </div>
-                       <p className="text-sm text-muted-foreground">Updated yesterday by AD Team</p>
-                       <div className="pt-2 flex gap-3">
-                         <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
-                           <Download className="h-3 w-3" /> PDF
-                         </Button>
-                         <Button size="sm" variant="ghost" className="h-7 text-xs gap-1">
-                           <Clock className="h-3 w-3" /> History
-                         </Button>
-                       </div>
-                    </div>
-                 </CardContent>
-               </Card>
-
-               {/* Next Call Sheet Card */}
-               <Card className="hover:border-primary/50 transition-colors cursor-pointer group">
-                 <CardContent className="p-5 flex items-start gap-4">
-                    <div className="h-12 w-12 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
-                       <FileText className="h-6 w-6" />
-                    </div>
-                    <div className="space-y-1 flex-1">
-                       <div className="flex justify-between items-start">
-                         <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">Call Sheet - Day {schedule.currentDay + 1}</h4>
-                         <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-600">DRAFT</Badge>
-                       </div>
-                       <p className="text-sm text-muted-foreground">For tomorrow • Pending Approval</p>
-                       <div className="pt-2 flex gap-3">
-                         <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
-                           <Users className="h-3 w-3" /> Review
-                         </Button>
-                       </div>
-                    </div>
-                 </CardContent>
-               </Card>
-             </div>
+        {/* A. Today's Call Sheet & Key Documents (Focus: What is happening today) */}
+        <div className="space-y-6">
+           <div className="flex items-center justify-between">
+             <h3 className="text-xl font-bold font-display flex items-center gap-2">
+               <FileText className="h-5 w-5 text-primary" />
+               Today's Documents
+             </h3>
            </div>
 
-           {/* Today's Priorities (Reframed Task Board) */}
            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                 <h3 className="text-lg font-bold font-display flex items-center gap-2">
-                   <CheckCircle2 className="h-5 w-5 text-primary" />
-                   Today's Priorities
-                 </h3>
-                 <Button variant="link" size="sm" className="text-primary">View All Tasks</Button>
-              </div>
+               {/* Call Sheet - Hero Card */}
+               <Card className="border-l-4 border-l-blue-500 shadow-md hover:shadow-lg transition-all cursor-pointer group">
+                 <CardContent className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                       <div className="flex items-center gap-3">
+                          <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                             <FileText className="h-6 w-6" />
+                          </div>
+                          <div>
+                             <h4 className="text-lg font-bold group-hover:text-blue-600 transition-colors">Call Sheet - Day {schedule.currentDay}</h4>
+                             <p className="text-sm text-muted-foreground">For Today, {format(new Date(), "MMM do")}</p>
+                          </div>
+                       </div>
+                       <Badge className="bg-green-500 hover:bg-green-600">PUBLISHED</Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+                       <div className="p-3 bg-secondary/50 rounded-lg">
+                          <span className="block text-xs text-muted-foreground uppercase tracking-wider mb-1">Call Time</span>
+                          <span className="font-semibold text-lg">06:00 AM</span>
+                       </div>
+                       <div className="p-3 bg-secondary/50 rounded-lg">
+                          <span className="block text-xs text-muted-foreground uppercase tracking-wider mb-1">Location</span>
+                          <span className="font-semibold truncate block">{currentLocation?.name || "TBD"}</span>
+                       </div>
+                    </div>
 
-              <Card>
-                <CardContent className="p-0 divide-y divide-border/50">
-                  {highPriorityTasks.length > 0 ? (
-                    highPriorityTasks.map(task => (
-                      <div key={task.id} className="p-4 flex items-center gap-4 hover:bg-secondary/20 transition-colors">
-                        <div className="h-2 w-2 rounded-full bg-red-500 shrink-0" title="High Priority" />
-                        <div className="flex-1">
-                           <div className="flex items-center gap-2">
-                             <span className="font-medium text-foreground">{task.title}</span>
-                             {task.assignedTo && <Badge variant="secondary" className="text-[10px] h-5">{task.assignedTo}</Badge>}
-                           </div>
-                           <p className="text-xs text-muted-foreground mt-0.5">Due Today • {task.status}</p>
-                        </div>
-                        <Button size="sm" variant="outline">Complete</Button>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-6 text-center text-muted-foreground text-sm">No high priority tasks for today.</div>
-                  )}
-                  
-                  {/* Show a few normal tasks if space permits */}
-                  {otherTasks.map(task => (
-                      <div key={task.id} className="p-4 flex items-center gap-4 hover:bg-secondary/20 transition-colors opacity-80">
-                        <div className="h-2 w-2 rounded-full bg-blue-400 shrink-0" title="Medium Priority" />
-                        <div className="flex-1">
-                           <div className="flex items-center gap-2">
-                             <span className="font-medium text-foreground">{task.title}</span>
-                             {task.assignedTo && <Badge variant="secondary" className="text-[10px] h-5">{task.assignedTo}</Badge>}
-                           </div>
-                        </div>
-                        <Button size="sm" variant="ghost">View</Button>
-                      </div>
-                  ))}
-                  
-                  <div className="p-2 bg-secondary/10 text-center">
-                    <Button variant="ghost" size="sm" className="text-xs text-muted-foreground w-full h-8">
-                       + Add New Priority Task
+                    <Button className="w-full" size="lg">
+                       <ArrowUpRight className="mr-2 h-4 w-4" /> View Call Sheet
                     </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                 </CardContent>
+               </Card>
+
+               {/* Shooting Schedule - Secondary */}
+               <div className="pt-2">
+                 <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-secondary/30 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-4">
+                       <div className="p-2 bg-orange-100 dark:bg-orange-900/20 text-orange-600 rounded-lg">
+                          <Calendar className="h-5 w-5" />
+                       </div>
+                       <div>
+                          <p className="font-medium">Shooting Schedule v4.2</p>
+                          <p className="text-xs text-muted-foreground">Latest revision</p>
+                       </div>
+                    </div>
+                    <Button variant="ghost" size="sm">View</Button>
+                 </div>
+               </div>
            </div>
         </div>
 
-        {/* 4. Secondary Column (Context & De-emphasized) */}
-        <div className="xl:col-span-4 space-y-6">
-           
-           {/* Weather / Location Quick View (Optional flair, kept simple for now) */}
-           {currentLocation && (
-             <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-100 dark:border-blue-900/30">
-               <CardContent className="p-5">
-                  <div className="flex items-start justify-between mb-4">
-                    <h4 className="font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2">
-                      <MapPin className="h-4 w-4" /> Current Location
-                    </h4>
-                    <span className="text-xs font-medium text-blue-600 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/50 px-2 py-0.5 rounded">Secured</span>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-lg font-bold text-blue-950 dark:text-blue-50">{currentLocation.name}</p>
-                    <p className="text-sm text-blue-800/70 dark:text-blue-200/70">{currentLocation.address}</p>
-                  </div>
-                  <Separator className="my-4 bg-blue-200 dark:bg-blue-800/50" />
-                  <div className="flex justify-between text-xs text-blue-700 dark:text-blue-300">
-                     <span>Basecamp Open: 06:00</span>
-                     <span>Wrap Est: 19:30</span>
-                  </div>
-               </CardContent>
-             </Card>
-           )}
-
-           {/* De-emphasized Sections (Logistics, Distribution) */}
-           <div className="space-y-4">
-             <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider pl-1">Secondary Operations</h4>
-             
-             {/* Collapsible-style Cards for quick access without clutter */}
-             <Card className="hover:bg-secondary/10 transition-colors cursor-pointer">
-               <CardContent className="p-4 flex items-center justify-between">
-                 <div className="flex items-center gap-3">
-                   <div className="p-2 bg-secondary rounded-md text-muted-foreground">
-                     <Truck className="h-4 w-4" />
-                   </div>
-                   <div>
-                     <p className="font-medium text-sm">Logistics & Deliverables</p>
-                     <p className="text-xs text-muted-foreground">Transport, Catering, Equipment</p>
-                   </div>
-                 </div>
-                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
-               </CardContent>
-             </Card>
-
-             <Card className="hover:bg-secondary/10 transition-colors cursor-pointer">
-               <CardContent className="p-4 flex items-center justify-between">
-                 <div className="flex items-center gap-3">
-                   <div className="p-2 bg-secondary rounded-md text-muted-foreground">
-                     <Users className="h-4 w-4" />
-                   </div>
-                   <div>
-                     <p className="font-medium text-sm">Crew & Vendor List</p>
-                     <p className="text-xs text-muted-foreground">Manage Access & Contacts</p>
-                   </div>
-                 </div>
-                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
-               </CardContent>
-             </Card>
-             
-             <Card className="hover:bg-secondary/10 transition-colors cursor-pointer opacity-75">
-               <CardContent className="p-4 flex items-center justify-between">
-                 <div className="flex items-center gap-3">
-                   <div className="p-2 bg-secondary rounded-md text-muted-foreground">
-                     <Box className="h-4 w-4" />
-                   </div>
-                   <div>
-                     <p className="font-medium text-sm">Distribution</p>
-                     <p className="text-xs text-muted-foreground">Post-Production Handover</p>
-                   </div>
-                 </div>
-                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
-               </CardContent>
-             </Card>
-
+        {/* B. Today's Priorities (Focus: What needs attention) */}
+        <div className="space-y-6">
+           <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold font-display flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-primary" />
+                Today's Priorities
+              </h3>
+              <Button variant="ghost" size="sm" className="text-muted-foreground text-xs">View All Tasks</Button>
            </div>
+
+           <Card className="border-none shadow-none bg-transparent">
+             <CardContent className="p-0 space-y-3">
+               {highPriorityTasks.length > 0 ? (
+                 highPriorityTasks.map(task => (
+                   <div key={task.id} className="group flex items-start gap-4 p-4 rounded-xl border bg-card hover:border-primary/50 hover:shadow-sm transition-all">
+                     <div className="mt-1 h-5 w-5 rounded-full border-2 border-muted-foreground/30 group-hover:border-primary cursor-pointer flex items-center justify-center transition-colors">
+                        <div className="h-2.5 w-2.5 rounded-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                     </div>
+                     <div className="flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-medium text-foreground leading-snug">{task.title}</span>
+                          <Badge variant="outline" className="text-[10px] text-red-500 border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-900/30 whitespace-nowrap">High Priority</Badge>
+                        </div>
+                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                           {task.assignedTo && (
+                             <div className="flex items-center gap-1.5">
+                               <div className="h-5 w-5 rounded-full bg-secondary flex items-center justify-center text-[9px] font-bold">
+                                 {task.assignedTo.charAt(0)}
+                               </div>
+                               <span>{task.assignedTo}</span>
+                             </div>
+                           )}
+                           <span>•</span>
+                           <span className="text-orange-500 font-medium">Due Today</span>
+                        </div>
+                     </div>
+                   </div>
+                 ))
+               ) : (
+                 <div className="p-8 text-center border-2 border-dashed rounded-xl text-muted-foreground">
+                    <CheckCircle2 className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                    <p>All high priority tasks cleared.</p>
+                 </div>
+               )}
+               
+               {/* Add New Task Quick Action */}
+               <Button variant="outline" className="w-full border-dashed text-muted-foreground hover:text-foreground h-12">
+                  + Add New Task
+               </Button>
+             </CardContent>
+           </Card>
         </div>
 
       </div>
