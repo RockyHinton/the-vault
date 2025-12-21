@@ -18,7 +18,8 @@ import {
   ChevronDown,
   ChevronUp,
   CircleDollarSign,
-  Save
+  Save,
+  Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -31,7 +32,7 @@ interface EvaluationScoringViewProps {
 }
 
 export default function EvaluationScoringView({ project, onBack }: EvaluationScoringViewProps) {
-  const { addReview, getProjectReviews, user } = useStore();
+  const { addReview, getProjectReviews, deleteReview, user } = useStore();
   const reviews = getProjectReviews(project.id);
 
   // Form State
@@ -82,6 +83,20 @@ export default function EvaluationScoringView({ project, onBack }: EvaluationSco
       toast.success("Review saved successfully");
       // onBack(); // Stay on page
     }, 600);
+  };
+
+  const handleDelete = (reviewId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm("Are you sure you want to delete this review?")) {
+      deleteReview(reviewId);
+      toast.success("Review deleted");
+      // If the deleted review was the current user's, reset form
+      const deletedReview = reviews.find(r => r.id === reviewId);
+      if (deletedReview && deletedReview.authorId === user?.id) {
+        setScores({ script: 5, director: 5, cast: 5, financing: 5 });
+        setNotes("");
+      }
+    }
   };
 
   const calculateRecommendation = (s: typeof scores): 'Pass' | 'Consider' | 'Develop' => {
@@ -269,9 +284,19 @@ export default function EvaluationScoringView({ project, onBack }: EvaluationSco
                        {isExpanded && (
                          <div className="mt-4 pt-4 border-t animate-in fade-in slide-in-from-top-2">
                             <p className="text-sm text-muted-foreground italic">"{review.summaryNotes}"</p>
-                            <div className="mt-2 flex justify-end">
+                            <div className="mt-2 flex justify-between items-center">
+                               {review.authorId === user?.id && (
+                                 <Button 
+                                   variant="ghost" 
+                                   size="sm" 
+                                   className="text-destructive hover:text-destructive hover:bg-destructive/10 h-6 px-2 text-xs"
+                                   onClick={(e) => handleDelete(review.id, e)}
+                                 >
+                                   <Trash2 className="h-3 w-3 mr-1" /> Delete
+                                 </Button>
+                               )}
                                <Badge className={cn(
-                                 "text-[10px]",
+                                 "text-[10px] ml-auto",
                                  review.recommendation === 'Develop' && "bg-green-500",
                                  review.recommendation === 'Consider' && "bg-amber-500",
                                  review.recommendation === 'Pass' && "bg-red-500",

@@ -514,6 +514,7 @@ interface AppState {
   deleteAnnotation: (annotationId: string) => void;
   getProjectReviews: (projectId: string) => ScriptReview[];
   addReview: (review: Omit<ScriptReview, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
+  deleteReview: (reviewId: string) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -698,7 +699,11 @@ export const useStore = create<AppState>()(
         ]
       };
     }
-  })
+  }),
+
+  deleteReview: (reviewId) => set((state) => ({
+    reviews: state.reviews.filter(r => r.id !== reviewId)
+  }))
 
 }),
 {
