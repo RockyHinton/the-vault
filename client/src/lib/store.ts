@@ -511,7 +511,6 @@ interface AppState {
 
   // Evaluation Actions
   updateEvaluation: (projectId: string, data: Partial<EvaluationData>) => void;
-}
   getScriptAnnotations: (scriptId: string) => ScriptAnnotation[];
   addAnnotation: (annotation: Omit<ScriptAnnotation, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
   deleteAnnotation: (annotationId: string) => void;
