@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { FileText, User, Users, DollarSign, BarChart3, Upload, CheckCircle, XCircle, CheckSquare, Square, Star, Plus } from "lucide-react";
+import { FileText, User, Users, DollarSign, BarChart3, Upload, CheckCircle, XCircle, CheckSquare, Square, Star, Plus, Pencil } from "lucide-react";
 import { UploadDocumentDialog } from "@/components/features/UploadDocumentDialog";
+import { EditEvaluationDialog } from "@/components/features/EditEvaluationDialog";
 import DocumentLibrary from "@/pages/DocumentLibrary";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ interface EvaluationViewProps {
 export default function EvaluationView({ project }: EvaluationViewProps) {
   const { setProjectStage, getProjectReviews } = useStore();
   const [isScoringMode, setIsScoringMode] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   
   // Calculate Scores from Reviews
   const reviews = getProjectReviews(project.id);
@@ -46,10 +48,10 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
 
   // Local state for the evaluation checklist
   const [checklist, setChecklist] = useState({
-    scriptReviewed: false,
-    budgetReviewed: false,
-    financeAssessed: false,
-    talentAssessed: false
+    scriptApproved: false,
+    budgetApproved: false,
+    financeApproved: false,
+    talentAttached: false
   });
 
   const toggleChecklist = (key: keyof typeof checklist) => {
@@ -87,38 +89,59 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
                  <BarChart3 className="h-5 w-5 text-primary" />
                  Project Evaluation Overview
                </div>
-               {reviewCount > 0 && (
-                 <Badge variant="outline" className="bg-background text-foreground font-mono">
-                   {reviewCount} Reviews
-                 </Badge>
-               )}
+               <div className="flex items-center gap-2">
+                 <Button variant="ghost" size="sm" onClick={() => setIsEditDialogOpen(true)} className="h-8 w-8 p-0">
+                   <Pencil className="h-4 w-4" />
+                 </Button>
+                 {reviewCount > 0 && (
+                   <Badge variant="outline" className="bg-background text-foreground font-mono">
+                     {reviewCount} Reviews
+                   </Badge>
+                 )}
+               </div>
              </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               <div>
                 <span className="text-xs text-muted-foreground uppercase tracking-wider block mb-1">Writer</span>
-                <div className="font-medium text-lg text-foreground">{project.evaluation.writer || 'Unassigned'}</div>
+                <div className="font-medium text-lg text-foreground truncate" title={project.evaluation.writer || 'Unassigned'}>
+                  {project.evaluation.writer || 'Unassigned'}
+                </div>
               </div>
               <div>
                 <span className="text-xs text-muted-foreground uppercase tracking-wider block mb-1">Director</span>
-                <div className="font-medium text-lg text-foreground">{project.evaluation.director || 'Searching...'}</div>
+                <div className="font-medium text-lg text-foreground truncate" title={project.evaluation.director || 'Searching...'}>
+                  {project.evaluation.director || 'Searching...'}
+                </div>
               </div>
                <div>
                 <span className="text-xs text-muted-foreground uppercase tracking-wider block mb-1">Est. Budget</span>
                 <div className="font-medium text-lg text-foreground font-mono">{project.evaluation.plannedBudget || 'TBD'}</div>
               </div>
               <div>
-                <span className="text-xs text-muted-foreground uppercase tracking-wider block mb-1">Finance Type</span>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">{project.evaluation.financeType || 'Unknown'}</Badge>
+                <span className="text-xs text-muted-foreground uppercase tracking-wider block mb-1">Finance</span>
+                <div className="flex flex-wrap gap-1">
+                  {project.evaluation.financeTypes && project.evaluation.financeTypes.length > 0 ? (
+                    project.evaluation.financeTypes.map(type => (
+                      <Badge key={type} variant="outline" className="text-[10px] h-5 px-1.5">{type}</Badge>
+                    ))
+                  ) : (
+                    <Badge variant="outline">{project.evaluation.financeType || 'Unknown'}</Badge>
+                  )}
                   {project.evaluation.financeStatus === 'Committed' && (
-                    <Badge className="bg-green-500/20 text-green-500 border-transparent">Committed</Badge>
+                    <Badge className="bg-green-500/20 text-green-500 border-transparent text-[10px] h-5 px-1.5">Committed</Badge>
                   )}
                 </div>
               </div>
             </div>
             
+            <EditEvaluationDialog 
+              project={project} 
+              isOpen={isEditDialogOpen} 
+              onClose={() => setIsEditDialogOpen(false)} 
+            />
+
             <Separator className="my-6" />
 
             {/* Scores Display */}
@@ -206,10 +229,10 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
           <CardContent className="space-y-4">
              <div className="space-y-3">
                 {[
-                  { key: 'scriptReviewed', label: 'Script reviewed' },
-                  { key: 'budgetReviewed', label: 'Budget reviewed' },
-                  { key: 'financeAssessed', label: 'Finance assessed' },
-                  { key: 'talentAssessed', label: 'Talent assessed' }
+                  { key: 'scriptApproved', label: 'Script approved' },
+                  { key: 'budgetApproved', label: 'Budget approved' },
+                  { key: 'financeApproved', label: 'Finance approved' },
+                  { key: 'talentAttached', label: 'Talent attached' }
                 ].map((item) => (
                   <div 
                     key={item.key} 

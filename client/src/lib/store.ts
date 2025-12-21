@@ -24,7 +24,8 @@ export interface EvaluationData {
   directorImdb?: string;
   castAttached?: { name: string; role: string; imdb?: string }[];
   producers?: { name: string; notes?: string }[];
-  financeType?: 'Grant' | 'Subsidy' | 'Tax Credit' | 'Private';
+  financeType?: 'Grant' | 'Subsidy' | 'Tax Credit' | 'Private' | string; // Kept string for flexibility or multi-select rendering
+  financeTypes?: string[]; // Added for multiple selection support
   financeStatus?: 'Committed' | 'Speculative';
   plannedBudget?: string; // e.g. "$5M"
   scores?: { creative: number; financial: number }; // 1-10
@@ -508,7 +509,9 @@ interface AppState {
   toggleTaskStatus: (taskId: string) => void;
   getProjectTasks: (projectId: string) => Task[];
 
-  // Script Analysis Actions
+  // Evaluation Actions
+  updateEvaluation: (projectId: string, data: Partial<EvaluationData>) => void;
+}
   getScriptAnnotations: (scriptId: string) => ScriptAnnotation[];
   addAnnotation: (annotation: Omit<ScriptAnnotation, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
   deleteAnnotation: (annotationId: string) => void;
@@ -641,6 +644,13 @@ export const useStore = create<AppState>()(
     const { tasks } = get();
     return tasks.filter(t => t.projectId === projectId);
   },
+
+  // Evaluation Actions
+  updateEvaluation: (projectId, data) => set((state) => ({
+    projects: state.projects.map(p => 
+      p.id === projectId ? { ...p, evaluation: { ...p.evaluation, ...data } } : p
+    )
+  })),
 
   getScriptAnnotations: (scriptId) => {
     const { annotations } = get();
