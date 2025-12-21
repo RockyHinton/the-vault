@@ -135,7 +135,7 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 max-w-6xl mx-auto px-4 lg:px-8 py-6">
+    <div className="space-y-6 animate-in fade-in duration-500 w-full px-4 lg:px-8 py-6">
       
       {/* 1. Status Overview Card (Visual Anchor) */}
       <Card className="border-none shadow-md bg-gradient-to-r from-slate-900 to-slate-800 text-white overflow-hidden relative">
@@ -192,8 +192,8 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
       </Card>
 
       {/* 2. Greenlight Requirements (Checklist as Core Driver) */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="md:col-span-4 lg:col-span-1 space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+        <div className="md:col-span-4 lg:col-span-3 space-y-6">
            <div>
              <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
                <CheckSquare className="h-5 w-5 text-primary" />
@@ -249,7 +249,7 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
         </div>
 
         {/* 3. Operational Workstreams (Right Side) */}
-        <div className="md:col-span-4 lg:col-span-3 space-y-4">
+        <div className="md:col-span-8 lg:col-span-9 space-y-4">
            <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
              <Briefcase className="h-5 w-5 text-primary" />
              Operational Workstreams

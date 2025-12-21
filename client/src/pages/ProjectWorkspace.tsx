@@ -104,16 +104,23 @@ const ProjectSidebar = ({
         }
       }}
     >
+      {/* Project Header in Sidebar */}
       {project && (
-        <div className="px-4 py-3 bg-secondary/5 border-y border-border/40 mb-2">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">Project Stage</div>
-          <div className="flex items-center gap-2 text-foreground font-bold text-sm">
-             {project.stage === 'Evaluation' && <Eye className="h-4 w-4 text-orange-500" />}
-             {project.stage === 'Development' && <Briefcase className="h-4 w-4 text-blue-500" />}
-             {project.stage === 'Production' && <Clapperboard className="h-4 w-4 text-green-500" />}
-             {project.stage === 'Archived' && <Archive className="h-4 w-4 text-gray-500" />}
-             {project.stage}
-          </div>
+        <div className="px-2 pt-2">
+          <Link href={`/project/${project.id}`}>
+            <div className="group px-3 py-3 rounded-xl bg-secondary/5 border border-border/40 hover:bg-secondary/10 hover:border-border cursor-pointer transition-all duration-200">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 flex items-center gap-1.5">
+                 {project.stage === 'Evaluation' && <Eye className="h-3 w-3 text-orange-500" />}
+                 {project.stage === 'Development' && <Briefcase className="h-3 w-3 text-blue-500" />}
+                 {project.stage === 'Production' && <Clapperboard className="h-3 w-3 text-green-500" />}
+                 {project.stage === 'Archived' && <Archive className="h-3 w-3 text-gray-500" />}
+                 <span>{project.stage}</span>
+              </div>
+              <div className="font-bold text-base truncate text-foreground group-hover:text-primary transition-colors">
+                {project.title}
+              </div>
+            </div>
+          </Link>
         </div>
       )}
 
@@ -395,42 +402,48 @@ export default function ProjectWorkspace() {
     }>
       <div className="max-w-[1600px] mx-auto space-y-6">
         
-        {/* Breadcrumb Navigation */}
-        <Breadcrumb className="mb-4">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/projects">Projects</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href={`/project/${project.id}`}>{project.title}</BreadcrumbLink>
-            </BreadcrumbItem>
-            {/* Stage Badge in Breadcrumb */}
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <Badge variant="secondary" className="text-xs font-normal opacity-75">{project.stage}</Badge>
-            </BreadcrumbItem>
-
-            {currentCategory && (
-              <>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbLink href={`/project/${project.id}/${currentCategory.slug}`}>
-                    {currentCategory.name}
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-              </>
-            )}
-            {currentSubcategory && (
-              <>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>{currentSubcategory.name}</BreadcrumbPage>
-                </BreadcrumbItem>
-              </>
-            )}
-          </BreadcrumbList>
-        </Breadcrumb>
+        {/* Breadcrumb Navigation - Removed / Repurposed */}
+        {/* We are replacing the standard Breadcrumb with a more robust Project Header Context */}
+        
+        {/* Context Header */}
+        <div className="flex items-center justify-between border-b border-border/40 pb-4 mb-6">
+           <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+              <Link href={`/project/${project.id}`} className="flex items-center gap-2 group">
+                 <div className="h-8 w-8 bg-primary/10 rounded-md flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <Briefcase className="h-4 w-4 text-primary" />
+                 </div>
+                 <div>
+                    <div className="flex items-center gap-2">
+                       <h1 className="font-bold text-xl text-foreground tracking-tight">{project.title}</h1>
+                       <Badge variant="outline" className="text-[10px] h-5 font-normal bg-secondary/50">{project.stage}</Badge>
+                    </div>
+                    {/* Optional: Show current path if deep linked */}
+                    {(currentCategory || currentSubcategory) && (
+                       <div className="flex items-center gap-1 text-xs font-medium text-muted-foreground/80 mt-0.5">
+                          <span className="hover:underline cursor-pointer">Dashboard</span>
+                          {currentCategory && (
+                             <>
+                               <ChevronRight className="h-3 w-3" />
+                               <span className={cn(!currentSubcategory && "text-foreground")}>{currentCategory.name}</span>
+                             </>
+                          )}
+                          {currentSubcategory && (
+                             <>
+                               <ChevronRight className="h-3 w-3" />
+                               <span className="text-foreground">{currentSubcategory.name}</span>
+                             </>
+                          )}
+                       </div>
+                    )}
+                 </div>
+              </Link>
+           </div>
+           
+           {/* Global Project Actions (future proofing) */}
+           <div className="flex items-center gap-2">
+              {/* Add global actions here later */}
+           </div>
+        </div>
 
         {/* Content Area */}
         <div className="min-h-[500px]">
