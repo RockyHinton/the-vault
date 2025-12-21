@@ -1,0 +1,153 @@
+I want to refactor the Production stage landing page in The Vault so it functions as a daily production control room, not a generic dashboard.
+
+Do not remove existing features.
+Reorganise, reprioritise, and reframe them.
+
+Primary Goal
+
+When a producer lands on a Production project, they should immediately understand:
+
+What day of production this is
+
+Whether the production is on schedule and on track
+
+What is happening today
+
+What needs attention right now
+
+This page should support situational awareness, not just task management.
+
+1. “Today in Production” Overview (Top Priority)
+
+At the very top of the page, add a Today in Production overview card that clearly displays:
+
+Shooting Day: e.g. “Day 14 of 45”
+
+Current status:
+
+On Schedule
+
+Delayed
+
+At Risk
+
+Short status note (e.g. “On schedule — no delays reported”)
+
+Primary actions in this card:
+
+View Today’s Call Sheet
+
+Update Production Status
+
+This card should be the visual anchor of the page.
+
+2. Production Health Indicators
+
+Below the overview, add a compact Production Health section with high-level indicators:
+
+Schedule status (On Track / At Risk / Delayed)
+
+Budget status (On Track / Over / Unknown)
+
+Deliverables status (On Track / Behind)
+
+These are status signals only — no deep financial or scheduling data here.
+
+3. Surface Schedules as First-Class Content
+
+The latest schedule and call sheet must be immediately visible on the landing page:
+
+Latest shooting schedule (name + last updated)
+
+Today’s or next call sheet
+
+These should appear without needing to click into tabs.
+
+Tabs can still exist for deeper navigation, but the most recent documents should be surfaced.
+
+4. Reframe the Task Board as “Today’s Priorities”
+
+Refactor the Task Board so that on the landing page it shows:
+
+High-priority tasks
+
+Tasks due today or tomorrow
+
+Task owner
+
+Do NOT show:
+
+Full task input UI by default
+
+Long lists of low-priority tasks
+
+Include a clear action:
+
+“View All Tasks” to access full task management
+
+Tasks should feel supportive, not overwhelming.
+
+5. De-emphasise Distribution & Deliverables on Landing
+
+Distribution and deliverables should:
+
+Remain accessible
+
+Be visually secondary
+
+Not compete with daily production operations
+
+These can live:
+
+Lower on the page
+
+Or behind a clearly labeled section
+
+Production landing pages should focus on today, not post-production.
+
+6. Maintain Existing Navigation & Data
+
+Do not:
+
+Remove schedules, logistics, or distribution sections
+
+Change project data models
+
+Add new permissions
+
+Introduce new workflows
+
+This is a presentation and hierarchy refactor, not a rebuild.
+
+UX & Tone Guidelines
+
+Calm, controlled, professional
+
+Clear hierarchy
+
+Minimal noise
+
+Fast to understand
+
+Optimized for daily check-ins
+
+A producer should feel:
+
+“I know exactly where we stand today.”
+
+Success Criteria
+
+After this refactor:
+
+The page communicates daily production reality in under 5 seconds
+
+Schedules and call sheets are immediately accessible
+
+Urgent priorities are obvious
+
+The page feels like a control room, not a cluttered dashboard
+
+Scope Control
+
+Do not refactor Evaluation or Development pages.
+Focus only on improving the Production landing experience.
