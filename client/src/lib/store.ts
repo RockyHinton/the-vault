@@ -677,8 +677,6 @@ interface AppState {
   addCreativeProfile: (profile: Omit<CreativeProfile, 'id'>) => void;
   updateCreativeProfile: (id: string, updates: Partial<CreativeProfile>) => void;
   deleteCreativeProfile: (id: string) => void;
-  
-  deleteDocument: (documentId: string) => void;
 }
 
 export const useStore = create<AppState>()(

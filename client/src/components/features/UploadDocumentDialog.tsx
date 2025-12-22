@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 interface UploadDocumentDialogProps {
   projectId: string;
   defaultCategoryId?: string;
+  defaultSubcategoryId?: string;
   nextVersion?: number;
   children?: React.ReactNode;
 }
@@ -33,6 +34,7 @@ interface UploadDocumentDialogProps {
 export function UploadDocumentDialog({ 
   projectId, 
   defaultCategoryId, 
+  defaultSubcategoryId,
   nextVersion,
   children 
 }: UploadDocumentDialogProps) {
