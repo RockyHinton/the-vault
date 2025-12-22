@@ -26,12 +26,14 @@ import { cn } from "@/lib/utils";
 interface UploadDocumentDialogProps {
   projectId: string;
   defaultCategoryId?: string;
+  nextVersion?: number;
   children?: React.ReactNode;
 }
 
 export function UploadDocumentDialog({ 
   projectId, 
   defaultCategoryId, 
+  nextVersion,
   children 
 }: UploadDocumentDialogProps) {
   const [open, setOpen] = useState(false);
@@ -59,7 +61,7 @@ export function UploadDocumentDialog({
       title: file.name,
       type: file.name.split('.').pop()?.toUpperCase() as any || 'OTHER',
       fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-      version: 1,
+      version: nextVersion || 1,
       status: status as any,
       tags: ['upload'], // Could be enhanced to accept tags as prop
       filePath: '#', // Mock path

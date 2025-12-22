@@ -16,7 +16,8 @@ import {
   Filter,
   Search,
   BookOpen,
-  Plus
+  Plus,
+  Download
 } from "lucide-react";
 import { format } from "date-fns";
 import { UploadDocumentDialog } from "@/components/features/UploadDocumentDialog";
@@ -68,9 +69,18 @@ export default function ScriptView({ project }: ScriptViewProps) {
     <div className="space-y-8 animate-in fade-in duration-500">
       
       {/* Header */}
-      <div>
-        <h2 className="text-3xl font-display font-bold tracking-tight">Script & Story</h2>
-        <p className="text-muted-foreground mt-1">Manage script versions, analysis, and creative development notes.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-display font-bold tracking-tight">Script</h2>
+          <p className="text-muted-foreground mt-1">Manage script versions, analysis, and creative development notes.</p>
+        </div>
+        <Link href={`/project/${project.id}/project-notes`}>
+          <Button variant="outline" className="group">
+            <MessageSquare className="mr-2 h-4 w-4 text-muted-foreground" />
+            <span>View Project Notes</span>
+            <ArrowRight className="ml-2 h-4 w-4 opacity-50 group-hover:translate-x-1 transition-transform" />
+          </Button>
+        </Link>
       </div>
 
       {/* 1. Primary Script Section */}
@@ -108,16 +118,18 @@ export default function ScriptView({ project }: ScriptViewProps) {
 
               {activeScript && (
                 <div className="flex flex-wrap gap-3">
-                  <Link href={`/project/${project.id}/script-analysis/${activeScript.id}`}>
+                  <Link href={`/script/${activeScript.id}`}>
                     <Button size="lg" className="shadow-lg shadow-primary/20">
                       <BookOpen className="mr-2 h-4 w-4" />
                       Open Script Analysis
                     </Button>
                   </Link>
-                  <Button variant="outline" size="lg">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload New Version
-                  </Button>
+                  <UploadDocumentDialog projectId={project.id} defaultCategoryId="c1" nextVersion={activeScript.version + 1}>
+                    <Button variant="outline" size="lg">
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload New Version
+                    </Button>
+                  </UploadDocumentDialog>
                 </div>
               )}
               
@@ -129,19 +141,6 @@ export default function ScriptView({ project }: ScriptViewProps) {
                   </Button>
                 </UploadDocumentDialog>
               )}
-            </div>
-            
-            {/* View Project Notes Button */}
-            <div className="mt-8 pt-6 border-t border-border/40">
-               <Link href={`/project/${project.id}/project-notes`}>
-                 <Button variant="secondary" className="w-full justify-between group">
-                   <div className="flex items-center gap-2">
-                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                     <span>View Project Notes</span>
-                   </div>
-                   <ArrowRight className="h-4 w-4 opacity-50 group-hover:translate-x-1 transition-transform" />
-                 </Button>
-               </Link>
             </div>
           </div>
         </CardContent>
@@ -176,7 +175,7 @@ export default function ScriptView({ project }: ScriptViewProps) {
                         </div>
                       </div>
                     </div>
-                    <Link href={`/project/${project.id}/script-analysis/${script.id}`}>
+                    <Link href={`/script/${script.id}`}>
                       <Button variant="ghost" size="sm">Review Script</Button>
                     </Link>
                   </div>
@@ -196,7 +195,7 @@ export default function ScriptView({ project }: ScriptViewProps) {
                 <FileText className="h-4 w-4 text-muted-foreground" />
                 Related Documents
               </h3>
-              <UploadDocumentDialog projectId={project.id} defaultCategoryId="c1">
+              <UploadDocumentDialog projectId={project.id}>
                 <Button variant="outline" size="sm">
                   <Plus className="mr-2 h-3 w-3" />
                   Add Document
@@ -204,38 +203,43 @@ export default function ScriptView({ project }: ScriptViewProps) {
               </UploadDocumentDialog>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Cast Documents */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Cast & Characters</h4>
-                {castDocs.length > 0 ? (
-                  castDocs.map(doc => (
-                    <div key={doc.id} className="p-3 border rounded-md bg-secondary/10 flex items-start gap-3">
-                      <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">{doc.title}</div>
-                        <div className="text-xs text-muted-foreground">{format(new Date(doc.uploadedAt), 'MMM d')}</div>
+            <div className="grid grid-cols-1 gap-3">
+              {otherDocs.length > 0 || castDocs.length > 0 || devDocs.length > 0 ? (
+                [...castDocs, ...devDocs, ...otherDocs].map(doc => (
+                  <div key={doc.id} className="p-4 border rounded-lg bg-card hover:bg-secondary/10 transition-colors flex items-center gap-4">
+                    <div className="h-10 w-10 bg-primary/10 text-primary rounded flex items-center justify-center">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium truncate">{doc.title}</div>
+                        <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
+                           {doc.type}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                        <span>{format(new Date(doc.uploadedAt), 'MMM d, yyyy')}</span>
+                        <span>•</span>
+                        <span>{doc.fileSize}</span>
+                        {doc.tags && doc.tags.length > 0 && (
+                          <>
+                            <span>•</span>
+                            <span className="capitalize">{doc.tags[0]}</span>
+                          </>
+                        )}
                       </div>
                     </div>
-                  ))
-                ) : <span className="text-xs text-muted-foreground italic">No documents</span>}
-              </div>
-
-              {/* Research & Dev */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Research & Development</h4>
-                {devDocs.length > 0 ? (
-                  devDocs.map(doc => (
-                    <div key={doc.id} className="p-3 border rounded-md bg-secondary/10 flex items-start gap-3">
-                      <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">{doc.title}</div>
-                        <div className="text-xs text-muted-foreground">{format(new Date(doc.uploadedAt), 'MMM d')}</div>
-                      </div>
-                    </div>
-                  ))
-                ) : <span className="text-xs text-muted-foreground italic">No documents</span>}
-              </div>
+                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-xl border-border/50 bg-secondary/5">
+                  <FileText className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                  <p className="text-sm text-muted-foreground">No related documents uploaded yet.</p>
+                </div>
+              )}
             </div>
           </section>
         </div>
