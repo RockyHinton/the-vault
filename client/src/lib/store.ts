@@ -632,6 +632,7 @@ interface AppState {
 
   // Evaluation Actions
   updateEvaluation: (projectId: string, data: Partial<EvaluationData>) => void;
+  updateFinancing: (projectId: string, data: Partial<Project['financing']>) => void;
   getScriptAnnotations: (scriptId: string) => ScriptAnnotation[];
   addAnnotation: (annotation: Omit<ScriptAnnotation, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
   deleteAnnotation: (annotationId: string) => void;
@@ -881,6 +882,15 @@ export const useStore = create<AppState>()(
   updateEvaluation: (projectId, data) => set((state) => ({
     projects: state.projects.map(p => 
       p.id === projectId ? { ...p, evaluation: { ...p.evaluation, ...data } } : p
+    )
+  })),
+
+  updateFinancing: (projectId, data) => set((state) => ({
+    projects: state.projects.map(p => 
+      p.id === projectId ? { 
+        ...p, 
+        financing: p.financing ? { ...p.financing, ...data } : undefined
+      } : p
     )
   })),
 
