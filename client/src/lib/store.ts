@@ -173,6 +173,18 @@ export interface ScriptReview {
   timestamp: string;
 }
 
+export type ProjectNoteCategory = 'Script' | 'Financing' | 'Cast' | 'Other';
+
+export interface ProjectNote {
+  id: string;
+  projectId: string;
+  authorId: string;
+  authorName: string;
+  text: string;
+  category: ProjectNoteCategory;
+  timestamp: string;
+}
+
 // --- Admin / Security Types ---
 
 export type AuditAction = 'LOGIN' | 'LOGOUT' | 'UPLOAD_DOC' | 'DELETE_DOC' | 'STAGE_CHANGE' | 'USER_CREATE' | 'USER_DELETE';
@@ -477,6 +489,27 @@ const MOCK_ANNOTATIONS: ScriptAnnotation[] = [
 
 const MOCK_REVIEWS: ScriptReview[] = [];
 
+const MOCK_PROJECT_NOTES: ProjectNote[] = [
+  {
+    id: 'pn1',
+    projectId: 'p1',
+    authorId: 'u1',
+    authorName: 'Sarah Producer',
+    text: 'We need to make sure the third act twist lands harder. Currently feels a bit rushed.',
+    category: 'Script',
+    timestamp: '2023-12-12T09:00:00Z',
+  },
+  {
+    id: 'pn2',
+    projectId: 'p1',
+    authorId: 'u2',
+    authorName: 'Mike Finance',
+    text: 'Budget concerns around the Tokyo location shoot. Can we look at alternatives?',
+    category: 'Financing',
+    timestamp: '2023-12-12T10:30:00Z',
+  }
+];
+
 // --- Store ---
 
 interface AppState {
@@ -488,6 +521,7 @@ interface AppState {
   tasks: Task[];
   annotations: ScriptAnnotation[];
   reviews: ScriptReview[];
+  projectNotes: ProjectNote[];
   currentProjectId: string | null;
   
   // Admin State
@@ -496,7 +530,7 @@ interface AppState {
   
   login: (email: string) => void;
   logout: () => void;
-  addProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'evaluation' | 'stage'>) => void;
+  addProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'stage'>) => void;
   setCurrentProject: (id: string | null) => void;
   addDocument: (doc: Omit<Document, 'id' | 'uploadedBy' | 'uploadedAt'>) => void;
   getProjectDocuments: (projectId: string, categoryId?: string, subcategoryId?: string) => Document[];
@@ -518,6 +552,11 @@ interface AppState {
   addReview: (review: Omit<ScriptReview, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
   deleteReview: (reviewId: string) => void;
   deleteProject: (projectId: string) => void;
+
+  // Project Notes Actions
+  getProjectNotes: (projectId: string) => ProjectNote[];
+  addProjectNote: (note: Omit<ProjectNote, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
+  deleteProjectNote: (noteId: string) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -531,6 +570,7 @@ export const useStore = create<AppState>()(
   tasks: MOCK_TASKS,
   annotations: MOCK_ANNOTATIONS,
   reviews: MOCK_REVIEWS,
+  projectNotes: MOCK_PROJECT_NOTES,
   currentProjectId: null,
   users: MOCK_USERS,
   auditLogs: MOCK_AUDIT_LOGS,
@@ -562,6 +602,30 @@ export const useStore = create<AppState>()(
     documents: state.documents.filter(d => d.projectId !== projectId),
     // We could clean up categories/reviews too if they were fully dynamic per project
     reviews: state.reviews.filter(r => r.projectId !== projectId),
+    projectNotes: state.projectNotes.filter(n => n.projectId !== projectId),
+  })),
+
+  // Project Notes Actions
+  getProjectNotes: (projectId) => {
+    const { projectNotes } = get();
+    return projectNotes.filter(n => n.projectId === projectId).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  },
+
+  addProjectNote: (note) => set((state) => ({
+    projectNotes: [
+      {
+        ...note,
+        id: `pn${Date.now()}`,
+        authorId: state.user?.id || 'unknown',
+        authorName: state.user?.name || 'Unknown User',
+        timestamp: new Date().toISOString(),
+      },
+      ...state.projectNotes
+    ]
+  })),
+
+  deleteProjectNote: (noteId) => set((state) => ({
+    projectNotes: state.projectNotes.filter(n => n.id !== noteId)
   })),
 
   setCurrentProject: (id) => set({ currentProjectId: id }),
@@ -620,7 +684,12 @@ export const useStore = create<AppState>()(
   },
 
   getCategorySubcategories: (categoryId) => {
-    const { subcategories } = get();
+    const { subcategories, categories } = get();
+    // Special handling for Script category - hide subcategories to treat as single page
+    const category = categories.find(c => c.id === categoryId);
+    if (category?.slug === 'script') {
+      return [];
+    }
     return subcategories.filter(sc => sc.categoryId === categoryId);
   },
 

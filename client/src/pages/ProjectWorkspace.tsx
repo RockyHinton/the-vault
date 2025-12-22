@@ -9,6 +9,7 @@ import ProductionView from "@/components/stages/ProductionView";
 import FinancingView from "@/components/stages/FinancingView";
 import LegalView from "@/components/stages/LegalView";
 import SchedulesView from "@/components/stages/SchedulesView";
+import ScriptView from "@/components/stages/ScriptView";
 import { UploadDocumentDialog } from "@/components/features/UploadDocumentDialog";
 import { Button } from "@/components/ui/button";
 import { 
@@ -329,6 +330,11 @@ export default function ProjectWorkspace() {
           subcategoryId={currentSubcategory?.id}
         />
       );
+    }
+
+    // SPECIAL CASE: Script Dashboard (New Redesign)
+    if (currentCategory?.slug === 'script') {
+      return <ScriptView project={project} />;
     }
 
     // If deep-linked to a folder, show the folder (Document Library)

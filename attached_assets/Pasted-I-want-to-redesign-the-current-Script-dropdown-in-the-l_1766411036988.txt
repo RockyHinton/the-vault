@@ -1,0 +1,173 @@
+I want to redesign the current Script dropdown in the left navigation into a single, unified Script page that acts as the central hub for all script-related work in The Vault.
+
+Do not create multiple nested pages for Script.
+Everything should be accessible from one clear page with well-defined sections.
+
+1. Navigation Change
+
+Replace the Script dropdown with a single “Script” page
+
+This page becomes the entry point for:
+
+script analysis
+
+script versions
+
+related documents
+
+general project/script notes
+
+2. Primary Script Section (Top of Page)
+
+At the top of the Script page:
+
+Display the current active script version
+
+Show key metadata:
+
+version name
+
+upload date
+
+uploaded by
+
+Include a clear primary action:
+“Open Script Analysis”
+
+Clicking this opens the existing full script analysis interface:
+
+PDF centered
+
+highlighted annotations
+
+side notes
+
+multi-user review
+
+Do not rebuild the script analysis tool — link to the existing one.
+
+3. Script Versions Section
+
+Below the primary script:
+
+List all script versions
+
+Each version:
+
+shows version name and date
+
+has an action:
+
+“Review Script” (opens script analysis for that version)
+
+Latest version is visually marked as active
+
+This allows each version to be reviewed independently.
+
+4. Related Script Documents Section
+
+Add a section for related documents, grouped clearly:
+
+Cast-related documents
+
+Script development materials
+
+Other creative references
+
+These are simple file uploads:
+
+no special logic
+
+no dropdowns
+
+latest uploads appear first
+
+This replaces the need for a cast wishlist dropdown.
+
+5. Project Notes (New Section)
+
+Add a new section called Project Notes.
+
+This is not the same as script annotations.
+
+Purpose:
+
+Broad discussion and notes about the project and script
+
+High-level thoughts, concerns, ideas
+
+Adding a Note
+
+When adding a note, users must select a category:
+
+Script
+
+Financing
+
+Cast
+
+Other
+
+Each note stores:
+
+author
+
+timestamp
+
+category
+
+note text
+
+Notes Board
+
+Display notes in a simple feed:
+
+show author, time, category tag, and note content
+
+allow filtering by category
+
+newest notes appear at the top
+
+This is a discussion and thinking space, not line-by-line feedback.
+
+6. UX Rules
+
+Keep layout simple and readable
+
+No heavy animations
+
+No modals unless necessary
+
+Clear section headers
+
+Minimal visual noise
+
+This page should feel calm and intentional.
+
+7. Scope Control
+
+Do not:
+
+change existing script analysis functionality
+
+add permissions or roles
+
+add notifications
+
+redesign other project pages
+
+Only refactor Script navigation and functionality into this single page.
+
+Goal
+
+Create a clear, all-in-one Script page that:
+
+makes script analysis easy to access
+
+supports multiple script versions
+
+keeps related documents organised
+
+introduces a clean space for high-level project notes
+
+This should feel professional, simple, and efficient for producers and readers.
