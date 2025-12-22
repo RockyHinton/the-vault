@@ -15,6 +15,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import DocumentLibrary from "@/pages/DocumentLibrary";
 import { FinancingSourcesTable } from "@/components/features/FinancingSourcesTable";
 import { 
@@ -80,6 +87,14 @@ export default function FinancingView({ project, currentSubcategory, subcategory
     approvals: []
   };
 
+  const currencySymbols: Record<string, string> = {
+    'USD': '$',
+    'GBP': '£',
+    'EUR': '€'
+  };
+
+  const currentSymbol = currencySymbols[finance.currency] || '$';
+
   // We no longer return the empty state div. 
   // Instead we render the dashboard with 0 values so the user can see the structure and edit the budget.
 
@@ -92,6 +107,10 @@ export default function FinancingView({ project, currentSubcategory, subcategory
       currency: finance.currency,
       maximumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const handleCurrencyChange = (value: string) => {
+    updateFinancing(project.id, { currency: value });
   };
 
   const handleSaveBudget = () => {
@@ -113,16 +132,33 @@ export default function FinancingView({ project, currentSubcategory, subcategory
     <div className="space-y-8 animate-in fade-in duration-500">
       
       {/* Header */}
-      <div>
-        <h2 className="text-3xl font-display font-bold text-foreground tracking-tight flex items-center gap-3">
-          <Badge variant="outline" className="h-8 w-8 rounded-full flex items-center justify-center p-0 border-green-500/20 bg-green-500/10 text-green-500">
-            <DollarSign className="h-4 w-4" />
-          </Badge>
-          Financing Overview
-        </h2>
-        <p className="text-muted-foreground mt-1 ml-11">
-          Budget tracking and source breakdown.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-display font-bold text-foreground tracking-tight flex items-center gap-3">
+            <Badge variant="outline" className="h-8 w-8 rounded-full flex items-center justify-center p-0 border-green-500/20 bg-green-500/10 text-green-500">
+              <DollarSign className="h-4 w-4" />
+            </Badge>
+            Financing Overview
+          </h2>
+          <p className="text-muted-foreground mt-1 ml-11">
+            Budget tracking and source breakdown.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+           <Label htmlFor="currency-select" className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+             Currency:
+           </Label>
+           <Select value={finance.currency} onValueChange={handleCurrencyChange}>
+             <SelectTrigger id="currency-select" className="w-[100px]">
+               <SelectValue placeholder="Currency" />
+             </SelectTrigger>
+             <SelectContent>
+               <SelectItem value="USD">USD ($)</SelectItem>
+               <SelectItem value="GBP">GBP (£)</SelectItem>
+               <SelectItem value="EUR">EUR (€)</SelectItem>
+             </SelectContent>
+           </Select>
+        </div>
       </div>
 
       {/* Top Metrics Cards */}
@@ -160,7 +196,7 @@ export default function FinancingView({ project, currentSubcategory, subcategory
                         Amount
                       </Label>
                       <div className="col-span-3 relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currentSymbol}</span>
                         <Input
                           id="budget"
                           value={budgetInput}

@@ -93,8 +93,14 @@ export function FinancingSourcesTable({ project }: FinancingSourcesTableProps) {
     updateFinancing(project.id, { breakdown: rowsWithPercentage, secured: total });
   };
 
-  const total = rows.reduce((sum, r) => sum + r.amount, 0);
+  const currencySymbols: Record<string, string> = {
+    'USD': '$',
+    'GBP': '£',
+    'EUR': '€'
+  };
   
+  const currentSymbol = project.financing?.currency ? currencySymbols[project.financing.currency] || '$' : '$';
+
   return (
     <div className="border rounded-lg overflow-hidden bg-card">
       <Table>
@@ -118,7 +124,7 @@ export function FinancingSourcesTable({ project }: FinancingSourcesTableProps) {
               </TableCell>
               <TableCell className="text-right">
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currentSymbol}</span>
                   <Input 
                     type="text"
                     value={row.amount ? row.amount.toLocaleString() : ''} 
@@ -141,7 +147,7 @@ export function FinancingSourcesTable({ project }: FinancingSourcesTableProps) {
           <TableRow className="bg-muted/20 font-medium">
             <TableCell>Total Secured Funding</TableCell>
             <TableCell className="text-right font-mono text-green-600">
-              ${total.toLocaleString()}
+              {currentSymbol}{total.toLocaleString()}
             </TableCell>
             <TableCell>
                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={addRow}>
