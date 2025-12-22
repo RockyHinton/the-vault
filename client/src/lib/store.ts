@@ -546,7 +546,7 @@ export const useStore = create<AppState>()(
         ...data,
         id: `p${Date.now()}`,
         stage: 'Evaluation', // Default new projects to Evaluation
-        evaluation: {},
+        evaluation: data.evaluation || {}, // Use provided evaluation data or default to empty
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
