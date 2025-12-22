@@ -1,7 +1,20 @@
+import { useState } from "react";
 import { Project, useStore } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import DocumentLibrary from "@/pages/DocumentLibrary";
 import { FinancingSourcesTable } from "@/components/features/FinancingSourcesTable";
 import { 
@@ -16,7 +29,8 @@ import {
   TrendingUp, 
   PieChart as PieIcon, 
   AlertCircle,
-  Table as TableIcon
+  Table as TableIcon,
+  Pencil
 } from "lucide-react";
 
 interface FinancingViewProps {
@@ -28,7 +42,10 @@ interface FinancingViewProps {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
 export default function FinancingView({ project, currentSubcategory, subcategoryId }: FinancingViewProps) {
-  
+  const { updateFinancing } = useStore();
+  const [isEditingBudget, setIsEditingBudget] = useState(false);
+  const [budgetInput, setBudgetInput] = useState("");
+
   // If we are drilled down into a subcategory (like "Banking Docs"), just show the docs
   if (subcategoryId) {
     return (
@@ -76,6 +93,19 @@ export default function FinancingView({ project, currentSubcategory, subcategory
     }).format(amount);
   };
 
+  const handleSaveBudget = () => {
+    const newBudget = parseFloat(budgetInput.replace(/[^0-9.]/g, ''));
+    if (!isNaN(newBudget)) {
+      updateFinancing(project.id, { totalBudget: newBudget });
+    }
+    setIsEditingBudget(false);
+  };
+
+  const openBudgetEdit = () => {
+    setBudgetInput(finance.totalBudget.toString());
+    setIsEditingBudget(true);
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       
@@ -94,13 +124,54 @@ export default function FinancingView({ project, currentSubcategory, subcategory
 
       {/* Top Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-card/50 border-border/50">
+        <Card className="bg-card/50 border-border/50 relative group">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Budget</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold font-mono">{formatCurrency(finance.totalBudget)}</div>
+            <div className="flex items-center justify-between">
+              <div className="text-3xl font-bold font-mono">{formatCurrency(finance.totalBudget)}</div>
+              
+              <Dialog open={isEditingBudget} onOpenChange={setIsEditingBudget}>
+                <DialogTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity absolute top-4 right-4"
+                    onClick={openBudgetEdit}
+                  >
+                    <Pencil className="h-3 w-3 text-muted-foreground" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Edit Total Budget</DialogTitle>
+                    <DialogDescription>
+                      Update the total estimated budget for this project.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="budget" className="text-right">
+                        Amount
+                      </Label>
+                      <Input
+                        id="budget"
+                        value={budgetInput}
+                        onChange={(e) => setBudgetInput(e.target.value)}
+                        className="col-span-3"
+                        type="number"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={handleSaveBudget}>Save Changes</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+            </div>
             <p className="text-xs text-muted-foreground mt-1">Locked</p>
           </CardContent>
         </Card>
