@@ -430,6 +430,9 @@ const MOCK_SUBCATEGORIES: Subcategory[] = [
   { id: 'sc4', categoryId: 'c3', name: 'Budget', slug: 'budget' },
   { id: 'sc5', categoryId: 'c3', name: 'Cashflow', slug: 'cashflow' },
   { id: 'sc6', categoryId: 'c3', name: 'Finance Plan', slug: 'finance-plan' },
+  // Talent
+  { id: 'sc7', categoryId: 'c8', name: 'Cast Lists', slug: 'cast-lists' },
+  { id: 'sc8', categoryId: 'c8', name: 'Director Options', slug: 'director-options' },
   // Documentation (Development)
   { id: 'sc9', categoryId: 'c9', name: 'Investment Agreements', slug: 'investment-agreements' },
   { id: 'sc10', categoryId: 'c9', name: 'Co-Production', slug: 'co-production' },
@@ -960,7 +963,7 @@ export const useStore = create<AppState>()(
 
 }),
 {
-  name: 'vault-storage-v2',
+  name: 'vault-storage',
   storage: createJSONStorage(() => localStorage),
 }
 )
