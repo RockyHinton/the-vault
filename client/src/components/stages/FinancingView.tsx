@@ -95,7 +95,8 @@ export default function FinancingView({ project, currentSubcategory, subcategory
   };
 
   const handleSaveBudget = () => {
-    const newBudget = parseFloat(budgetInput.replace(/[^0-9.]/g, ''));
+    // Remove commas before parsing
+    const newBudget = parseFloat(budgetInput.replace(/,/g, ''));
     if (!isNaN(newBudget)) {
       updateFinancing(project.id, { totalBudget: newBudget });
     }
@@ -103,7 +104,8 @@ export default function FinancingView({ project, currentSubcategory, subcategory
   };
 
   const openBudgetEdit = () => {
-    setBudgetInput(finance.totalBudget.toString());
+    // Format existing budget with commas when opening
+    setBudgetInput(finance.totalBudget.toLocaleString());
     setIsEditingBudget(true);
   };
 
@@ -157,13 +159,26 @@ export default function FinancingView({ project, currentSubcategory, subcategory
                       <Label htmlFor="budget" className="text-right">
                         Amount
                       </Label>
-                      <Input
-                        id="budget"
-                        value={budgetInput}
-                        onChange={(e) => setBudgetInput(e.target.value)}
-                        className="col-span-3"
-                        type="number"
-                      />
+                      <div className="col-span-3 relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                        <Input
+                          id="budget"
+                          value={budgetInput}
+                          onChange={(e) => {
+                            // Strip non-numeric chars for processing
+                            const value = e.target.value.replace(/[^0-9]/g, '');
+                            // Format with commas
+                            if (value) {
+                              setBudgetInput(parseInt(value).toLocaleString());
+                            } else {
+                              setBudgetInput("");
+                            }
+                          }}
+                          className="pl-7"
+                          type="text"
+                          placeholder="0"
+                        />
+                      </div>
                     </div>
                   </div>
                   <DialogFooter>

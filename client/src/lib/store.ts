@@ -907,7 +907,15 @@ export const useStore = create<AppState>()(
     projects: state.projects.map(p => 
       p.id === projectId ? { 
         ...p, 
-        financing: p.financing ? { ...p.financing, ...data } : undefined
+        financing: p.financing ? { ...p.financing, ...data } : {
+          totalBudget: 0,
+          secured: 0,
+          currency: 'USD',
+          breakdown: [],
+          cashflow: [],
+          approvals: [],
+          ...data
+        }
       } : p
     )
   })),
