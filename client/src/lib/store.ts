@@ -638,6 +638,7 @@ interface AppState {
   addProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'stage'>) => void;
   setCurrentProject: (id: string | null) => void;
   addDocument: (doc: Omit<Document, 'id' | 'uploadedBy' | 'uploadedAt'>) => void;
+  deleteDocument: (documentId: string) => void;
   getProjectDocuments: (projectId: string, categoryId?: string, subcategoryId?: string) => Document[];
   getProjectCategories: (projectId: string) => Category[];
   getCategorySubcategories: (categoryId: string) => Subcategory[];
