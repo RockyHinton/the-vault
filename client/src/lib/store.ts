@@ -35,10 +35,14 @@ export interface Task {
   id: string;
   projectId: string;
   title: string;
+  description?: string; // Added for detailed notes
   assignedTo?: string; // User ID or Name
+  authorId: string; // Added for ownership
+  authorName: string; // Added for display
   status: 'Open' | 'In Progress' | 'Done';
   dueDate?: string;
   priority: 'Low' | 'Medium' | 'High';
+  createdAt: string; // Added for timestamp
 }
 
 export interface Project {
@@ -57,11 +61,9 @@ export interface Project {
 
   // Development Data
   closingChecklist?: {
-    keyAgreementsSigned: boolean;
     financeClosed: boolean;
     talentConfirmed: boolean;
-    bankingReady: boolean;
-    legalDocsInPlace: boolean;
+    legalDocsClosed: boolean;
   };
 
   // Financing Data (New)
@@ -264,9 +266,9 @@ const MOCK_AUDIT_LOGS: AuditLog[] = [
 ];
 
 const MOCK_TASKS: Task[] = [
-  { id: 't1', projectId: 'p1', title: 'Finalize Cast Contracts', status: 'In Progress', priority: 'High', assignedTo: 'Sarah Producer', dueDate: '2023-12-25' },
-  { id: 't2', projectId: 'p1', title: 'Location Scout - Tokyo', status: 'Open', priority: 'Medium', assignedTo: 'Mike Finance' },
-  { id: 't3', projectId: 'p2', title: 'Script Polish', status: 'Open', priority: 'High', assignedTo: 'Sarah Producer' },
+  { id: 't1', projectId: 'p1', title: 'Finalize Cast Contracts', description: 'Need to get signatures from lead actors agents.', status: 'In Progress', priority: 'High', assignedTo: 'Sarah Producer', dueDate: '2023-12-25', authorId: 'u1', authorName: 'Sarah Producer', createdAt: '2023-12-01T10:00:00Z' },
+  { id: 't2', projectId: 'p1', title: 'Location Scout - Tokyo', description: 'Coordinate with local fixers for Shibuya crossing permits.', status: 'Open', priority: 'Medium', assignedTo: 'Mike Finance', authorId: 'u2', authorName: 'Mike Finance', createdAt: '2023-12-05T14:30:00Z' },
+  { id: 't3', projectId: 'p2', title: 'Script Polish', description: 'Implement notes from the studio coverage.', status: 'Open', priority: 'High', assignedTo: 'Sarah Producer', authorId: 'u1', authorName: 'Sarah Producer', createdAt: '2023-11-25T09:15:00Z' },
 ];
 
 const MOCK_PROJECTS: Project[] = [
@@ -403,11 +405,9 @@ const MOCK_PROJECTS: Project[] = [
       approvals: []
     },
     closingChecklist: {
-      keyAgreementsSigned: true,
       financeClosed: true,
       talentConfirmed: false,
-      bankingReady: true,
-      legalDocsInPlace: false
+      legalDocsClosed: false
     }
   },
   {
@@ -645,7 +645,8 @@ interface AppState {
   
   setProjectStage: (projectId: string, stage: ProjectStage) => void;
   updateClosingChecklist: (projectId: string, checklist: Partial<Project['closingChecklist']>) => void;
-  addTask: (task: Omit<Task, 'id'>) => void;
+  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'authorId' | 'authorName'>) => void;
+  deleteTask: (taskId: string) => void;
   toggleTaskStatus: (taskId: string) => void;
   getProjectTasks: (projectId: string) => Task[];
 
@@ -881,7 +882,17 @@ export const useStore = create<AppState>()(
   })),
 
   addTask: (task) => set((state) => ({
-    tasks: [...state.tasks, { ...task, id: `t${Date.now()}` }]
+    tasks: [...state.tasks, { 
+      ...task, 
+      id: `t${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      authorId: state.user?.id || 'unknown',
+      authorName: state.user?.name || 'Unknown User'
+    }]
+  })),
+
+  deleteTask: (taskId) => set((state) => ({
+    tasks: state.tasks.filter(t => t.id !== taskId)
   })),
 
   toggleTaskStatus: (taskId) => set((state) => ({

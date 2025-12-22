@@ -94,19 +94,15 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
 
   // Data Logic
   const checklist = project.closingChecklist || {
-    keyAgreementsSigned: false,
     financeClosed: false,
     talentConfirmed: false,
-    bankingReady: false,
-    legalDocsInPlace: false
+    legalDocsClosed: false
   };
 
   const checklistItems = [
-    { key: 'keyAgreementsSigned', label: 'Key Agreements Signed' },
     { key: 'financeClosed', label: 'Finance Closed' },
     { key: 'talentConfirmed', label: 'Talent Confirmed' },
-    { key: 'bankingReady', label: 'Banking & Cashflow Ready' },
-    { key: 'legalDocsInPlace', label: 'Legal Documentation' },
+    { key: 'legalDocsClosed', label: 'Legal Documentation Closed' },
   ];
 
   const completedCount = Object.values(checklist).filter(Boolean).length;
@@ -248,87 +244,11 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
            </div>
         </div>
 
-        {/* 3. Operational Workstreams (Right Side) */}
+        {/* 3. Task Board (Right Side) */}
         <div className="md:col-span-8 lg:col-span-9 space-y-4">
-           <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
-             <Briefcase className="h-5 w-5 text-primary" />
-             Operational Workstreams
-           </h3>
-           
-           {/* Workstream 1: Packaging & Agreements */}
-           <WorkstreamAccordion 
-             title="Packaging & Agreements" 
-             icon={Users}
-             summary="Manage Cast, Crew, and Location Agreements"
-             isOpen={openSection === 'packaging'}
-             onToggle={() => toggleSection('packaging')}
-           >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div>
-                   <h4 className="font-semibold mb-2">Talent Agreements</h4>
-                   {/* Using DocumentLibrary with specific filters */}
-                   <DocumentLibrary projectId={project.id} categoryId="c1" subcategoryId="sc2" />
-                 </div>
-                 <div>
-                   <h4 className="font-semibold mb-2">Location Contracts</h4>
-                   <DocumentLibrary projectId={project.id} categoryId="c9" subcategoryId="sc13" />
-                 </div>
-              </div>
-           </WorkstreamAccordion>
-
-           {/* Workstream 2: Financing */}
-           <WorkstreamAccordion 
-             title="Financing" 
-             icon={CircleDollarSign}
-             summary="Budget, Cashflow, and Investment Docs"
-             isOpen={openSection === 'financing'}
-             onToggle={() => toggleSection('financing')}
-           >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div>
-                    <h4 className="font-semibold mb-2">Budget Top Sheet</h4>
-                    <DocumentLibrary projectId={project.id} categoryId="c3" subcategoryId="sc4" />
-                 </div>
-                 <div>
-                    <h4 className="font-semibold mb-2">Funding Confirmations</h4>
-                    <DocumentLibrary projectId={project.id} categoryId="c3" subcategoryId="sc6" />
-                 </div>
-              </div>
-           </WorkstreamAccordion>
-
-           {/* Workstream 3: Legal & Banking */}
-           <WorkstreamAccordion 
-             title="Legal & Banking" 
-             icon={Scale}
-             summary="Corporate Structure, Bank Accounts, Insurance"
-             isOpen={openSection === 'legal'}
-             onToggle={() => toggleSection('legal')}
-           >
-              <div className="space-y-4">
-                 <div className="p-4 border border-dashed rounded-lg text-center text-muted-foreground">
-                    <Landmark className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>Banking setup and legal wrapper documentation area.</p>
-                 </div>
-                 <div>
-                    <h4 className="font-semibold mb-2">Legal Documents</h4>
-                    <DocumentLibrary projectId={project.id} categoryId="c9" />
-                 </div>
-              </div>
-           </WorkstreamAccordion>
-
-           {/* Workstream 4: Tasks & Coordination */}
-           <WorkstreamAccordion 
-             title="Tasks & Coordination" 
-             icon={ListTodo}
-             summary={`${taskCount} Open Tasks require attention`}
-             isOpen={openSection === 'tasks'}
-             onToggle={() => toggleSection('tasks')}
-           >
-              <div className="h-[500px]">
-                <TaskManager projectId={project.id} />
-              </div>
-           </WorkstreamAccordion>
-
+           <div className="h-[600px]">
+             <TaskManager projectId={project.id} />
+           </div>
         </div>
       </div>
     </div>
