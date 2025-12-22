@@ -117,13 +117,19 @@ export function FinancingSourcesTable({ project }: FinancingSourcesTableProps) {
                 />
               </TableCell>
               <TableCell className="text-right">
-                <Input 
-                  type="number"
-                  value={row.amount || ''} 
-                  onChange={(e) => updateRow(index, 'amount', e.target.value)}
-                  className="border-transparent hover:border-input focus:border-ring h-8 text-right font-mono"
-                  placeholder="0"
-                />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input 
+                    type="text"
+                    value={row.amount ? row.amount.toLocaleString() : ''} 
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9]/g, '');
+                      updateRow(index, 'amount', value);
+                    }}
+                    className="border-transparent hover:border-input focus:border-ring h-8 text-right font-mono pl-7"
+                    placeholder="0"
+                  />
+                </div>
               </TableCell>
               <TableCell>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => removeRow(index)}>
