@@ -15,7 +15,6 @@ import { ChevronLeft, Share2, Download, CheckCircle, FileText, X } from "lucide-
 
 import ScriptViewer from "@/components/script/ScriptViewer";
 import NotesPanel from "@/components/script/NotesPanel";
-import ReviewSummary from "@/components/script/ReviewSummary";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -213,9 +212,6 @@ export default function ScriptAnalysisPage() {
           
           {/* Main Panel: PDF Viewer */}
           <main className="flex-1 relative flex flex-col min-w-0 bg-secondary/5">
-             <div className="p-4 z-10">
-                <ReviewSummary scriptId={document.id} />
-             </div>
              <ScriptViewer 
                activeScript={document}
                currentPage={currentPage} 
