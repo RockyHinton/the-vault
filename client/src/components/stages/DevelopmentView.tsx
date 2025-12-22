@@ -133,60 +133,6 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 w-full px-4 lg:px-8 py-6">
       
-      {/* 1. Status Overview Card (Visual Anchor) */}
-      <Card className="border-none shadow-md bg-gradient-to-r from-slate-900 to-slate-800 text-white overflow-hidden relative">
-        {/* Decorative background element */}
-        <div className="absolute top-0 right-0 h-full w-1/3 bg-white/5 skew-x-12 transform origin-bottom-right" />
-        
-        <CardContent className="p-8 relative z-10">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
-            
-            {/* Left: Stage & Timestamp */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-3 mb-2">
-                 <Badge className="bg-blue-500/20 text-blue-200 hover:bg-blue-500/30 border-blue-500/30 px-3 py-1">In Development</Badge>
-                 <span className="text-xs text-slate-400 flex items-center gap-1">
-                   <Clock className="h-3 w-3" /> Updated {formatDistanceToNow(new Date(project.updatedAt), { addSuffix: true })}
-                 </span>
-              </div>
-              <h2 className="text-3xl font-bold tracking-tight text-white">
-                {project.title}
-              </h2>
-            </div>
-
-            {/* Middle: Checklist Progress */}
-            <div className="flex-1 w-full lg:max-w-md space-y-3 bg-white/5 p-4 rounded-lg border border-white/10">
-               <div className="flex justify-between text-sm font-medium text-slate-200">
-                 <span className="text-slate-400">Greenlight Readiness</span>
-                 <span>{Math.round(progress)}% Complete</span>
-               </div>
-               <Progress value={progress} className="h-2 bg-white/10" indicatorClassName="bg-blue-400" />
-               <div className="flex justify-between text-xs text-slate-500">
-                  <span>{completedCount} tasks done</span>
-                  <span>{totalCount - completedCount} remaining</span>
-               </div>
-            </div>
-
-            {/* Right: Readiness State */}
-            <div className="flex flex-col items-end">
-               <span className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-semibold">Current Status</span>
-               <div className={cn(
-                 "flex items-center gap-2 font-bold text-lg px-5 py-2 rounded-full border shadow-sm",
-                 readinessState === 'Ready' && "bg-green-500 text-white border-green-400",
-                 readinessState === 'Nearly Ready' && "bg-amber-500 text-white border-amber-400",
-                 readinessState === 'Blocked' && "bg-slate-700 text-slate-300 border-slate-600",
-               )}>
-                 {readinessState === 'Ready' && <CheckCircle2 className="h-5 w-5" />}
-                 {readinessState === 'Nearly Ready' && <Briefcase className="h-5 w-5" />}
-                 {readinessState === 'Blocked' && <AlertCircle className="h-5 w-5" />}
-                 {readinessState}
-               </div>
-            </div>
-
-          </div>
-        </CardContent>
-      </Card>
-
       {/* 2. Greenlight Requirements (Checklist as Core Driver) */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         <div className="md:col-span-4 lg:col-span-3 space-y-6">
@@ -231,7 +177,12 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
                   })}
 
                   <Button 
-                    className="w-full mt-6 font-semibold shadow-lg" 
+                    className={cn(
+                      "w-full mt-6 font-semibold shadow-lg transition-all duration-300",
+                      isReadyForProduction 
+                        ? "bg-green-600 hover:bg-green-700 text-white shadow-green-500/20" 
+                        : ""
+                    )}
                     disabled={!isReadyForProduction}
                     onClick={handlePromote}
                     size="lg"
