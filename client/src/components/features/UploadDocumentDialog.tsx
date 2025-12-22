@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useStore, Category, Subcategory } from "@/lib/store";
+import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,32 +20,28 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, File, X, Check } from "lucide-react";
+import { Upload, File, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface UploadDocumentDialogProps {
   projectId: string;
   defaultCategoryId?: string;
-  defaultSubcategoryId?: string;
   children?: React.ReactNode;
 }
 
 export function UploadDocumentDialog({ 
   projectId, 
   defaultCategoryId, 
-  defaultSubcategoryId,
   children 
 }: UploadDocumentDialogProps) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [categoryId, setCategoryId] = useState(defaultCategoryId || "");
-  const [subcategoryId, setSubcategoryId] = useState(defaultSubcategoryId || "");
   const [status, setStatus] = useState("Draft");
   const [notes, setNotes] = useState("");
   
-  const { getProjectCategories, getCategorySubcategories, addDocument } = useStore();
+  const { getProjectCategories, addDocument } = useStore();
   const categories = getProjectCategories(projectId);
-  const subcategories = categoryId ? getCategorySubcategories(categoryId) : [];
 
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -55,18 +51,17 @@ export function UploadDocumentDialog({
   };
 
   const handleUpload = () => {
-    if (!file || !categoryId) return; // Removed subcategoryId check requirement
+    if (!file || !categoryId) return;
 
     addDocument({
       projectId,
       categoryId,
-      subcategoryId, // Can be empty string now
       title: file.name,
       type: file.name.split('.').pop()?.toUpperCase() as any || 'OTHER',
       fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
       version: 1,
       status: status as any,
-      tags: ['upload'],
+      tags: ['upload'], // Could be enhanced to accept tags as prop
       filePath: '#', // Mock path
     });
 
@@ -135,7 +130,7 @@ export function UploadDocumentDialog({
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
+            <div className="space-y-2 col-span-2">
               <Label>Category</Label>
               <Select value={categoryId} onValueChange={setCategoryId}>
                 <SelectTrigger>
@@ -144,19 +139,6 @@ export function UploadDocumentDialog({
                 <SelectContent>
                   {categories.map(c => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className={!subcategories.length ? "text-muted-foreground" : ""}>Subcategory (Optional)</Label>
-              <Select value={subcategoryId} onValueChange={setSubcategoryId} disabled={!categoryId || subcategories.length === 0}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select subcategory" />
-                </SelectTrigger>
-                <SelectContent>
-                  {subcategories.map(sc => (
-                    <SelectItem key={sc.id} value={sc.id}>{sc.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

@@ -38,9 +38,11 @@ export default function ScriptView({ project }: ScriptViewProps) {
   // Documents
   const documents = getProjectDocuments(project.id);
   
-  // Filter for scripts
+  // Filter for scripts - IMPROVED LOGIC: Filter by Category ID 'c1' (Script) or title/tags
+  // This ensures newly uploaded files with 'c1' category appear here, even if title doesn't say "script"
   const scriptDocs = documents.filter(d => 
-    d.title.toLowerCase().includes('script') && d.type === 'PDF'
+    (d.categoryId === 'c1' || d.title.toLowerCase().includes('script')) && 
+    d.type === 'PDF'
   ).sort((a, b) => b.version - a.version);
 
   const activeScript = scriptDocs[0];
@@ -194,7 +196,7 @@ export default function ScriptView({ project }: ScriptViewProps) {
                 <FileText className="h-4 w-4 text-muted-foreground" />
                 Related Documents
               </h3>
-              <UploadDocumentDialog projectId={project.id}>
+              <UploadDocumentDialog projectId={project.id} defaultCategoryId="c1">
                 <Button variant="outline" size="sm">
                   <Plus className="mr-2 h-3 w-3" />
                   Add Document

@@ -66,7 +66,7 @@ export default function ProjectNotesView({ project }: ProjectNotesViewProps) {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 max-w-4xl mx-auto">
+    <div className="space-y-8 animate-in fade-in duration-500 w-full">
       
       {/* Header */}
       <div>
@@ -74,7 +74,7 @@ export default function ProjectNotesView({ project }: ProjectNotesViewProps) {
         <p className="text-muted-foreground mt-1">High-level creative discussion and strategic notes.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
         {/* Left Column: Input Form */}
         <div className="md:col-span-1 space-y-6">
           <Card className="border-border/50 shadow-md">
@@ -112,44 +112,23 @@ export default function ProjectNotesView({ project }: ProjectNotesViewProps) {
               </Button>
             </CardContent>
           </Card>
-
-          {/* Filter Panel (Desktop) */}
-          <div className="hidden md:block space-y-2">
-            <h3 className="text-sm font-semibold text-muted-foreground px-1 uppercase tracking-wider">Filter Feed</h3>
-            <div className="flex flex-col gap-1">
-               {["All", "Script", "Financing", "Cast", "Other"].map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setFilterCategory(cat as any)}
-                    className={cn(
-                      "text-sm px-3 py-2 rounded-md text-left transition-colors flex justify-between items-center group",
-                      filterCategory === cat 
-                        ? "bg-secondary text-foreground font-medium" 
-                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                    )}
-                  >
-                    {cat}
-                    {filterCategory === cat && <Filter className="h-3 w-3 opacity-50" />}
-                  </button>
-                ))}
-            </div>
-          </div>
         </div>
 
         {/* Right Column: Feed */}
-        <div className="md:col-span-2 space-y-6">
+        <div className="md:col-span-3 space-y-6">
           
-          {/* Mobile Filter */}
-          <div className="md:hidden flex gap-2 overflow-x-auto pb-2">
+          {/* Filter Panel (Above Feed) */}
+          <div className="flex items-center gap-2 pb-2 overflow-x-auto border-b border-border/40">
+            <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mr-2">Filter:</span>
             {["All", "Script", "Financing", "Cast", "Other"].map((cat) => (
               <button
                 key={cat}
                 onClick={() => setFilterCategory(cat as any)}
                 className={cn(
-                  "text-xs px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap",
+                  "text-sm px-4 py-1.5 rounded-full border transition-all whitespace-nowrap",
                   filterCategory === cat 
-                    ? "bg-primary text-primary-foreground border-primary" 
-                    : "bg-background text-muted-foreground hover:bg-secondary"
+                    ? "bg-primary text-primary-foreground border-primary font-medium shadow-sm" 
+                    : "bg-background text-muted-foreground hover:bg-secondary hover:text-foreground border-border"
                 )}
               >
                 {cat}
