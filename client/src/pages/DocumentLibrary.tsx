@@ -14,7 +14,8 @@ import {
   Trash2,
   FileIcon,
   Search,
-  Filter
+  Filter,
+  Upload
 } from "lucide-react";
 import { 
   Table, 
@@ -107,6 +108,16 @@ export default function DocumentLibrary({ projectId, categoryId, subcategoryId }
           />
         </div>
         <div className="flex items-center gap-2">
+          <UploadDocumentDialog 
+            projectId={projectId} 
+            defaultCategoryId={categoryId} 
+            defaultSubcategoryId={subcategoryId}
+          >
+            <Button size="sm" className="h-9">
+              <Upload className="mr-2 h-4 w-4" />
+              Upload
+            </Button>
+          </UploadDocumentDialog>
           <Button variant="ghost" size="sm" className="h-9">
             <Filter className="mr-2 h-4 w-4" />
             Filter
