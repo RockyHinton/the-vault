@@ -365,6 +365,14 @@ const MOCK_PROJECTS: Project[] = [
       financeStatus: 'Speculative',
       plannedBudget: '$12M',
       scores: { creative: 8.5, financial: 6.0 }
+    },
+    financing: {
+      totalBudget: 12000000,
+      secured: 0,
+      currency: 'USD',
+      breakdown: [],
+      cashflow: [],
+      approvals: []
     }
   },
   {
@@ -383,6 +391,16 @@ const MOCK_PROJECTS: Project[] = [
       plannedBudget: '$25M',
       financeType: 'Tax Credit',
       financeStatus: 'Committed'
+    },
+    financing: {
+      totalBudget: 25000000,
+      secured: 15000000,
+      currency: 'USD',
+      breakdown: [
+        { category: 'Tax Credit', amount: 15000000, percentage: 60 }
+      ],
+      cashflow: [],
+      approvals: []
     },
     closingChecklist: {
       keyAgreementsSigned: true,

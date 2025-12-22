@@ -138,7 +138,7 @@ export default function FinancingView({ project, currentSubcategory, subcategory
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity absolute top-4 right-4"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-4 right-4"
                     onClick={openBudgetEdit}
                   >
                     <Pencil className="h-3 w-3 text-muted-foreground" />
