@@ -27,6 +27,7 @@ import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
+import { NewProjectDialog } from "@/components/features/NewProjectDialog";
 
 const stageColors: Record<ProjectStage, string> = {
   Evaluation: "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20",
@@ -45,6 +46,7 @@ const stageIcons: Record<ProjectStage, any> = {
 export default function ProjectsPage() {
   const { projects, setCurrentProject } = useStore();
   const [activeTab, setActiveTab] = useState<ProjectStage | 'All'>('All');
+  const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
 
   const filteredProjects = activeTab === 'All' 
     ? projects.filter(p => p.stage !== 'Archived') // Don't show archived in 'All' view usually
@@ -60,7 +62,7 @@ export default function ProjectsPage() {
             <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">Projects</h1>
             <p className="text-muted-foreground mt-1">Manage your slate across all stages of production.</p>
           </div>
-          <Button size="lg" className="shadow-lg shadow-primary/20">
+          <Button size="lg" className="shadow-lg shadow-primary/20" onClick={() => setIsNewProjectDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             New Project
           </Button>
@@ -171,7 +173,10 @@ export default function ProjectsPage() {
                    animate={{ opacity: 1, y: 0 }}
                    transition={{ duration: 0.3, delay: filteredProjects.length * 0.1 }}
                 >
-                  <button className="w-full h-full min-h-[280px] rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-secondary/10 transition-all flex flex-col items-center justify-center gap-4 text-muted-foreground hover:text-primary group">
+                  <button 
+                    className="w-full h-full min-h-[280px] rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-secondary/10 transition-all flex flex-col items-center justify-center gap-4 text-muted-foreground hover:text-primary group"
+                    onClick={() => setIsNewProjectDialogOpen(true)}
+                  >
                     <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                       <Plus className="h-6 w-6" />
                     </div>
@@ -192,6 +197,11 @@ export default function ProjectsPage() {
             )}
           </div>
         </Tabs>
+
+        <NewProjectDialog 
+          isOpen={isNewProjectDialogOpen} 
+          onClose={() => setIsNewProjectDialogOpen(false)} 
+        />
 
       </div>
     </Shell>
