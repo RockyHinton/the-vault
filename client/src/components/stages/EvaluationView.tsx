@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { FileText, User, Users, DollarSign, BarChart3, Upload, CheckCircle, XCircle, CheckSquare, Square, Star, Plus, Pencil } from "lucide-react";
+import { FileText, User, Users, DollarSign, BarChart3, Upload, CheckCircle, XCircle, CheckSquare, Square, Star, Plus, Pencil, MessageSquare } from "lucide-react";
 import { UploadDocumentDialog } from "@/components/features/UploadDocumentDialog";
 import { EditEvaluationDialog } from "@/components/features/EditEvaluationDialog";
 import DocumentLibrary from "@/pages/DocumentLibrary";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import EvaluationScoringView from "./EvaluationScoringView";
+import { Link } from "wouter";
 
 interface EvaluationViewProps {
   project: Project;
@@ -181,7 +182,7 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
                     <Progress value={parseFloat(avgFinancing) * 10} className="h-2" />
                  </div>
                  
-                 <div className="pt-2">
+                 <div className="pt-2 flex gap-3">
                    <Button 
                      size="sm" 
                      variant="outline" 
@@ -189,8 +190,18 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
                      onClick={() => setIsScoringMode(true)}
                    >
                      <Star className="h-4 w-4" />
-                     {reviewCount === 0 ? "Be the first to rate" : "Add Your Rating & Notes"}
+                     Project Scoring
                    </Button>
+                   <Link href={`/project/${project.id}/project-notes`}>
+                     <Button 
+                       size="sm" 
+                       variant="outline" 
+                       className="gap-2 border-primary/20 hover:border-primary hover:bg-primary/5 text-primary"
+                     >
+                       <MessageSquare className="h-4 w-4" />
+                       Project Notes
+                     </Button>
+                   </Link>
                  </div>
               </div>
 
