@@ -55,12 +55,12 @@ export function UploadDocumentDialog({
   };
 
   const handleUpload = () => {
-    if (!file || !categoryId || !subcategoryId) return;
+    if (!file || !categoryId) return; // Removed subcategoryId check requirement
 
     addDocument({
       projectId,
       categoryId,
-      subcategoryId,
+      subcategoryId, // Can be empty string now
       title: file.name,
       type: file.name.split('.').pop()?.toUpperCase() as any || 'OTHER',
       fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
@@ -149,8 +149,8 @@ export function UploadDocumentDialog({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Subcategory</Label>
-              <Select value={subcategoryId} onValueChange={setSubcategoryId} disabled={!categoryId}>
+              <Label className={!subcategories.length ? "text-muted-foreground" : ""}>Subcategory (Optional)</Label>
+              <Select value={subcategoryId} onValueChange={setSubcategoryId} disabled={!categoryId || subcategories.length === 0}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select subcategory" />
                 </SelectTrigger>
@@ -191,7 +191,7 @@ export function UploadDocumentDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleUpload} disabled={!file || !categoryId || !subcategoryId}>
+          <Button onClick={handleUpload} disabled={!file || !categoryId}>
             {file ? "Upload File" : "Select File"}
           </Button>
         </DialogFooter>

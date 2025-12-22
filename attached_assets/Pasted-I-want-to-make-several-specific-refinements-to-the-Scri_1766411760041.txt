@@ -1,0 +1,115 @@
+I want to make several specific refinements to the Script and Project Notes functionality in The Vault.
+These are UX and behaviour changes only, not a redesign.
+
+1. Script Documents — Simplify Upload Flow
+
+When uploading documents in the Script section:
+
+Remove all sub-category selection requirements
+
+Allow documents to be uploaded as soon as a file is attached
+
+Metadata fields (if present) must be:
+
+optional
+
+allowed to be left empty
+
+Do not block uploads due to missing metadata
+
+The goal is to reduce friction when attaching script-related documents.
+
+2. Project Notes — Move to Dedicated Page
+
+Project Notes must no longer live inside the Script page.
+
+Create a dedicated Project Notes page
+
+This page is separate from Script Analysis and Script Documents
+
+Project Notes are high-level discussion notes, not line-by-line script annotations
+
+3. Script Page → Project Notes Navigation
+
+On the Script overview page:
+
+Add a clear, visible button:
+“View Project Notes”
+
+This button navigates directly to the dedicated Project Notes page
+
+This makes Project Notes easy to discover and access.
+
+4. Project Notes Page — Core Functionality
+
+On the Project Notes page:
+
+Adding Notes
+
+Users can add a note with:
+
+note text
+
+required category selection:
+
+Script
+
+Financing
+
+Cast
+
+Other
+
+Each note stores:
+
+author (logged-in user)
+
+timestamp
+
+category
+
+content
+
+Notes Feed
+
+Display notes in a chronological feed (newest first)
+
+Each note shows:
+
+author
+
+timestamp
+
+category tag
+
+note content
+
+Filtering
+
+Allow users to filter notes by category
+
+Selecting a category shows only notes of that type
+
+Filtering should update instantly without page reloads
+
+Deleting Notes
+
+Users may delete only their own notes
+
+Show delete action only on notes created by the logged-in user
+
+Deleting a note removes it immediately from the feed
+
+No editing permissions are required for MVP.
+
+5. UX Guidelines
+
+No modals unless absolutely necessary
+
+Clean, readable layout
+
+Minimal visual noise
+
+Fast interactions
+
+This should feel like a calm discussion board, not a chat app.

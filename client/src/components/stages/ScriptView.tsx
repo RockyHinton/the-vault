@@ -32,8 +32,6 @@ interface ScriptViewProps {
 export default function ScriptView({ project }: ScriptViewProps) {
   const { 
     getProjectDocuments, 
-    getProjectNotes, 
-    addProjectNote, 
     user 
   } = useStore();
 
@@ -63,29 +61,6 @@ export default function ScriptView({ project }: ScriptViewProps) {
   const otherDocs = documents.filter(d => 
     !scriptDocs.includes(d) && !castDocs.includes(d) && !devDocs.includes(d)
   );
-
-  // Notes State
-  const notes = getProjectNotes(project.id);
-  const [newNote, setNewNote] = useState("");
-  const [noteCategory, setNoteCategory] = useState<ProjectNoteCategory>("Script");
-  const [filterCategory, setFilterCategory] = useState<ProjectNoteCategory | "All">("All");
-
-  const filteredNotes = filterCategory === "All" 
-    ? notes 
-    : notes.filter(n => n.category === filterCategory);
-
-  const handleAddNote = () => {
-    if (!newNote.trim()) return;
-    
-    addProjectNote({
-      projectId: project.id,
-      text: newNote,
-      category: noteCategory
-    });
-    
-    setNewNote("");
-    toast.success("Note added");
-  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -153,14 +128,27 @@ export default function ScriptView({ project }: ScriptViewProps) {
                 </UploadDocumentDialog>
               )}
             </div>
+            
+            {/* View Project Notes Button */}
+            <div className="mt-8 pt-6 border-t border-border/40">
+               <Link href={`/project/${project.id}/project-notes`}>
+                 <Button variant="secondary" className="w-full justify-between group">
+                   <div className="flex items-center gap-2">
+                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                     <span>View Project Notes</span>
+                   </div>
+                   <ArrowRight className="h-4 w-4 opacity-50 group-hover:translate-x-1 transition-transform" />
+                 </Button>
+               </Link>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 gap-8">
         
-        {/* Left Column: Versions & Docs */}
-        <div className="lg:col-span-2 space-y-8">
+        {/* Full Width: Versions & Docs */}
+        <div className="space-y-8">
           
           {/* 2. Script Versions */}
           <section>
@@ -250,100 +238,8 @@ export default function ScriptView({ project }: ScriptViewProps) {
           </section>
         </div>
 
-        {/* Right Column: Project Notes */}
-        <div className="lg:col-span-1">
-          <Card className="h-full border-none shadow-none bg-transparent">
-            <CardHeader className="px-0 pt-0">
-              <CardTitle className="text-lg flex items-center justify-between">
-                Project Notes
-                <Badge variant="outline" className="ml-2 font-normal text-muted-foreground">
-                  {notes.length}
-                </Badge>
-              </CardTitle>
-              <CardDescription>High-level discussion and creative notes.</CardDescription>
-            </CardHeader>
-            <CardContent className="px-0 space-y-6">
-              
-              {/* Add Note Form */}
-              <div className="space-y-3 p-4 border rounded-xl bg-card/50">
-                <Textarea 
-                  placeholder="Add a high-level note..." 
-                  className="resize-none min-h-[80px] bg-background"
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                />
-                <div className="flex items-center justify-between gap-2">
-                  <Select value={noteCategory} onValueChange={(v: any) => setNoteCategory(v)}>
-                    <SelectTrigger className="w-[130px] h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Script">Script</SelectItem>
-                      <SelectItem value="Financing">Financing</SelectItem>
-                      <SelectItem value="Cast">Cast</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button size="sm" onClick={handleAddNote} disabled={!newNote.trim()}>Post Note</Button>
-                </div>
-              </div>
-
-              {/* Filter */}
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {["All", "Script", "Financing", "Cast", "Other"].map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setFilterCategory(cat as any)}
-                    className={cn(
-                      "text-xs px-2.5 py-1 rounded-full border transition-colors whitespace-nowrap",
-                      filterCategory === cat 
-                        ? "bg-primary text-primary-foreground border-primary" 
-                        : "bg-background text-muted-foreground hover:bg-secondary"
-                    )}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-
-              {/* Notes Feed */}
-              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                {filteredNotes.length > 0 ? (
-                  filteredNotes.map((note) => (
-                    <div key={note.id} className="space-y-2 group">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
-                            {note.authorName.charAt(0)}
-                          </div>
-                          <span className="text-xs font-medium">{note.authorName}</span>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground">
-                          {format(new Date(note.timestamp), 'MMM d, h:mm a')}
-                        </span>
-                      </div>
-                      <div className="pl-8">
-                        <div className="text-sm leading-relaxed text-foreground/90 bg-secondary/20 p-3 rounded-lg rounded-tl-none">
-                          {note.text}
-                        </div>
-                        <div className="mt-1 flex gap-2">
-                           <Badge variant="outline" className="text-[10px] py-0 h-5 border-transparent bg-secondary/50 text-muted-foreground">
-                             {note.category}
-                           </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-10 text-muted-foreground text-sm">
-                    No notes found.
-                  </div>
-                )}
-              </div>
-
-            </CardContent>
-          </Card>
-        </div>
+        {/* Right Column: Project Notes - REMOVED per requirements */}
+        {/* Moved to dedicated Project Notes page */}
 
       </div>
     </div>
