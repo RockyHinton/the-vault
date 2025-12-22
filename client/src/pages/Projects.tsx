@@ -7,6 +7,24 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +38,9 @@ import {
   Eye,
   Briefcase,
   Clapperboard,
-  Archive
+  Archive,
+  ArrowRight,
+  Trash2
 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
@@ -28,6 +48,7 @@ import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { NewProjectDialog } from "@/components/features/NewProjectDialog";
+import { toast } from "sonner";
 
 const stageColors: Record<ProjectStage, string> = {
   Evaluation: "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20",
@@ -44,13 +65,40 @@ const stageIcons: Record<ProjectStage, any> = {
 };
 
 export default function ProjectsPage() {
-  const { projects, setCurrentProject } = useStore();
+  const { projects, setCurrentProject, setProjectStage, deleteProject } = useStore();
   const [activeTab, setActiveTab] = useState<ProjectStage | 'All'>('All');
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
+  
+  // Delete confirmation state
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
 
   const filteredProjects = activeTab === 'All' 
     ? projects.filter(p => p.stage !== 'Archived') // Don't show archived in 'All' view usually
     : projects.filter(p => p.stage === activeTab);
+
+  const handleAdvanceStage = (projectId: string, currentStage: ProjectStage) => {
+    let nextStage: ProjectStage | null = null;
+    if (currentStage === 'Evaluation') nextStage = 'Development';
+    else if (currentStage === 'Development') nextStage = 'Production';
+    
+    if (nextStage) {
+      setProjectStage(projectId, nextStage);
+      toast.success(`Project moved to ${nextStage}`);
+    }
+  };
+
+  const handleArchive = (projectId: string) => {
+    setProjectStage(projectId, 'Archived');
+    toast.success("Project archived");
+  };
+
+  const confirmDelete = () => {
+    if (projectToDelete) {
+      deleteProject(projectToDelete);
+      setProjectToDelete(null);
+      toast.success("Project deleted");
+    }
+  };
 
   return (
     <Shell>
@@ -119,9 +167,54 @@ export default function ProjectsPage() {
                               <StageIcon className="h-3 w-3 mr-1" />
                               {project.stage}
                             </Badge>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 text-muted-foreground hover:text-foreground">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
+                            
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 text-muted-foreground hover:text-foreground">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                
+                                {/* Advance Option */}
+                                {(project.stage === 'Evaluation' || project.stage === 'Development') && (
+                                  <DropdownMenuItem onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAdvanceStage(project.id, project.stage);
+                                  }}>
+                                    <ArrowRight className="mr-2 h-4 w-4" />
+                                    Advance Stage
+                                  </DropdownMenuItem>
+                                )}
+                                
+                                {/* Archive Option */}
+                                {project.stage !== 'Archived' && (
+                                  <DropdownMenuItem onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleArchive(project.id);
+                                  }}>
+                                    <Archive className="mr-2 h-4 w-4" />
+                                    Archive
+                                  </DropdownMenuItem>
+                                )}
+
+                                <DropdownMenuSeparator />
+                                
+                                {/* Delete Option */}
+                                <DropdownMenuItem 
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setProjectToDelete(project.id);
+                                  }}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                           <CardTitle className="text-xl font-bold mt-2 group-hover:text-primary transition-colors">
                             {project.title}
@@ -202,6 +295,23 @@ export default function ProjectsPage() {
           isOpen={isNewProjectDialogOpen} 
           onClose={() => setIsNewProjectDialogOpen(false)} 
         />
+
+        <AlertDialog open={!!projectToDelete} onOpenChange={(open) => !open && setProjectToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the project and all associated data including scripts, budgets, and reviews.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete Project
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
       </div>
     </Shell>

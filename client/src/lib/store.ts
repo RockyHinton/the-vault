@@ -517,6 +517,7 @@ interface AppState {
   getProjectReviews: (projectId: string) => ScriptReview[];
   addReview: (review: Omit<ScriptReview, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
   deleteReview: (reviewId: string) => void;
+  deleteProject: (projectId: string) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -552,6 +553,15 @@ export const useStore = create<AppState>()(
       },
       ...state.projects,
     ]
+  })),
+
+  deleteProject: (projectId) => set((state) => ({
+    projects: state.projects.filter(p => p.id !== projectId),
+    // Cleanup related data
+    tasks: state.tasks.filter(t => t.projectId !== projectId),
+    documents: state.documents.filter(d => d.projectId !== projectId),
+    // We could clean up categories/reviews too if they were fully dynamic per project
+    reviews: state.reviews.filter(r => r.projectId !== projectId),
   })),
 
   setCurrentProject: (id) => set({ currentProjectId: id }),
