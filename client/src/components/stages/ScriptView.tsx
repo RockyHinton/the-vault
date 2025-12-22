@@ -111,12 +111,12 @@ export default function ScriptView({ project }: ScriptViewProps) {
                <div className="absolute inset-x-0 bottom-0 top-8 bg-white dark:bg-zinc-900 shadow-sm -z-20 translate-y-4 scale-90 rounded border" />
                <FileText className="h-12 w-12 text-muted-foreground/50" />
                {activeScript && (
-                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded text-white font-medium backdrop-blur-sm">
+                 <Link href={`/script/${activeScript.id}`} className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded text-white font-medium backdrop-blur-sm z-10">
                    <BookOpen className="h-8 w-8 mb-2" />
                    Open Reader
-                 </div>
+                 </Link>
                )}
-            </div>
+             </div>
 
             <div className="flex-1 space-y-6">
               <div>
