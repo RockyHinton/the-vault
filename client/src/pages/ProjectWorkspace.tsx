@@ -12,6 +12,7 @@ import SchedulesView from "@/components/stages/SchedulesView";
 import ScriptView from "@/components/stages/ScriptView";
 import ProjectNotesView from "@/components/stages/ProjectNotesView";
 import ProducersView from "@/components/stages/ProducersView";
+import CreativesView from "@/components/stages/CreativesView";
 import { UploadDocumentDialog } from "@/components/features/UploadDocumentDialog";
 import { Button } from "@/components/ui/button";
 import { 
@@ -342,6 +343,11 @@ export default function ProjectWorkspace() {
     // SPECIAL CASE: Producers (New Redesign)
     if (currentCategory?.slug === 'producers' || safeParams?.category === 'producers' || safeParams?.category === 'producing-partners') {
       return <ProducersView project={project} />;
+    }
+
+    // SPECIAL CASE: Creatives (New Redesign for Actors/Directors)
+    if (currentCategory?.slug === 'creatives' || safeParams?.category === 'creatives' || safeParams?.category === 'talent') {
+      return <CreativesView project={project} />;
     }
 
     // SPECIAL CASE: Project Notes (New Dedicated Page)

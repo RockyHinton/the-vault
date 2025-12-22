@@ -210,6 +210,22 @@ export interface ProducerProfile {
   notes: string;
 }
 
+// --- Creative Profile Types ---
+
+export type CreativeRoleType = 'Director' | 'Cast' | 'Head of Department';
+
+export interface CreativeProfile {
+  id: string;
+  projectId: string;
+  name: string;
+  roleType: CreativeRoleType;
+  specificRole: string; // e.g. "Director of Photography", "Lead Actor", etc.
+  agent?: string;
+  contactDetails: ContactDetail[];
+  links: LinkDetail[];
+  notes: string;
+}
+
 // --- Admin / Security Types ---
 
 export type AuditAction = 'LOGIN' | 'LOGOUT' | 'UPLOAD_DOC' | 'DELETE_DOC' | 'STAGE_CHANGE' | 'USER_CREATE' | 'USER_DELETE';
@@ -398,7 +414,7 @@ const MOCK_PROJECTS: Project[] = [
 const MOCK_CATEGORIES: Category[] = [
   { id: 'c1', projectId: 'p1', name: 'Script', slug: 'script', icon: 'FileText' },
   { id: 'c2', projectId: 'p1', name: 'Producers', slug: 'producers', icon: 'Users' },
-  { id: 'c8', projectId: 'p1', name: 'Actors & Directors', slug: 'talent', icon: 'User' }, // New
+  { id: 'c8', projectId: 'p1', name: 'Creatives', slug: 'creatives', icon: 'User' }, // Renamed from Actors & Directors
   { id: 'c3', projectId: 'p1', name: 'Financing', slug: 'financing', icon: 'CircleDollarSign' },
   { id: 'c9', projectId: 'p1', name: 'Legal & Contracts', slug: 'legal', icon: 'Scale' }, // Renamed from Documentation
   { id: 'c6', projectId: 'p1', name: 'Distribution', slug: 'distribution', icon: 'Globe' },
@@ -554,6 +570,34 @@ const MOCK_PRODUCER_PROFILES: ProducerProfile[] = [
   }
 ];
 
+const MOCK_CREATIVE_PROFILES: CreativeProfile[] = [
+  {
+    id: 'cp1',
+    projectId: 'p1',
+    name: 'Ridley Scott Jr.',
+    roleType: 'Director',
+    specificRole: 'Director',
+    agent: 'CAA',
+    contactDetails: [
+      { id: 'cd3', type: 'Agent Email', value: 'agent@caa.com' }
+    ],
+    links: [
+      { id: 'l3', label: 'IMDb', url: 'https://imdb.com' }
+    ],
+    notes: 'Visionary director with a strong visual style.'
+  },
+  {
+    id: 'cp2',
+    projectId: 'p1',
+    name: 'Hiroyuki Sanada',
+    roleType: 'Cast',
+    specificRole: 'Detective Kaito',
+    contactDetails: [],
+    links: [],
+    notes: 'Attached for lead role.'
+  }
+];
+
 // --- Store ---
 
 interface AppState {
@@ -567,6 +611,7 @@ interface AppState {
   reviews: ScriptReview[];
   projectNotes: ProjectNote[];
   producerProfiles: ProducerProfile[];
+  creativeProfiles: CreativeProfile[];
   currentProjectId: string | null;
   
   // Admin State
@@ -609,6 +654,12 @@ interface AppState {
   addProducerProfile: (profile: Omit<ProducerProfile, 'id'>) => void;
   updateProducerProfile: (id: string, updates: Partial<ProducerProfile>) => void;
   deleteProducerProfile: (id: string) => void;
+
+  // Creative Profile Actions
+  getCreativeProfiles: (projectId: string) => CreativeProfile[];
+  addCreativeProfile: (profile: Omit<CreativeProfile, 'id'>) => void;
+  updateCreativeProfile: (id: string, updates: Partial<CreativeProfile>) => void;
+  deleteCreativeProfile: (id: string) => void;
   
   deleteDocument: (documentId: string) => void;
 }
@@ -626,6 +677,7 @@ export const useStore = create<AppState>()(
   reviews: MOCK_REVIEWS,
   projectNotes: MOCK_PROJECT_NOTES,
   producerProfiles: MOCK_PRODUCER_PROFILES,
+  creativeProfiles: MOCK_CREATIVE_PROFILES,
   currentProjectId: null,
   users: MOCK_USERS,
   auditLogs: MOCK_AUDIT_LOGS,
@@ -704,6 +756,29 @@ export const useStore = create<AppState>()(
 
   deleteProducerProfile: (id) => set((state) => ({
     producerProfiles: state.producerProfiles.filter(p => p.id !== id)
+  })),
+
+  // Creative Profile Actions
+  getCreativeProfiles: (projectId) => {
+    const { creativeProfiles } = get();
+    return creativeProfiles.filter(p => p.projectId === projectId);
+  },
+
+  addCreativeProfile: (profile) => set((state) => ({
+    creativeProfiles: [
+      { ...profile, id: `cp${Date.now()}` },
+      ...state.creativeProfiles
+    ]
+  })),
+
+  updateCreativeProfile: (id, updates) => set((state) => ({
+    creativeProfiles: state.creativeProfiles.map(p => 
+      p.id === id ? { ...p, ...updates } : p
+    )
+  })),
+
+  deleteCreativeProfile: (id) => set((state) => ({
+    creativeProfiles: state.creativeProfiles.filter(p => p.id !== id)
   })),
 
   setCurrentProject: (id) => set({ currentProjectId: id }),
