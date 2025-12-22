@@ -15,7 +15,8 @@ import {
   MessageSquare,
   Filter,
   Search,
-  BookOpen
+  BookOpen,
+  Plus
 } from "lucide-react";
 import { format } from "date-fns";
 import { UploadDocumentDialog } from "@/components/features/UploadDocumentDialog";
