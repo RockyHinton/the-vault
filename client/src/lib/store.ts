@@ -816,7 +816,7 @@ export const useStore = create<AppState>()(
     const visibleSlugs = new Set<string>();
     visibleSlugs.add('script');
     visibleSlugs.add('financing');
-    visibleSlugs.add('producing-partners');
+    visibleSlugs.add('producers');
     visibleSlugs.add('creatives');
 
     // Make 'legal' visible for Evaluation too, just for demo purposes if needed, 
