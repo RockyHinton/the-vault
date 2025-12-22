@@ -664,24 +664,24 @@ interface AppState {
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
-  user: null, 
-  projects: MOCK_PROJECTS,
-  categories: MOCK_CATEGORIES,
-  subcategories: MOCK_SUBCATEGORIES,
-  documents: MOCK_DOCUMENTS,
-  tasks: MOCK_TASKS,
-  annotations: MOCK_ANNOTATIONS,
-  reviews: MOCK_REVIEWS,
-  projectNotes: MOCK_PROJECT_NOTES,
-  producerProfiles: MOCK_PRODUCER_PROFILES,
-  creativeProfiles: MOCK_CREATIVE_PROFILES,
-  currentProjectId: null,
-  users: MOCK_USERS,
-  auditLogs: MOCK_AUDIT_LOGS,
+      user: null, 
+      projects: MOCK_PROJECTS,
+      categories: MOCK_CATEGORIES,
+      subcategories: MOCK_SUBCATEGORIES,
+      documents: MOCK_DOCUMENTS,
+      tasks: MOCK_TASKS,
+      annotations: MOCK_ANNOTATIONS,
+      reviews: MOCK_REVIEWS,
+      projectNotes: MOCK_PROJECT_NOTES,
+      producerProfiles: MOCK_PRODUCER_PROFILES,
+      creativeProfiles: MOCK_CREATIVE_PROFILES,
+      currentProjectId: null,
+      users: MOCK_USERS,
+      auditLogs: MOCK_AUDIT_LOGS,
 
-  login: (email) => set({ 
-    user: { ...MOCK_USER, email } 
-  }),
+      login: (email) => set({ 
+        user: { ...MOCK_USER, email } 
+      }),
   
   logout: () => set({ user: null }),
 
@@ -839,9 +839,9 @@ export const useStore = create<AppState>()(
 
   getCategorySubcategories: (categoryId) => {
     const { subcategories, categories } = get();
-    // Special handling for Script category - hide subcategories to treat as single page
+    // Special handling for Script, Producers, and Creatives categories - hide subcategories to treat as single page
     const category = categories.find(c => c.id === categoryId);
-    if (category?.slug === 'script') {
+    if (category?.slug === 'script' || category?.slug === 'producers' || category?.slug === 'creatives') {
       return [];
     }
     return subcategories.filter(sc => sc.categoryId === categoryId);
@@ -960,7 +960,7 @@ export const useStore = create<AppState>()(
 
 }),
 {
-  name: 'vault-storage',
+  name: 'vault-storage-v2',
   storage: createJSONStorage(() => localStorage),
 }
 )
