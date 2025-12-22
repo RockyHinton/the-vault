@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Project, useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Plus, Users, Search, Building2, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";

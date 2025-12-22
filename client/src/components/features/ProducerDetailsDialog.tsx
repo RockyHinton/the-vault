@@ -105,7 +105,7 @@ export function ProducerDetailsDialog({ profile, isOpen, onClose }: ProducerDeta
           </div>
 
           <DialogFooter className="flex gap-2 sm:justify-between sm:gap-0">
-            <Button variant="destructive" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={handleDelete}>
+            <Button variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={handleDelete}>
               <Trash2 className="h-4 w-4 mr-2" />
               Delete Profile
             </Button>
