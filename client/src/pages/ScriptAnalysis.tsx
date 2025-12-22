@@ -134,77 +134,7 @@ export default function ScriptAnalysisPage() {
                <Badge variant="outline" className="font-mono text-xs">v{document.version}</Badge>
              </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm">
-              <Share2 className="mr-2 h-4 w-4" /> Share
-            </Button>
-            <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <CheckCircle className="mr-2 h-4 w-4" /> Submit Score
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
-                 <DialogHeader>
-                   <DialogTitle>Submit Script Review</DialogTitle>
-                   <DialogDescription>Your structured evaluation for this draft.</DialogDescription>
-                 </DialogHeader>
-                 <div className="space-y-6 py-4">
-                   <div className="space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <Label>Creative Score</Label>
-                          <span className="font-mono text-sm">{creativeScore}/10</span>
-                        </div>
-                        <Slider value={[creativeScore]} max={10} min={1} step={1} onValueChange={([v]) => setCreativeScore(v)} />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <Label>Commercial Score</Label>
-                          <span className="font-mono text-sm">{commercialScore}/10</span>
-                        </div>
-                        <Slider value={[commercialScore]} max={10} min={1} step={1} onValueChange={([v]) => setCommercialScore(v)} />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <Label>Budget Feasibility</Label>
-                          <span className="font-mono text-sm">{budgetScore}/10</span>
-                        </div>
-                        <Slider value={[budgetScore]} max={10} min={1} step={1} onValueChange={([v]) => setBudgetScore(v)} />
-                      </div>
-                   </div>
-
-                   <div className="space-y-2">
-                     <Label>Recommendation</Label>
-                     <Select value={rec} onValueChange={(v: any) => setRec(v)}>
-                       <SelectTrigger>
-                         <SelectValue />
-                       </SelectTrigger>
-                       <SelectContent>
-                         <SelectItem value="Pass">Pass</SelectItem>
-                         <SelectItem value="Consider">Consider</SelectItem>
-                         <SelectItem value="Develop">Develop</SelectItem>
-                       </SelectContent>
-                     </Select>
-                   </div>
-
-                   <div className="space-y-2">
-                     <Label>Summary Notes</Label>
-                     <Textarea 
-                       placeholder="High-level thoughts..." 
-                       value={summary}
-                       onChange={(e) => setSummary(e.target.value)}
-                       className="h-24"
-                     />
-                   </div>
-                 </div>
-                 <DialogFooter>
-                   <Button variant="outline" onClick={() => setIsReviewOpen(false)}>Cancel</Button>
-                   <Button onClick={handleSubmitReview}>Submit Review</Button>
-                 </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+          {/* Share and Submit Score buttons removed per user request */}
         </header>
 
         {/* Content Layout */}
