@@ -70,17 +70,18 @@ export default function FinancingView({ project, currentSubcategory, subcategory
   }
 
   // Dashboard View
-  const finance = project.financing;
+  // Use existing financing data, or initialize a default structure if missing
+  const finance = project.financing || {
+    totalBudget: 0,
+    secured: 0,
+    currency: 'USD',
+    breakdown: [],
+    cashflow: [],
+    approvals: []
+  };
 
-  if (!finance) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 opacity-70">
-        <DollarSign className="h-16 w-16 text-muted-foreground mb-4" />
-        <h2 className="text-2xl font-bold text-foreground">No Financial Data</h2>
-        <p className="text-muted-foreground">This project hasn't been set up with a budget yet.</p>
-      </div>
-    );
-  }
+  // We no longer return the empty state div. 
+  // Instead we render the dashboard with 0 values so the user can see the structure and edit the budget.
 
   const gap = finance.totalBudget - finance.secured;
   const gapPercentage = (finance.secured / finance.totalBudget) * 100;
