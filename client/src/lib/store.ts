@@ -185,6 +185,31 @@ export interface ProjectNote {
   timestamp: string;
 }
 
+// --- Producer Profile Types ---
+
+export interface ContactDetail {
+  id: string;
+  type: string;
+  value: string;
+}
+
+export interface LinkDetail {
+  id: string;
+  label: string;
+  url: string;
+}
+
+export interface ProducerProfile {
+  id: string;
+  projectId: string;
+  name: string;
+  company: string;
+  role: string;
+  contactDetails: ContactDetail[];
+  links: LinkDetail[];
+  notes: string;
+}
+
 // --- Admin / Security Types ---
 
 export type AuditAction = 'LOGIN' | 'LOGOUT' | 'UPLOAD_DOC' | 'DELETE_DOC' | 'STAGE_CHANGE' | 'USER_CREATE' | 'USER_DELETE';
@@ -372,7 +397,7 @@ const MOCK_PROJECTS: Project[] = [
 // Reusing existing categories structure but will filter/apply based on stage in UI
 const MOCK_CATEGORIES: Category[] = [
   { id: 'c1', projectId: 'p1', name: 'Script', slug: 'script', icon: 'FileText' },
-  { id: 'c2', projectId: 'p1', name: 'Producing Partners', slug: 'producing-partners', icon: 'Users' },
+  { id: 'c2', projectId: 'p1', name: 'Producers', slug: 'producers', icon: 'Users' },
   { id: 'c8', projectId: 'p1', name: 'Actors & Directors', slug: 'talent', icon: 'User' }, // New
   { id: 'c3', projectId: 'p1', name: 'Financing', slug: 'financing', icon: 'CircleDollarSign' },
   { id: 'c9', projectId: 'p1', name: 'Legal & Contracts', slug: 'legal', icon: 'Scale' }, // Renamed from Documentation
@@ -510,6 +535,25 @@ const MOCK_PROJECT_NOTES: ProjectNote[] = [
   }
 ];
 
+const MOCK_PRODUCER_PROFILES: ProducerProfile[] = [
+  {
+    id: 'pp1',
+    projectId: 'p1',
+    name: 'Sarah Producer',
+    company: 'Rocket Productions',
+    role: 'Lead Producer',
+    contactDetails: [
+      { id: 'cd1', type: 'Email', value: 'sarah@rocket.com' },
+      { id: 'cd2', type: 'Phone', value: '+1 (555) 123-4567' }
+    ],
+    links: [
+      { id: 'l1', label: 'IMDb', url: 'https://imdb.com' },
+      { id: 'l2', label: 'LinkedIn', url: 'https://linkedin.com' }
+    ],
+    notes: 'Primary point of contact for all creative decisions.'
+  }
+];
+
 // --- Store ---
 
 interface AppState {
@@ -522,6 +566,7 @@ interface AppState {
   annotations: ScriptAnnotation[];
   reviews: ScriptReview[];
   projectNotes: ProjectNote[];
+  producerProfiles: ProducerProfile[];
   currentProjectId: string | null;
   
   // Admin State
@@ -558,6 +603,12 @@ interface AppState {
   getProjectNotes: (projectId: string) => ProjectNote[];
   addProjectNote: (note: Omit<ProjectNote, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
   deleteProjectNote: (noteId: string) => void;
+
+  // Producer Profile Actions
+  getProducerProfiles: (projectId: string) => ProducerProfile[];
+  addProducerProfile: (profile: Omit<ProducerProfile, 'id'>) => void;
+  updateProducerProfile: (id: string, updates: Partial<ProducerProfile>) => void;
+  deleteProducerProfile: (id: string) => void;
   
   deleteDocument: (documentId: string) => void;
 }
@@ -574,6 +625,7 @@ export const useStore = create<AppState>()(
   annotations: MOCK_ANNOTATIONS,
   reviews: MOCK_REVIEWS,
   projectNotes: MOCK_PROJECT_NOTES,
+  producerProfiles: MOCK_PRODUCER_PROFILES,
   currentProjectId: null,
   users: MOCK_USERS,
   auditLogs: MOCK_AUDIT_LOGS,
@@ -629,6 +681,29 @@ export const useStore = create<AppState>()(
 
   deleteProjectNote: (noteId) => set((state) => ({
     projectNotes: state.projectNotes.filter(n => n.id !== noteId)
+  })),
+
+  // Producer Profile Actions
+  getProducerProfiles: (projectId) => {
+    const { producerProfiles } = get();
+    return producerProfiles.filter(p => p.projectId === projectId);
+  },
+
+  addProducerProfile: (profile) => set((state) => ({
+    producerProfiles: [
+      { ...profile, id: `pp${Date.now()}` },
+      ...state.producerProfiles
+    ]
+  })),
+
+  updateProducerProfile: (id, updates) => set((state) => ({
+    producerProfiles: state.producerProfiles.map(p => 
+      p.id === id ? { ...p, ...updates } : p
+    )
+  })),
+
+  deleteProducerProfile: (id) => set((state) => ({
+    producerProfiles: state.producerProfiles.filter(p => p.id !== id)
   })),
 
   setCurrentProject: (id) => set({ currentProjectId: id }),

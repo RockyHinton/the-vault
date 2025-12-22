@@ -11,6 +11,7 @@ import LegalView from "@/components/stages/LegalView";
 import SchedulesView from "@/components/stages/SchedulesView";
 import ScriptView from "@/components/stages/ScriptView";
 import ProjectNotesView from "@/components/stages/ProjectNotesView";
+import ProducersView from "@/components/stages/ProducersView";
 import { UploadDocumentDialog } from "@/components/features/UploadDocumentDialog";
 import { Button } from "@/components/ui/button";
 import { 
@@ -336,6 +337,11 @@ export default function ProjectWorkspace() {
     // SPECIAL CASE: Script Dashboard (New Redesign)
     if (currentCategory?.slug === 'script') {
       return <ScriptView project={project} />;
+    }
+
+    // SPECIAL CASE: Producers (New Redesign)
+    if (currentCategory?.slug === 'producers' || safeParams?.category === 'producers' || safeParams?.category === 'producing-partners') {
+      return <ProducersView project={project} />;
     }
 
     // SPECIAL CASE: Project Notes (New Dedicated Page)
