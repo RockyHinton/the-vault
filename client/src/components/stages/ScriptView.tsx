@@ -17,7 +17,8 @@ import {
   Search,
   BookOpen,
   Plus,
-  Download
+  Download,
+  Trash2
 } from "lucide-react";
 import { format } from "date-fns";
 import { UploadDocumentDialog } from "@/components/features/UploadDocumentDialog";
@@ -25,6 +26,17 @@ import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Link } from "wouter";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface ScriptViewProps {
   project: Project;
@@ -33,6 +45,7 @@ interface ScriptViewProps {
 export default function ScriptView({ project }: ScriptViewProps) {
   const { 
     getProjectDocuments, 
+    deleteDocument,
     user 
   } = useStore();
 
@@ -64,6 +77,11 @@ export default function ScriptView({ project }: ScriptViewProps) {
   const otherDocs = documents.filter(d => 
     !scriptDocs.includes(d) && !castDocs.includes(d) && !devDocs.includes(d)
   );
+
+  const handleDeleteDocument = (docId: string) => {
+    deleteDocument(docId);
+    toast.success("Document deleted");
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -175,9 +193,32 @@ export default function ScriptView({ project }: ScriptViewProps) {
                         </div>
                       </div>
                     </div>
-                    <Link href={`/script/${script.id}`}>
-                      <Button variant="ghost" size="sm">Review Script</Button>
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/script/${script.id}`}>
+                        <Button variant="ghost" size="sm">Review Script</Button>
+                      </Link>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Version?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete this script version? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteDocument(script.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 ))
               ) : (
@@ -229,9 +270,32 @@ export default function ScriptView({ project }: ScriptViewProps) {
                         )}
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                      <Download className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{doc.title}"? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteDocument(doc.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 ))
               ) : (

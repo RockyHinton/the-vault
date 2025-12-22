@@ -549,6 +549,7 @@ interface AppState {
   addAnnotation: (annotation: Omit<ScriptAnnotation, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
   deleteAnnotation: (annotationId: string) => void;
   getProjectReviews: (projectId: string) => ScriptReview[];
+  getScriptReviews: (scriptId: string) => ScriptReview[];
   addReview: (review: Omit<ScriptReview, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
   deleteReview: (reviewId: string) => void;
   deleteProject: (projectId: string) => void;
@@ -557,6 +558,8 @@ interface AppState {
   getProjectNotes: (projectId: string) => ProjectNote[];
   addProjectNote: (note: Omit<ProjectNote, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
   deleteProjectNote: (noteId: string) => void;
+  
+  deleteDocument: (documentId: string) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -640,6 +643,10 @@ export const useStore = create<AppState>()(
       },
       ...state.documents,
     ]
+  })),
+  
+  deleteDocument: (documentId) => set((state) => ({
+    documents: state.documents.filter(d => d.id !== documentId)
   })),
 
   getProjectDocuments: (projectId, categoryId, subcategoryId) => {
@@ -754,6 +761,13 @@ export const useStore = create<AppState>()(
     return reviews.filter(r => r.projectId === projectId);
   },
 
+  getScriptReviews: (scriptId) => {
+    const { documents, reviews } = get();
+    const doc = documents.find(d => d.id === scriptId);
+    if (!doc) return [];
+    return reviews.filter(r => r.projectId === doc.projectId);
+  },
+
   addReview: (review) => set((state) => {
     // Check if user already submitted a review for this project
     const currentUserId = state.user?.id;
@@ -791,6 +805,10 @@ export const useStore = create<AppState>()(
 
   deleteReview: (reviewId) => set((state) => ({
     reviews: state.reviews.filter(r => r.id !== reviewId)
+  })),
+
+  deleteDocument: (documentId) => set((state) => ({
+    documents: state.documents.filter(d => d.id !== documentId)
   }))
 
 }),
