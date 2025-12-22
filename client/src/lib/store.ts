@@ -817,7 +817,7 @@ export const useStore = create<AppState>()(
     visibleSlugs.add('script');
     visibleSlugs.add('financing');
     visibleSlugs.add('producing-partners');
-    visibleSlugs.add('talent');
+    visibleSlugs.add('creatives');
 
     // Make 'legal' visible for Evaluation too, just for demo purposes if needed, 
     // or strictly follow logic. 
@@ -960,7 +960,7 @@ export const useStore = create<AppState>()(
 
 }),
 {
-  name: 'vault-storage',
+  name: 'vault-storage-v2',
   storage: createJSONStorage(() => localStorage),
 }
 )
