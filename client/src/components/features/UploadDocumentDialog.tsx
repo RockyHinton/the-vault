@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,6 +44,23 @@ export function UploadDocumentDialog({
   const [subcategoryId, setSubcategoryId] = useState(defaultSubcategoryId || "");
   const [status, setStatus] = useState("Draft");
   const [notes, setNotes] = useState("");
+  
+  // Update state when defaults change
+  useEffect(() => {
+    if (defaultCategoryId) setCategoryId(defaultCategoryId);
+  }, [defaultCategoryId]);
+
+  useEffect(() => {
+    if (defaultSubcategoryId) setSubcategoryId(defaultSubcategoryId);
+  }, [defaultSubcategoryId]);
+
+  // If dialog opens, reset to defaults if provided
+  useEffect(() => {
+    if (open) {
+      if (defaultCategoryId) setCategoryId(defaultCategoryId);
+      if (defaultSubcategoryId) setSubcategoryId(defaultSubcategoryId);
+    }
+  }, [open, defaultCategoryId, defaultSubcategoryId]);
   
   const { getProjectCategories, addDocument } = useStore();
   const categories = getProjectCategories(projectId);
