@@ -990,10 +990,6 @@ export const useStore = create<AppState>()(
     reviews: state.reviews.filter(r => r.id !== reviewId)
   })),
 
-  deleteDocument: (documentId) => set((state) => ({
-    documents: state.documents.filter(d => d.id !== documentId)
-  }))
-
 }),
 {
   name: 'vault-storage-v2',

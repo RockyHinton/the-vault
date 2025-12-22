@@ -39,6 +39,7 @@ export function UploadDocumentDialog({
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [categoryId, setCategoryId] = useState(defaultCategoryId || "");
+  const [subcategoryId, setSubcategoryId] = useState(defaultSubcategoryId || "");
   const [status, setStatus] = useState("Draft");
   const [notes, setNotes] = useState("");
   
@@ -58,6 +59,7 @@ export function UploadDocumentDialog({
     addDocument({
       projectId,
       categoryId,
+      subcategoryId,
       title: file.name,
       type: file.name.split('.').pop()?.toUpperCase() as any || 'OTHER',
       fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,

@@ -66,7 +66,7 @@ const fileColors: Record<string, string> = {
 };
 
 export default function DocumentLibrary({ projectId, categoryId, subcategoryId }: DocumentLibraryProps) {
-  const getProjectDocuments = useStore(state => state.getProjectDocuments);
+  const { getProjectDocuments, deleteDocument } = useStore();
   const documents = getProjectDocuments(projectId, categoryId, subcategoryId);
 
   const getFileIcon = (type: string) => {
@@ -207,46 +207,23 @@ export default function DocumentLibrary({ projectId, categoryId, subcategoryId }
                     {format(new Date(doc.uploadedAt), 'MMM d, h:mm a')}
                   </TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem className="gap-2">
-                          <Eye className="h-4 w-4" /> View Details
-                        </DropdownMenuItem>
-
-                        {/* Script Analysis Action for PDFs */}
-                        {doc.type === 'PDF' && (
-                          <Link href={`/script/${doc.id}`}>
-                            <DropdownMenuItem className="gap-2 font-medium text-primary focus:text-primary">
-                              <FileText className="h-4 w-4" /> Script Analysis
-                            </DropdownMenuItem>
-                          </Link>
-                        )}
-
-                        <DropdownMenuItem className="gap-2">
-                          <Download className="h-4 w-4" /> Download
-                        </DropdownMenuItem>
-                        
-                        <ShareDialog documentTitle={doc.title}>
-                           <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="gap-2">
-                             <Share2 className="h-4 w-4" /> Share Link
-                           </DropdownMenuItem>
-                        </ShareDialog>
-
-                        <DropdownMenuItem className="gap-2">
-                          <Clock className="h-4 w-4" /> Version History
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive">
-                          <Trash2 className="h-4 w-4" /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => window.open(doc.filePath, '_blank')}>
+                         <Eye className="h-4 w-4" />
+                       </Button>
+                       <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => {
+                         // Mock download
+                         const link = document.createElement('a');
+                         link.href = doc.filePath;
+                         link.download = doc.title;
+                         link.click();
+                       }}>
+                         <Download className="h-4 w-4" />
+                       </Button>
+                       <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => deleteDocument(doc.id)}>
+                         <Trash2 className="h-4 w-4" />
+                       </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
