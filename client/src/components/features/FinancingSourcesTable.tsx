@@ -101,6 +101,8 @@ export function FinancingSourcesTable({ project }: FinancingSourcesTableProps) {
   
   const currentSymbol = project.financing?.currency ? currencySymbols[project.financing.currency] || '$' : '$';
 
+  const total = rows.reduce((sum, r) => sum + r.amount, 0);
+
   return (
     <div className="border rounded-lg overflow-hidden bg-card">
       <Table>
