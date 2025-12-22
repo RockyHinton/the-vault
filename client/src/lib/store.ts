@@ -960,7 +960,7 @@ export const useStore = create<AppState>()(
 
 }),
 {
-  name: 'vault-storage',
+  name: 'vault-storage-v2', // Changed version to clear old state
   storage: createJSONStorage(() => localStorage),
 }
 )
