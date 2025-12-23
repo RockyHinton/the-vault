@@ -76,6 +76,9 @@ export interface Project {
     approvals: { item: string; status: 'Approved' | 'Pending' | 'Rejected'; date?: string }[];
   };
 
+  // Documentation Checklist (New)
+  documentationChecklist?: Record<string, boolean>;
+
   // Legal Data (New)
   legal?: {
     chainOfTitle: { item: string; status: 'Clean' | 'Issues' | 'Pending'; notes?: string }[];
@@ -434,7 +437,7 @@ const MOCK_CATEGORIES: Category[] = [
   { id: 'c2', projectId: 'p1', name: 'Producers', slug: 'producers', icon: 'Users' },
   { id: 'c8', projectId: 'p1', name: 'Creatives', slug: 'creatives', icon: 'User' }, // Renamed from Actors & Directors
   { id: 'c3', projectId: 'p1', name: 'Financing', slug: 'financing', icon: 'CircleDollarSign' },
-  { id: 'c9', projectId: 'p1', name: 'Legal & Contracts', slug: 'legal', icon: 'Scale' }, // Renamed from Documentation
+  { id: 'c9', projectId: 'p1', name: 'Documentation', slug: 'legal', icon: 'Scale' }, // Renamed from Legal & Contracts
   { id: 'c6', projectId: 'p1', name: 'Distribution', slug: 'distribution', icon: 'Globe' },
   { id: 'c10', projectId: 'p1', name: 'Schedules', slug: 'schedules', icon: 'Calendar' }, // New (Prod+)
 ];
@@ -651,6 +654,7 @@ interface AppState {
   getProjectTasks: (projectId: string) => Task[];
 
   // Evaluation Actions
+  updateDocumentationChecklist: (projectId: string, checklist: Record<string, boolean>) => void;
   updateEvaluation: (projectId: string, data: Partial<EvaluationData>) => void;
   updateFinancing: (projectId: string, data: Partial<Project['financing']>) => void;
   getScriptAnnotations: (scriptId: string) => ScriptAnnotation[];
@@ -905,6 +909,15 @@ export const useStore = create<AppState>()(
     const { tasks } = get();
     return tasks.filter(t => t.projectId === projectId);
   },
+
+  updateDocumentationChecklist: (projectId, checklist) => set((state) => ({
+    projects: state.projects.map(p => 
+      p.id === projectId ? { 
+        ...p, 
+        documentationChecklist: { ...p.documentationChecklist, ...checklist } 
+      } : p
+    )
+  })),
 
   // Evaluation Actions
   updateEvaluation: (projectId, data) => set((state) => ({
