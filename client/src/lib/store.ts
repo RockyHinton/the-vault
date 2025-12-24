@@ -454,14 +454,15 @@ const MOCK_SUBCATEGORIES: Subcategory[] = [
   { id: 'sc4', categoryId: 'c3', name: 'Budget', slug: 'budget' },
   { id: 'sc5', categoryId: 'c3', name: 'Cashflow', slug: 'cashflow' },
   { id: 'sc6', categoryId: 'c3', name: 'Finance Plan', slug: 'finance-plan' },
+  { id: 'sc7', categoryId: 'c3', name: 'Underlying Rights', slug: 'underlying-rights' },
   // Documentation (Development)
   { id: 'sc20', categoryId: 'c9', name: 'Chain of Title', slug: 'chain-of-title' },
+  { id: 'sc21', categoryId: 'c9', name: 'Writer Agreements', slug: 'writer-agreements' },
   { id: 'sc9', categoryId: 'c9', name: 'Investment Agreements', slug: 'investment-agreements' },
   { id: 'sc10', categoryId: 'c9', name: 'Co-Production', slug: 'co-production' },
   { id: 'sc11', categoryId: 'c9', name: 'Producers Agreements', slug: 'producers-agreements' },
   { id: 'sc12', categoryId: 'c9', name: 'Director Agreements', slug: 'director-agreements' },
   { id: 'sc13', categoryId: 'c9', name: 'Cast Agreements', slug: 'cast-agreements' },
-  { id: 'sc21', categoryId: 'c9', name: 'Writer Agreements', slug: 'writer-agreements' },
   { id: 'sc14', categoryId: 'c9', name: 'Banking Docs', slug: 'banking-docs' },
   { id: 'sc15', categoryId: 'c9', name: 'Funding / Tax Credit', slug: 'funding-tax-credit' },
   { id: 'sc16', categoryId: 'c9', name: 'Sales Agency', slug: 'sales-agency' },
@@ -1020,7 +1021,7 @@ export const useStore = create<AppState>()(
 
 }),
 {
-  name: 'vault-storage-v4',
+  name: 'vault-storage-v6',
   storage: createJSONStorage(() => localStorage),
 }
 )
