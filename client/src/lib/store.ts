@@ -465,6 +465,7 @@ const MOCK_SUBCATEGORIES: Subcategory[] = [
   { id: 'sc16', categoryId: 'c9', name: 'Sales Agency', slug: 'sales-agency' },
   { id: 'sc17', categoryId: 'c9', name: 'CAMA', slug: 'cama' },
   { id: 'sc20', categoryId: 'c9', name: 'Chain of Title', slug: 'chain-of-title' },
+  { id: 'sc21', categoryId: 'c9', name: 'Writer Agreements', slug: 'writer-agreements' },
   // Schedules (Production)
   { id: 'sc18', categoryId: 'c10', name: 'Shooting Schedule', slug: 'shooting-schedule' },
   { id: 'sc19', categoryId: 'c10', name: 'Daily Call Sheets', slug: 'call-sheets' },
@@ -1019,7 +1020,7 @@ export const useStore = create<AppState>()(
 
 }),
 {
-  name: 'vault-storage-v2',
+  name: 'vault-storage-v3',
   storage: createJSONStorage(() => localStorage),
 }
 )
