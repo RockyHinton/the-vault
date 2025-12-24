@@ -355,6 +355,39 @@ export default function ProjectWorkspace() {
       return <ProjectNotesView project={project} />;
     }
 
+    // SPECIAL CASE: Underlying Rights (New dedicated single-view page)
+    if (currentCategory?.slug === 'underlying-rights' || safeParams?.category === 'underlying-rights') {
+      return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="flex items-end justify-between border-b border-border pb-6">
+            <div>
+               <h2 className="text-3xl font-display font-bold text-foreground tracking-tight">
+                 Underlying Rights
+               </h2>
+               <p className="text-muted-foreground mt-1">
+                 Manage underlying rights, options, and chain of title documents.
+               </p>
+            </div>
+            <div className="flex gap-2">
+              <UploadDocumentDialog 
+                projectId={project.id} 
+                defaultCategoryId="c11" // Underlying Rights Category ID
+              >
+                <Button size="sm" className="shadow-lg shadow-primary/20">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Upload Document
+                </Button>
+              </UploadDocumentDialog>
+            </div>
+          </div>
+          <DocumentLibrary 
+             projectId={project.id} 
+             categoryId="c11" // Underlying Rights Category ID
+           />
+        </div>
+      );
+    }
+
     // If deep-linked to a folder, show the folder (Document Library)
     if (currentCategory || currentSubcategory) {
       return (

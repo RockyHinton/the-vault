@@ -440,6 +440,7 @@ const MOCK_CATEGORIES: Category[] = [
   { id: 'c2', projectId: 'p1', name: 'Producers', slug: 'producers', icon: 'Users' },
   { id: 'c8', projectId: 'p1', name: 'Creatives', slug: 'creatives', icon: 'User' }, // Renamed from Actors & Directors
   { id: 'c3', projectId: 'p1', name: 'Financing', slug: 'financing', icon: 'CircleDollarSign' },
+  { id: 'c11', projectId: 'p1', name: 'Underlying Rights', slug: 'underlying-rights', icon: 'FileText' }, // New Category
   { id: 'c9', projectId: 'p1', name: 'Documentation', slug: 'legal', icon: 'Scale' }, // Renamed from Legal & Contracts
   { id: 'c6', projectId: 'p1', name: 'Distribution', slug: 'distribution', icon: 'Globe' },
   { id: 'c10', projectId: 'p1', name: 'Schedules', slug: 'schedules', icon: 'Calendar' }, // New (Prod+)
@@ -454,7 +455,6 @@ const MOCK_SUBCATEGORIES: Subcategory[] = [
   { id: 'sc4', categoryId: 'c3', name: 'Budget', slug: 'budget' },
   { id: 'sc5', categoryId: 'c3', name: 'Cashflow', slug: 'cashflow' },
   { id: 'sc6', categoryId: 'c3', name: 'Finance Plan', slug: 'finance-plan' },
-  { id: 'sc7', categoryId: 'c3', name: 'Underlying Rights', slug: 'underlying-rights' },
   // Documentation (Development)
   { id: 'sc20', categoryId: 'c9', name: 'Chain of Title', slug: 'chain-of-title' },
   { id: 'sc21', categoryId: 'c9', name: 'Writer Agreements', slug: 'writer-agreements' },
@@ -848,7 +848,12 @@ export const useStore = create<AppState>()(
     visibleSlugs.add('producers');
     visibleSlugs.add('creatives');
 
-    // Make 'legal' visible for Evaluation too, just for demo purposes if needed, 
+    // Only show 'Underlying Rights' in Evaluation stage
+    if (stage === 'Evaluation') {
+      visibleSlugs.add('underlying-rights');
+    }
+
+    // Make 'legal' visible for Evaluation too, just for demo purposes if needed,  
     // or strictly follow logic. 
     // Wait, user says "cannot see this in ANY stages".
     // Let's make sure it's added.
@@ -871,6 +876,10 @@ export const useStore = create<AppState>()(
     // Special handling for Script category - hide subcategories to treat as single page
     const category = categories.find(c => c.id === categoryId);
     if (category?.slug === 'script') {
+      return [];
+    }
+    // Special handling for Underlying Rights category - hide subcategories to treat as single page
+    if (category?.slug === 'underlying-rights') {
       return [];
     }
     return subcategories.filter(sc => sc.categoryId === categoryId);
@@ -1021,7 +1030,7 @@ export const useStore = create<AppState>()(
 
 }),
 {
-  name: 'vault-storage-v6',
+  name: 'vault-storage-v8',
   storage: createJSONStorage(() => localStorage),
 }
 )
