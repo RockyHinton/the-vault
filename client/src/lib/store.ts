@@ -31,11 +31,14 @@ export interface EvaluationData {
   scores?: { creative: number; financial: number }; // 1-10
 }
 
+export type TaskCategory = 'Finance' | 'Talent' | 'Legal' | 'Production' | 'General';
+
 export interface Task {
   id: string;
   projectId: string;
   title: string;
   description?: string; // Added for detailed notes
+  category: TaskCategory; // Added for filtering
   assignedTo?: string; // User ID or Name
   authorId: string; // Added for ownership
   authorName: string; // Added for display
@@ -269,9 +272,9 @@ const MOCK_AUDIT_LOGS: AuditLog[] = [
 ];
 
 const MOCK_TASKS: Task[] = [
-  { id: 't1', projectId: 'p1', title: 'Finalize Cast Contracts', description: 'Need to get signatures from lead actors agents.', status: 'In Progress', priority: 'High', assignedTo: 'Sarah Producer', dueDate: '2023-12-25', authorId: 'u1', authorName: 'Sarah Producer', createdAt: '2023-12-01T10:00:00Z' },
-  { id: 't2', projectId: 'p1', title: 'Location Scout - Tokyo', description: 'Coordinate with local fixers for Shibuya crossing permits.', status: 'Open', priority: 'Medium', assignedTo: 'Mike Finance', authorId: 'u2', authorName: 'Mike Finance', createdAt: '2023-12-05T14:30:00Z' },
-  { id: 't3', projectId: 'p2', title: 'Script Polish', description: 'Implement notes from the studio coverage.', status: 'Open', priority: 'High', assignedTo: 'Sarah Producer', authorId: 'u1', authorName: 'Sarah Producer', createdAt: '2023-11-25T09:15:00Z' },
+  { id: 't1', projectId: 'p1', title: 'Finalize Cast Contracts', category: 'Legal', description: 'Need to get signatures from lead actors agents.', status: 'In Progress', priority: 'High', assignedTo: 'Sarah Producer', dueDate: '2023-12-25', authorId: 'u1', authorName: 'Sarah Producer', createdAt: '2023-12-01T10:00:00Z' },
+  { id: 't2', projectId: 'p1', title: 'Location Scout - Tokyo', category: 'Production', description: 'Coordinate with local fixers for Shibuya crossing permits.', status: 'Open', priority: 'Medium', assignedTo: 'Mike Finance', authorId: 'u2', authorName: 'Mike Finance', createdAt: '2023-12-05T14:30:00Z' },
+  { id: 't3', projectId: 'p2', title: 'Script Polish', category: 'General', description: 'Implement notes from the studio coverage.', status: 'Open', priority: 'High', assignedTo: 'Sarah Producer', authorId: 'u1', authorName: 'Sarah Producer', createdAt: '2023-11-25T09:15:00Z' },
 ];
 
 const MOCK_PROJECTS: Project[] = [
