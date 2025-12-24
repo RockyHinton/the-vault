@@ -129,19 +129,6 @@ const ProjectSidebar = ({
       )}
 
       <div className="space-y-1 px-2">
-        {/* New Item Button */}
-        {(!project || project.stage === 'Development' || project.stage === 'Production') && (
-          <div className="px-1 pb-3 pt-1">
-             {project && (
-               <UploadDocumentDialog projectId={project.id}>
-                 <Button className="w-full justify-start gap-2 bg-background border-dashed border-2 hover:border-solid hover:bg-secondary/20 text-muted-foreground hover:text-foreground transition-all duration-200" variant="outline" size="sm">
-                   <Plus className="h-4 w-4" />
-                   New Item
-                 </Button>
-               </UploadDocumentDialog>
-             )}
-          </div>
-        )}
         
         {categories.map(category => {
           const Icon = category.icon && iconMap[category.icon] ? iconMap[category.icon] : Folder;
