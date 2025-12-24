@@ -464,6 +464,7 @@ const MOCK_SUBCATEGORIES: Subcategory[] = [
   { id: 'sc15', categoryId: 'c9', name: 'Funding / Tax Credit', slug: 'funding-tax-credit' },
   { id: 'sc16', categoryId: 'c9', name: 'Sales Agency', slug: 'sales-agency' },
   { id: 'sc17', categoryId: 'c9', name: 'CAMA', slug: 'cama' },
+  { id: 'sc20', categoryId: 'c9', name: 'Chain of Title', slug: 'chain-of-title' },
   // Schedules (Production)
   { id: 'sc18', categoryId: 'c10', name: 'Shooting Schedule', slug: 'shooting-schedule' },
   { id: 'sc19', categoryId: 'c10', name: 'Daily Call Sheets', slug: 'call-sheets' },
