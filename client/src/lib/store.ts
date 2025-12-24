@@ -455,17 +455,17 @@ const MOCK_SUBCATEGORIES: Subcategory[] = [
   { id: 'sc5', categoryId: 'c3', name: 'Cashflow', slug: 'cashflow' },
   { id: 'sc6', categoryId: 'c3', name: 'Finance Plan', slug: 'finance-plan' },
   // Documentation (Development)
+  { id: 'sc20', categoryId: 'c9', name: 'Chain of Title', slug: 'chain-of-title' },
   { id: 'sc9', categoryId: 'c9', name: 'Investment Agreements', slug: 'investment-agreements' },
   { id: 'sc10', categoryId: 'c9', name: 'Co-Production', slug: 'co-production' },
   { id: 'sc11', categoryId: 'c9', name: 'Producers Agreements', slug: 'producers-agreements' },
   { id: 'sc12', categoryId: 'c9', name: 'Director Agreements', slug: 'director-agreements' },
   { id: 'sc13', categoryId: 'c9', name: 'Cast Agreements', slug: 'cast-agreements' },
+  { id: 'sc21', categoryId: 'c9', name: 'Writer Agreements', slug: 'writer-agreements' },
   { id: 'sc14', categoryId: 'c9', name: 'Banking Docs', slug: 'banking-docs' },
   { id: 'sc15', categoryId: 'c9', name: 'Funding / Tax Credit', slug: 'funding-tax-credit' },
   { id: 'sc16', categoryId: 'c9', name: 'Sales Agency', slug: 'sales-agency' },
   { id: 'sc17', categoryId: 'c9', name: 'CAMA', slug: 'cama' },
-  { id: 'sc20', categoryId: 'c9', name: 'Chain of Title', slug: 'chain-of-title' },
-  { id: 'sc21', categoryId: 'c9', name: 'Writer Agreements', slug: 'writer-agreements' },
   // Schedules (Production)
   { id: 'sc18', categoryId: 'c10', name: 'Shooting Schedule', slug: 'shooting-schedule' },
   { id: 'sc19', categoryId: 'c10', name: 'Daily Call Sheets', slug: 'call-sheets' },
@@ -1020,7 +1020,7 @@ export const useStore = create<AppState>()(
 
 }),
 {
-  name: 'vault-storage-v3',
+  name: 'vault-storage-v4',
   storage: createJSONStorage(() => localStorage),
 }
 )
