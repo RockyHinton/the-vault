@@ -56,7 +56,7 @@ export default function ScriptView({ project }: ScriptViewProps) {
   // This ensures newly uploaded files with 'c1' category appear here, even if title doesn't say "script"
   const scriptDocs = documents.filter(d => 
     (d.categoryId === 'c1' || d.title.toLowerCase().includes('script')) && 
-    d.type === 'PDF'
+    ['PDF', 'DOCX', 'DOC', 'FDX'].includes(d.type)
   ).sort((a, b) => b.version - a.version);
 
   const activeScript = scriptDocs[0];
