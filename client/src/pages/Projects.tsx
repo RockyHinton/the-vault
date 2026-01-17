@@ -67,14 +67,29 @@ const stageIcons: Record<ProjectStage, any> = {
 export default function ProjectsPage() {
   const { projects, setCurrentProject, setProjectStage, deleteProject } = useStore();
   const [activeTab, setActiveTab] = useState<ProjectStage | 'All'>('All');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
   
   // Delete confirmation state
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
 
-  const filteredProjects = activeTab === 'All' 
-    ? projects.filter(p => p.stage !== 'Archived') // Don't show archived in 'All' view usually
-    : projects.filter(p => p.stage === activeTab);
+  const filteredProjects = projects.filter(p => {
+    // 1. Filter by Stage
+    const matchesStage = activeTab === 'All' 
+      ? p.stage !== 'Archived' 
+      : p.stage === activeTab;
+
+    // 2. Filter by Search Query
+    if (!searchQuery) return matchesStage;
+    
+    const query = searchQuery.toLowerCase();
+    const matchesSearch = 
+      p.title.toLowerCase().includes(query) || 
+      p.genre?.toLowerCase().includes(query) ||
+      p.logline?.toLowerCase().includes(query);
+
+    return matchesStage && matchesSearch;
+  });
 
   const handleAdvanceStage = (projectId: string, currentStage: ProjectStage) => {
     let nextStage: ProjectStage | null = null;
@@ -141,6 +156,8 @@ export default function ProjectsPage() {
                  <Input 
                    placeholder="Search..." 
                    className="pl-9 bg-secondary/20 border-transparent h-9"
+                   value={searchQuery}
+                   onChange={(e) => setSearchQuery(e.target.value)}
                  />
                </div>
             </div>
