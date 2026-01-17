@@ -117,7 +117,7 @@ export default function ProjectsPage() {
 
   return (
     <Shell>
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-12 pt-8">
         
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -163,7 +163,7 @@ export default function ProjectsPage() {
             </div>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-12">
              {/* Projects Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProjects.map((project, index) => {
