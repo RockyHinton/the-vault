@@ -142,27 +142,6 @@ export function Shell({ children, sidebar }: ShellProps) {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        {/* Top Header */}
-        <header className="h-16 border-b border-border bg-background/50 backdrop-blur-sm flex items-center justify-between px-6 shrink-0 z-20">
-          <div className="flex-1 flex items-center">
-             {/* Breadcrumbs Placeholder - passed via children usually or handled in page */}
-             <div className="max-w-md w-full relative hidden md:block">
-               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-               <input 
-                 type="text" 
-                 placeholder="Search projects, documents..." 
-                 className="w-full bg-secondary/50 border-none rounded-md py-2 pl-9 pr-4 text-sm focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground"
-               />
-             </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-              <span className="absolute top-2 right-2 h-2 w-2 bg-primary rounded-full ring-2 ring-background"></span>
-            </Button>
-          </div>
-        </header>
-
         {/* Scrollable Page Content */}
         <div className="flex-1 overflow-y-auto p-6 scroll-smooth">
           {children}
