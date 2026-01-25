@@ -114,9 +114,13 @@ export interface Project {
 
   // Archive Details (New)
   archiveDetails?: {
-    reason: 'Completed' | 'Shelved' | 'Pass';
+    reason: 'Creative pass' | 'Commercial viability' | 'Financing not secured' | 'Rights / legal issues' | 'Packaging fell through' | 'Paused (strategic / timing)' | 'Produced / completed' | 'Withdrawn';
+    revisit: 'Yes' | 'Maybe' | 'No';
     starred: boolean;
-    tags?: string[];
+    notes?: string;
+    archivedAt?: string;
+    archivedFromStage?: ProjectStage;
+    archivedBy?: string;
   };
 }
 
@@ -660,7 +664,12 @@ interface AppState {
   getCategorySubcategories: (categoryId: string) => Subcategory[];
   
   setProjectStage: (projectId: string, stage: ProjectStage) => void;
-  archiveProject: (projectId: string, details: { reason: 'Completed' | 'Shelved' | 'Pass'; starred: boolean; tags?: string[] }) => void;
+  archiveProject: (projectId: string, details: { 
+    reason: 'Creative pass' | 'Commercial viability' | 'Financing not secured' | 'Rights / legal issues' | 'Packaging fell through' | 'Paused (strategic / timing)' | 'Produced / completed' | 'Withdrawn'; 
+    revisit: 'Yes' | 'Maybe' | 'No'; 
+    starred: boolean; 
+    notes?: string 
+  }) => void;
   updateClosingChecklist: (projectId: string, checklist: Partial<Project['closingChecklist']>) => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'authorId' | 'authorName'>) => void;
   deleteTask: (taskId: string) => void;
@@ -905,7 +914,12 @@ export const useStore = create<AppState>()(
         ...p, 
         stage: 'Archived', 
         updatedAt: new Date().toISOString(),
-        archiveDetails: details
+        archiveDetails: {
+          ...details,
+          archivedAt: new Date().toISOString(),
+          archivedFromStage: p.stage,
+          archivedBy: state.user?.name || 'Unknown'
+        }
       } : p
     )
   })),

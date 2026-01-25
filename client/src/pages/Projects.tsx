@@ -61,6 +61,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+
 const stageColors: Record<ProjectStage, string> = {
   Evaluation: "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20",
   Development: "bg-purple-500/10 text-purple-500 hover:bg-purple-500/20",
@@ -84,7 +86,8 @@ export default function ProjectsPage() {
   const [projectToArchive, setProjectToArchive] = useState<{id: string, title: string} | null>(null);
 
   // Archive Filter State
-  const [archiveFilterReason, setArchiveFilterReason] = useState<'All' | 'Completed' | 'Shelved' | 'Pass'>('All');
+  const [archiveFilterReason, setArchiveFilterReason] = useState<string>('All');
+  const [archiveFilterRevisit, setArchiveFilterRevisit] = useState<string>('All');
   const [archiveFilterStarred, setArchiveFilterStarred] = useState(false);
   
   // Delete confirmation state
@@ -112,10 +115,13 @@ export default function ProjectsPage() {
        // Filter by Reason
        const matchesReason = archiveFilterReason === 'All' || details?.reason === archiveFilterReason;
        
+       // Filter by Revisit Status
+       const matchesRevisit = archiveFilterRevisit === 'All' || details?.revisit === archiveFilterRevisit;
+
        // Filter by Starred
        const matchesStarred = !archiveFilterStarred || details?.starred === true;
 
-       return matchesStage && matchesSearch && matchesReason && matchesStarred;
+       return matchesStage && matchesSearch && matchesReason && matchesStarred && matchesRevisit;
     }
 
     return matchesStage && matchesSearch;
@@ -211,12 +217,24 @@ export default function ProjectsPage() {
                      <SelectValue placeholder="Reason" />
                    </SelectTrigger>
                    <SelectContent>
-                     <SelectItem value="All">All Reasons</SelectItem>
-                     <SelectItem value="Completed">Completed</SelectItem>
-                     <SelectItem value="Shelved">Shelved</SelectItem>
-                     <SelectItem value="Pass">Pass</SelectItem>
+                     <SelectItem value="All">All reasons</SelectItem>
+                     <SelectItem value="Creative pass">Creative pass</SelectItem>
+                     <SelectItem value="Commercial viability">Commercial viability</SelectItem>
+                     <SelectItem value="Financing not secured">Financing not secured</SelectItem>
+                     <SelectItem value="Rights / legal issues">Rights / legal issues</SelectItem>
+                     <SelectItem value="Packaging fell through">Packaging fell through</SelectItem>
+                     <SelectItem value="Paused (strategic / timing)">Paused (strategic / timing)</SelectItem>
+                     <SelectItem value="Produced / completed">Produced / completed</SelectItem>
+                     <SelectItem value="Withdrawn">Withdrawn</SelectItem>
                    </SelectContent>
                  </Select>
+
+                 <ToggleGroup type="single" value={archiveFilterRevisit} onValueChange={(val) => val && setArchiveFilterRevisit(val)} className="h-8">
+                   <ToggleGroupItem value="All" className="h-8 px-2 text-xs">All</ToggleGroupItem>
+                   <ToggleGroupItem value="Yes" className="h-8 px-2 text-xs">Yes</ToggleGroupItem>
+                   <ToggleGroupItem value="Maybe" className="h-8 px-2 text-xs">Maybe</ToggleGroupItem>
+                   <ToggleGroupItem value="No" className="h-8 px-2 text-xs">No</ToggleGroupItem>
+                 </ToggleGroup>
 
                  <div className="flex items-center space-x-2 border border-input rounded-md px-3 py-1.5 h-8 bg-background">
                    <Checkbox 
@@ -226,18 +244,19 @@ export default function ProjectsPage() {
                    />
                    <Label htmlFor="filter-starred" className="text-xs cursor-pointer flex items-center gap-1.5 font-normal">
                      <Star className={`h-3 w-3 ${archiveFilterStarred ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`} />
-                     Starred Only
+                     Starred only
                    </Label>
                  </div>
 
                  {/* Reset Filter Button if active */}
-                 {(archiveFilterReason !== 'All' || archiveFilterStarred) && (
+                 {(archiveFilterReason !== 'All' || archiveFilterStarred || archiveFilterRevisit !== 'All') && (
                    <Button 
                      variant="ghost" 
                      size="sm" 
                      className="h-8 text-xs text-muted-foreground hover:text-foreground ml-auto"
                      onClick={() => {
                        setArchiveFilterReason('All');
+                       setArchiveFilterRevisit('All');
                        setArchiveFilterStarred(false);
                      }}
                    >
@@ -251,6 +270,20 @@ export default function ProjectsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProjects.map((project, index) => {
                 const StageIcon = stageIcons[project.stage];
+                
+                // Determine card border/accent for Archived projects
+                let cardStyle = "group h-full flex flex-col hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 cursor-pointer overflow-hidden border-secondary";
+                
+                if (project.stage === 'Archived' && project.archiveDetails) {
+                   if (project.archiveDetails.revisit === 'Yes') {
+                     cardStyle += " border-l-4 border-l-green-500/50";
+                   } else if (project.archiveDetails.revisit === 'Maybe') {
+                     cardStyle += " border-l-4 border-l-blue-500/30"; // Neutral/Soft accent
+                   } else {
+                     cardStyle += " border-l-4 border-l-muted"; // Muted for No
+                   }
+                }
+
                 return (
                   <motion.div
                     key={project.id}
@@ -259,7 +292,7 @@ export default function ProjectsPage() {
                     transition={{ duration: 0.3, delay: index * 0.1 }}
                   >
                     <Link href={`/project/${project.id}`} onClick={() => setCurrentProject(project.id)}>
-                      <Card className="group h-full flex flex-col hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 cursor-pointer overflow-hidden border-secondary">
+                      <Card className={cardStyle}>
                         <div className="h-1.5 w-full bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         <CardHeader className="pb-3">
                           <div className="flex justify-between items-start gap-2">
@@ -350,20 +383,21 @@ export default function ProjectsPage() {
                                <>
                                  <div>
                                    <span className="block text-foreground/50 text-[10px] uppercase">Reason</span>
-                                   <Badge variant="outline" className="h-5 text-[10px] px-1 font-normal bg-secondary/30">
+                                   <span className="text-foreground font-medium truncate max-w-[120px] block" title={project.archiveDetails.reason}>
                                      {project.archiveDetails.reason}
+                                   </span>
+                                 </div>
+                                 
+                                 <div>
+                                   <span className="block text-foreground/50 text-[10px] uppercase">Revisit?</span>
+                                   <Badge variant="outline" className={`h-5 text-[10px] px-1 font-normal bg-secondary/30 ${
+                                     project.archiveDetails.revisit === 'Yes' ? 'text-green-500 border-green-500/20' : 
+                                     project.archiveDetails.revisit === 'Maybe' ? 'text-blue-500 border-blue-500/20' : 
+                                     'text-muted-foreground'
+                                   }`}>
+                                     {project.archiveDetails.revisit}
                                    </Badge>
                                  </div>
-                                 {project.archiveDetails.tags && project.archiveDetails.tags.length > 0 && (
-                                   <div>
-                                     <span className="block text-foreground/50 text-[10px] uppercase">Tags</span>
-                                     <div className="flex gap-1 overflow-hidden max-w-[120px]">
-                                       <span className="truncate text-foreground" title={project.archiveDetails.tags.join(', ')}>
-                                         {project.archiveDetails.tags[0]} {project.archiveDetails.tags.length > 1 && `+${project.archiveDetails.tags.length - 1}`}
-                                       </span>
-                                     </div>
-                                   </div>
-                                 )}
                                </>
                              )}
                           </div>

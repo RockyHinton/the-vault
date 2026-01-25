@@ -1,0 +1,113 @@
+You are working inside my existing Replit project “The Vault”. ONLY change:
+1) the Archive Project popup/modal UI + its submit handling
+2) the Archived Projects page filtering bar at the top + the filtering logic + small visual indicators on archived project cards/rows
+
+Do NOT change any other UI, layout, navigation, styling system, routes, or components outside these two areas. Keep existing design language and components (buttons, inputs, modal, cards) exactly as-is where possible.
+
+Goal
+Replace the current archive options with a condensed archive system:
+- reason (dropdown, required)
+- likelyToRevisit (required, 3-way choice)
+- starred (optional toggle, default false)
+- note (optional short text)
+
+Archive popup/modal changes
+When the user clicks “Archive” on a project and the popup opens:
+1) Replace existing reason options with a required dropdown named “Reason for archiving”.
+   Allowed values (exact labels):
+   - Creative pass
+   - Commercial viability
+   - Financing not secured
+   - Rights / legal issues
+   - Packaging fell through
+   - Paused (strategic / timing)
+   - Produced / completed
+   - Withdrawn
+
+2) Add a required “Likely to revisit?” control as segmented buttons or radio group with values:
+   - Yes
+   - Maybe
+   - No
+
+3) Keep an option in the popup to “Star this project” (toggle/checkbox). This is separate from the archive fields and should persist as project.starred (or archivedStarred if your model already separates it). Default unchecked.
+
+4) Add an optional “Notes” input (single-line or small textarea). Placeholder: “Add context (optional)”.
+
+5) Validation:
+   - reason is required
+   - likelyToRevisit is required
+   - notes optional
+   - starred optional
+If required fields are missing, show the existing form error style (do not invent a new style).
+
+6) On submit, save archive metadata to the project:
+   - project.isArchived = true (or whatever existing archived flag is)
+   - project.archivedReason = selected reason string
+   - project.archivedRevisit = “Yes” | “Maybe” | “No”
+   - project.starred = boolean (based on toggle)
+   - project.archivedNote = string (optional)
+Also save (if not already captured in your data model, but do not add UI for them):
+   - project.archivedAt = ISO timestamp
+   - project.archivedFromStage = project.stage at time of archiving (Evaluation/Development/Production)
+   - project.archivedBy = current user id/name if available in your auth context
+
+Keep existing API patterns:
+- If you already have an archive endpoint, extend it to accept these fields.
+- If you currently patch/update the project, include these fields in the update.
+Do not refactor unrelated API code.
+
+Archived page filtering bar changes (top of Archived Projects page)
+At the very top of the archived projects view, create a neat single-row filtering bar with:
+1) Reason dropdown:
+   - “All reasons” + the 8 reasons above
+2) Revisit status segmented control:
+   - All | Yes | Maybe | No
+3) Star filter:
+   - All | Starred only
+(If you have room and it already exists: keep existing search by project name; otherwise add a small search input “Search projects” that filters by title. Only do this if a search already exists on that page; do not add if it would change layout significantly.)
+
+Filtering logic
+When filters change, the archived projects list should update immediately (client-side filtering is fine unless you already do server-side filtering).
+Filter rules:
+- Always show only archived projects on this page (existing behavior)
+- If reason is not “All reasons”, only show projects where archivedReason matches exactly
+- If revisit filter is not “All”, only show archivedRevisit matches
+- If star filter is “Starred only”, only show starred == true
+- If search exists, filter by project title/name containing the search term (case-insensitive)
+
+Color coding on archived project cards/rows
+Without changing the overall card/row layout, add a subtle indicator based on archivedRevisit:
+- Yes: show a light green accent (e.g., left border, small dot/badge, or pill) in the existing style system
+- Maybe: neutral/soft accent (e.g., light grey/blue depending on your current palette)
+- No: clear/neutral (no accent) OR a muted grey indicator
+Do NOT introduce heavy backgrounds. Keep it minimal and consistent with existing UI.
+
+Also add small text/badge on each archived project displaying:
+- archivedReason
+- archivedRevisit
+And if starred, show the existing star icon/state (do not introduce a new icon style).
+
+Data model / persistence
+Implement the minimal changes needed so that these new fields persist and are readable on the archived list:
+- archivedReason (string)
+- archivedRevisit (string enum: Yes/Maybe/No)
+- archivedNote (string optional)
+- starred (boolean)
+- archivedAt (timestamp) if available
+- archivedFromStage (string) if available
+If you use a database schema, add columns/fields safely with defaults and migrations if your stack requires it.
+If you use JSON storage, just extend the object.
+
+Acceptance criteria (must pass)
+- Archiving a project requires selecting reason + revisit status.
+- Star toggle in archive popup sets starred on the project.
+- Archived page shows only archived projects.
+- Filter bar filters correctly by reason, revisit status, and starred.
+- Archived projects are subtly color-coded based on revisit status (Yes green accent, Maybe neutral accent, No neutral/muted).
+- No other pages or UI flows are changed.
+
+After implementing, briefly list the files you changed and how to manually test:
+- archive a project (with each revisit status)
+- filter archived list by reason
+- filter by starred only
+- verify color indicator changes

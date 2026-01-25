@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useStore, Project } from "@/lib/store";
+import { useStore } from "@/lib/store";
 import {
   Dialog,
   DialogContent,
@@ -10,10 +10,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Star, Archive } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 interface ArchiveProjectDialogProps {
   isOpen: boolean;
@@ -22,21 +29,34 @@ interface ArchiveProjectDialogProps {
   projectTitle: string;
 }
 
+type ArchiveReason = 'Creative pass' | 'Commercial viability' | 'Financing not secured' | 'Rights / legal issues' | 'Packaging fell through' | 'Paused (strategic / timing)' | 'Produced / completed' | 'Withdrawn';
+type RevisitStatus = 'Yes' | 'Maybe' | 'No';
+
 export function ArchiveProjectDialog({ isOpen, onClose, projectId, projectTitle }: ArchiveProjectDialogProps) {
   const { archiveProject } = useStore();
   
-  const [reason, setReason] = useState<'Completed' | 'Shelved' | 'Pass'>('Completed');
+  const [reason, setReason] = useState<ArchiveReason | ''>('');
+  const [revisit, setRevisit] = useState<RevisitStatus | ''>('');
   const [starred, setStarred] = useState(false);
-  const [tags, setTags] = useState("");
+  const [notes, setNotes] = useState("");
+  const [errors, setErrors] = useState<{reason?: boolean; revisit?: boolean}>({});
 
   const handleArchive = () => {
-    // Parse tags (comma separated)
-    const tagList = tags.split(',').map(t => t.trim()).filter(t => t.length > 0);
+    const newErrors = {
+      reason: !reason,
+      revisit: !revisit
+    };
+
+    if (newErrors.reason || newErrors.revisit) {
+      setErrors(newErrors);
+      return;
+    }
     
     archiveProject(projectId, {
-      reason,
+      reason: reason as ArchiveReason,
+      revisit: revisit as RevisitStatus,
       starred,
-      tags: tagList
+      notes
     });
     
     onClose();
@@ -51,7 +71,7 @@ export function ArchiveProjectDialog({ isOpen, onClose, projectId, projectTitle 
             Archive Project
           </DialogTitle>
           <DialogDescription>
-            You are about to archive "{projectTitle}". Please provide some details for the records.
+            You are about to archive "{projectTitle}". This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
         
@@ -59,25 +79,49 @@ export function ArchiveProjectDialog({ isOpen, onClose, projectId, projectTitle 
           
           {/* Reason Selection */}
           <div className="space-y-3">
-            <Label className="text-base">Why is this project being archived?</Label>
-            <RadioGroup 
-              value={reason} 
-              onValueChange={(val) => setReason(val as any)}
-              className="flex flex-col gap-2"
+            <Label className={`text-base ${errors.reason ? 'text-destructive' : ''}`}>
+              Reason for archiving *
+            </Label>
+            <Select onValueChange={(val) => {
+              setReason(val as ArchiveReason);
+              setErrors(prev => ({...prev, reason: false}));
+            }}>
+              <SelectTrigger className={errors.reason ? 'border-destructive' : ''}>
+                <SelectValue placeholder="Select a reason..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Creative pass">Creative pass</SelectItem>
+                <SelectItem value="Commercial viability">Commercial viability</SelectItem>
+                <SelectItem value="Financing not secured">Financing not secured</SelectItem>
+                <SelectItem value="Rights / legal issues">Rights / legal issues</SelectItem>
+                <SelectItem value="Packaging fell through">Packaging fell through</SelectItem>
+                <SelectItem value="Paused (strategic / timing)">Paused (strategic / timing)</SelectItem>
+                <SelectItem value="Produced / completed">Produced / completed</SelectItem>
+                <SelectItem value="Withdrawn">Withdrawn</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Likely to Revisit */}
+          <div className="space-y-3">
+            <Label className={`text-base ${errors.revisit ? 'text-destructive' : ''}`}>
+              Likely to revisit? *
+            </Label>
+            <ToggleGroup 
+              type="single" 
+              value={revisit} 
+              onValueChange={(val) => {
+                if (val) {
+                  setRevisit(val as RevisitStatus);
+                  setErrors(prev => ({...prev, revisit: false}));
+                }
+              }}
+              className="justify-start"
             >
-              <div className="flex items-center space-x-2 border p-3 rounded-md hover:bg-secondary/10 transition-colors">
-                <RadioGroupItem value="Completed" id="r-completed" />
-                <Label htmlFor="r-completed" className="cursor-pointer flex-1">Completed Production</Label>
-              </div>
-              <div className="flex items-center space-x-2 border p-3 rounded-md hover:bg-secondary/10 transition-colors">
-                <RadioGroupItem value="Shelved" id="r-shelved" />
-                <Label htmlFor="r-shelved" className="cursor-pointer flex-1">Shelved / On Hold Indefinitely</Label>
-              </div>
-              <div className="flex items-center space-x-2 border p-3 rounded-md hover:bg-secondary/10 transition-colors">
-                <RadioGroupItem value="Pass" id="r-pass" />
-                <Label htmlFor="r-pass" className="cursor-pointer flex-1">Pass / Did Not Proceed</Label>
-              </div>
-            </RadioGroup>
+              <ToggleGroupItem value="Yes" className="flex-1 data-[state=on]:bg-green-500/10 data-[state=on]:text-green-600 data-[state=on]:border-green-500/20 border border-transparent">Yes</ToggleGroupItem>
+              <ToggleGroupItem value="Maybe" className="flex-1 data-[state=on]:bg-blue-500/10 data-[state=on]:text-blue-600 data-[state=on]:border-blue-500/20 border border-transparent">Maybe</ToggleGroupItem>
+              <ToggleGroupItem value="No" className="flex-1 data-[state=on]:bg-secondary data-[state=on]:text-foreground border border-transparent">No</ToggleGroupItem>
+            </ToggleGroup>
           </div>
 
           {/* Star Option */}
@@ -89,18 +133,18 @@ export function ArchiveProjectDialog({ isOpen, onClose, projectId, projectTitle 
             />
             <Label htmlFor="starred" className="cursor-pointer flex-1 flex items-center gap-2 text-yellow-600 dark:text-yellow-400 font-medium">
               <Star className="h-4 w-4 fill-current" />
-              Add to Starred / Highlights
+              Star this project
             </Label>
           </div>
 
-          {/* Tags */}
+          {/* Notes */}
           <div className="space-y-2">
-            <Label htmlFor="tags">Tags (comma separated)</Label>
+            <Label htmlFor="notes">Notes (optional)</Label>
             <Input 
-              id="tags" 
-              placeholder="e.g. Good Script, Budget Issues, Rights Expired"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
+              id="notes" 
+              placeholder="Add context (optional)"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
             />
           </div>
 
@@ -108,7 +152,7 @@ export function ArchiveProjectDialog({ isOpen, onClose, projectId, projectTitle 
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleArchive}>Confirm Archive</Button>
+          <Button onClick={handleArchive}>Archive Project</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
