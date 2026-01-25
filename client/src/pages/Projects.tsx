@@ -41,7 +41,8 @@ import {
   Archive,
   ArrowRight,
   Trash2,
-  Star
+  Star,
+  Undo2
 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
@@ -78,7 +79,7 @@ const stageIcons: Record<ProjectStage, any> = {
 };
 
 export default function ProjectsPage() {
-  const { projects, setCurrentProject, setProjectStage, deleteProject } = useStore();
+  const { projects, setCurrentProject, setProjectStage, deleteProject, unarchiveProject } = useStore();
   const [activeTab, setActiveTab] = useState<ProjectStage | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
@@ -334,6 +335,18 @@ export default function ProjectsPage() {
                                   }}>
                                     <Archive className="mr-2 h-4 w-4" />
                                     Archive
+                                  </DropdownMenuItem>
+                                )}
+
+                                {/* Unarchive Option */}
+                                {project.stage === 'Archived' && (
+                                  <DropdownMenuItem onClick={(e) => {
+                                    e.stopPropagation();
+                                    unarchiveProject(project.id);
+                                    toast.success("Project restored to active list");
+                                  }}>
+                                    <Undo2 className="mr-2 h-4 w-4" />
+                                    Restore Project
                                   </DropdownMenuItem>
                                 )}
 

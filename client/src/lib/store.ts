@@ -670,6 +670,7 @@ interface AppState {
     starred: boolean; 
     notes?: string 
   }) => void;
+  unarchiveProject: (projectId: string) => void;
   updateClosingChecklist: (projectId: string, checklist: Partial<Project['closingChecklist']>) => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'authorId' | 'authorName'>) => void;
   deleteTask: (taskId: string) => void;
@@ -922,6 +923,24 @@ export const useStore = create<AppState>()(
         }
       } : p
     )
+  })),
+
+  unarchiveProject: (projectId) => set((state) => ({
+    projects: state.projects.map(p => {
+      if (p.id !== projectId) return p;
+      
+      // Restore to original stage or default to Evaluation if not found
+      const targetStage = p.archiveDetails?.archivedFromStage || 'Evaluation';
+      
+      // Create a copy without archiveDetails
+      const { archiveDetails, ...rest } = p;
+      
+      return {
+        ...rest,
+        stage: targetStage,
+        updatedAt: new Date().toISOString()
+      };
+    })
   })),
 
   updateClosingChecklist: (projectId, checklist) => set((state) => ({
