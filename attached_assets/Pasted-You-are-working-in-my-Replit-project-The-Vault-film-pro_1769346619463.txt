@@ -1,0 +1,227 @@
+You are working in my Replit project “The Vault” (film production management tool). We are in DESIGN MODE: DO NOT make any backend/database/schema/API changes. Implement this Budget page using ONLY front-end/state changes and mock/local data handling consistent with our current design-mode approach.
+
+CRITICAL SCOPE LIMIT
+ONLY modify the Financing → Budget sub-page UI + its local state logic.
+Do NOT change global navigation, routing, layouts, themes, shared component styles, or other financing pages (Finance Plan, Cashflow) except where explicitly requested.
+Do NOT refactor unrelated code.
+Do NOT introduce new libraries.
+
+GOAL
+Turn the Budget sub-page into a real tool (not a file dump) using a simple lifecycle:
+- Draft (editable)
+- Awaiting approval (read-only)
+- Locked (read-only, updates Financing Overview’s Total Budget)
+- Make changes to budget (creates a new Draft cloned from Locked)
+Also add a subtle History view (read-only) for past locked budgets.
+
+IMPORTANT: Contingency is handled as its own Department (Option A). No percentage field.
+
+DATA MODEL (FRONT-END ONLY, mock/local)
+Create/extend a front-end-only budget state object for the current project. Keep it in whatever local state/store you already use in design mode (e.g., context, Zustand, page state). Do NOT persist to backend.
+
+Use this structure (names can be adapted to match existing code style, but keep the meaning):
+
+ProjectFinanceState:
+- project.totalBudget (number)  // used by Financing Overview
+- project.currency (string)     // use existing project currency if present
+- budgetDraft (BudgetVersion) or null
+- budgetPending (BudgetVersion) or null
+- budgetLockedHistory (BudgetVersion[]) // locked snapshots, most recent first
+
+BudgetVersion:
+- id (string)
+- status: "draft" | "awaiting_approval" | "locked"
+- createdAt (Date/ISO string)
+- submittedAt (Date/ISO string | null)
+- approvedAt (Date/ISO string | null)
+- createdBy (string | null) // mock “You”
+- approvedBy (string | null) // mock “Finance Admin”
+- currency (string)
+- departments: Department[]
+
+Department:
+- id (string)
+- name (string)
+- lineItems: LineItem[]
+- documents: BudgetDocument[]   // department-specific doc upload tracker (UI only)
+- isExpanded (boolean)          // UI state only
+
+LineItem:
+- id (string)
+- name (string)
+- amount (number)
+- note (string optional)
+
+BudgetDocument:
+- id (string)
+- fileName (string)
+- docType (string) // Quote / Estimate / Bid / Top Sheet / Schedule / Other
+- status (string)  // Reference / Pending approval / Approved
+- uploadedAt (Date/ISO string)
+
+DEFAULT DEPARTMENTS
+When the page loads and there is no budgetDraft and no locked history, create an initial Draft with these departments (collapsed by default):
+- Above the Line
+- Production
+- Post-Production
+- Other
+- Contingency
+
+BUDGET TOTAL CALCULATION
+- Department total = sum of its lineItems amounts
+- Total Budget = sum of all department totals (including Contingency department)
+Show currency formatting consistent with current UI.
+
+PAGE LAYOUT (SIMPLE, CLEAN, INTUITIVE)
+Keep the current page shell and styling. Replace the existing “Upload file” empty dump UI with:
+
+1) TOP STATUS BAR (always visible at top of Budget page)
+Show:
+- “Budget status” pill: Draft / Awaiting approval / Locked
+- Total Budget (big number)
+- “Last updated” (use version.createdAt or submittedAt/approvedAt depending on status)
+Buttons (contextual):
+A) If status is Draft:
+   - Primary: “Submit for approval”
+   - Secondary: “View history” (subtle link/button)
+B) If status is Awaiting approval:
+   - Show banner text: “Budget submitted for approval. Editing is temporarily disabled.”
+   - Buttons:
+     - Primary (only if user role allows; see ROLE SIMULATION below): “Approve & lock”
+     - Secondary: “View history”
+C) If status is Locked:
+   - Show banner text: “This budget is locked and reflected in the financing overview.”
+   - Buttons:
+     - Primary: “Make changes to budget” (creates a new draft cloned from the latest locked)
+     - Secondary: “View history”
+
+ROLE SIMULATION (FRONT-END ONLY)
+Do not implement auth. Just simulate approval permission:
+- If an existing “role” value is already present in front-end state, use it.
+- Otherwise add a simple front-end constant: canApproveBudget = true for now (or a small toggle in dev-only area if you already have patterns for that).
+Keep it minimal. The key is that “Approve & lock” is available in design mode.
+
+2) DEPARTMENT LIST (core tool)
+Display departments as a vertical list of collapsed rows (accordion style), each showing:
+- Department name
+- Department total
+- Document count indicator (e.g., “3 docs”)
+- Small status dot if any document is Pending approval (optional)
+All departments collapsed by default; user can expand/collapse.
+
+Each department row expands into a “Department workspace” panel that takes most of the screen height and can scroll.
+
+DEPARTMENT WORKSPACE CONTENT (inside expanded panel)
+A) Department overview (top of panel)
+- Department name (editable only in Draft, except default departments can be renamed in Draft)
+- Department total (computed)
+- Optional department notes (plain text, editable only in Draft) – keep it minimal (one small textarea)
+
+B) Line items (middle)
+- Simple table/list:
+  - Line item name (text)
+  - Amount (number)
+  - Optional note (small)
+- Actions:
+  - “Add line item” (Draft only)
+  - Delete line item (Draft only)
+- Inline validation:
+  - Amount must be >= 0
+  - Name required for new items
+Keep controls disabled (read-only) when not Draft.
+
+C) Department documents (bottom)
+Embed an in-department document upload tracker (UI only):
+- Button: “Upload document” (Draft only)
+- In design mode, implement upload as a fake picker/modal:
+  - You can use an existing “upload” component if present; otherwise simulate by prompting for file name and type.
+- Each uploaded doc appears in a list with:
+  - file name
+  - doc type dropdown (Quote / Estimate / Bid / Top Sheet / Schedule / Other)
+  - status dropdown (Reference / Pending approval / Approved)
+  - uploaded date
+- Status dropdown editable only in Draft.
+Read-only in Awaiting approval/Locked.
+
+3) ADD / MANAGE DEPARTMENTS (Draft only)
+Above the department list (or at the bottom), add:
+- “Add department” button (Draft only)
+Flow:
+- Creates a new department (collapsed) with empty lineItems and documents.
+Guardrails:
+- Department name must be unique within the current draft.
+- Deleting a department is allowed only if it has zero line items AND zero documents; otherwise show a simple message: “Remove line items/documents before deleting.”
+Allow reorder only if you already have a pattern for it; otherwise skip.
+
+4) HISTORY VIEW (subtle, simple)
+“View history” opens a side panel or modal (use existing UI pattern).
+Show a list of locked budgets:
+- “Locked budget — 12 Sep 2026” (approvedAt)
+- show approvedBy if present
+Clicking one sets a “historySelected” read-only view:
+- Display the same Budget page layout, but with controls disabled and a banner:
+  “Viewing locked budget from [date].”
+Provide a clear “Back to current budget” action.
+No complex diff UI. Keep it simple.
+
+LIFECYCLE BEHAVIOR (MUST WORK)
+1) Draft → Submit for approval
+- On click “Submit for approval”:
+  - Validate: all departments allowed even if empty, but warn if total budget is 0 (non-blocking confirmation modal ok; keep simple)
+  - Create a snapshot copy of the draft as budgetPending with status = "awaiting_approval", submittedAt set
+  - Set the page to show Awaiting approval (use budgetPending as the current view)
+  - Disable editing
+  - Keep budgetDraft stored (or replace it with pending) as long as you can restore if cancelled; but we do NOT need a cancel flow in v1.
+
+2) Awaiting approval → Approve & lock
+- On click “Approve & lock”:
+  - Convert budgetPending into a locked snapshot:
+    - status = "locked"
+    - approvedAt set
+    - approvedBy = “Finance Admin” (mock)
+  - Push it into budgetLockedHistory (most recent first)
+  - Clear budgetPending
+  - Clear budgetDraft (optional) OR keep it but ensure the current state is Locked and read-only.
+  - Update project.totalBudget = lockedTotal (sum of department totals)
+  - This ensures Financing Overview shows the new total (in design mode).
+  - Show a small success toast/banner: “Budget locked and reflected in financing overview.”
+
+3) Locked → Make changes to budget
+- On click “Make changes to budget”:
+  - Create a new budgetDraft cloned from the latest locked budget:
+    - status = "draft"
+    - createdAt = now
+    - clear approved fields
+  - Set current view to Draft
+  - DO NOT change project.totalBudget yet (overview remains based on locked)
+
+4) Editing indicators
+- Draft: show “Changes are saved automatically.” (text)
+- Awaiting approval: show “Editing is temporarily disabled.”
+- Locked: show “Read-only. Create a new draft to make changes.”
+
+LINK TO FINANCING OVERVIEW (DESIGN MODE)
+Wherever the financing overview gets its “Total Budget” number:
+- Make it read from project.totalBudget.
+- Ensure budget approval updates that value.
+DO NOT redesign the overview page. Only ensure it reflects the updated total if it already shows it.
+
+UI/UX REQUIREMENTS
+- Keep everything clean, minimal, and consistent with existing Vault style.
+- Disable controls rather than hiding everything when read-only.
+- Use collapsed departments by default for scanability.
+- Expanded department panel should be scrollable and not feel cramped.
+- No heavy charts. No jargon. Explain with tiny helper text where necessary.
+
+ACCEPTANCE TESTS (MANUAL)
+After implementing, list the files changed and confirm these tests:
+1) Create draft with default departments; totals sum correctly.
+2) Add line items; department totals and total budget update live.
+3) Submit for approval → becomes read-only “Awaiting approval”.
+4) Approve & lock → status Locked, total budget updates Financing Overview.
+5) Make changes → new Draft cloned from locked; overview total remains from locked until next approval.
+6) View history → can open past locked budget read-only.
+
+REMEMBER:
+No backend changes. No schema changes. No API changes. Front-end/state only.
+ONLY Budget page and minimal linkage for overview total reading.

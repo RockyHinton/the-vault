@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import DocumentLibrary from "@/pages/DocumentLibrary";
 import { FinancingSourcesTable } from "@/components/features/FinancingSourcesTable";
+import BudgetTool from "@/components/features/financing/BudgetTool";
 import { 
   PieChart, 
   Pie, 
@@ -55,6 +56,10 @@ export default function FinancingView({ project, currentSubcategory, subcategory
 
   // If we are drilled down into a subcategory (like "Banking Docs"), just show the docs
   if (subcategoryId) {
+    if (currentSubcategory === "Budget") {
+      return <BudgetTool project={project} />;
+    }
+
     return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="flex items-end justify-between border-b border-border pb-6">
