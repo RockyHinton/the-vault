@@ -1,0 +1,189 @@
+You are working in my Replit project “The Vault”. We are still in DESIGN MODE: DO NOT make any backend/database/schema/API changes. Implement Finance Plan using ONLY front-end/state changes and mock/local data handling consistent with our current design-mode approach.
+
+CRITICAL SCOPE LIMIT
+ONLY modify:
+1) Financing → Finance Plan sub-page UI + its local/front-end state logic
+2) The Financing Overview page display logic ONLY as needed to make it read-only and reflect “Approved funding sources” + “Secured Funding” totals
+Do NOT change navigation, layout, styling system, Budget page, Cashflow page, routes, or shared components beyond minimal reuse.
+Do NOT add libraries. Do NOT refactor unrelated code.
+
+GOAL
+Make the Finance Plan page the single place to manage funding sources.
+Funding sources are created/edited here, and each source is approved individually.
+Only APPROVED sources:
+- appear as read-only rows on the Financing Overview “Financing Sources” table
+- contribute to “Secured Funding” total
+- reduce “Funding Gap” on both Finance Plan and Financing Overview
+
+Unapproved sources remain editable on Finance Plan and do not change secured totals.
+
+DATA MODEL (FRONT-END ONLY)
+Use existing design-mode project state/store pattern (context/Zustand/page state) and extend it with a front-end-only finance plan object for the current project.
+
+Create/extend:
+
+ProjectFinanceState (front-end only)
+- project.totalBudget (number)      // already used by Financing Overview (from last locked Budget)
+- project.currency (string)
+- financeSources: FinanceSource[]   // all sources, approved and unapproved
+- financeMeta: { lastUpdatedAt, etc } optional
+
+FinanceSource:
+- id (string)
+- name (string)                     // e.g., “Equity – John Doe”, “UK Tax Credit”
+- amount (number)
+- type (string enum)                // from list below
+- status (string enum)              // Targeted / Soft committed / Approved
+- isApproved (boolean)              // derived: status === “Approved” OR store explicitly
+- expectedDate (string optional)    // month/year or date (keep simple)
+- notes (string optional)
+- documents: FinanceDocument[]
+- isExpanded (boolean)              // UI-only
+
+FinanceDocument:
+- id (string)
+- fileName (string)
+- docType (string)                  // Term sheet / Contract / LOI / Grant letter / Tax credit opinion / Bank letter / Other
+- status (string)                   // Reference / Pending approval / Approved
+- uploadedAt (string)
+
+FINANCE TYPE LIST (clickable list in modal)
+Use these exact labels:
+- Equity
+- Pre-sale
+- Distributor MG
+- Grant
+- Tax Credit
+- Loan / Lender
+- Gap Finance
+- Other
+
+SOURCE STATUS OPTIONS (simple + realistic)
+Use these exact labels:
+- Targeted
+- Soft committed
+- Approved
+
+APPROVAL RULES
+- “Approved” sources are locked read-only (except allow “View” + documents view)
+- If a source is not Approved (Targeted/Soft committed), it remains editable
+- Secured Funding = sum(amount) of Approved sources only
+- Funding Gap = totalBudget - securedFunding (never below 0; if negative, show 0 and optionally “Overfunded by …” as a small helper text)
+
+WHERE TOTAL BUDGET COMES FROM
+- Total Budget shown on Finance Plan must be read-only and pulled from the last locked Budget total already stored on the project (project.totalBudget).
+- If no locked budget exists, show a small warning text: “No locked budget yet. Lock a budget to calculate the funding gap.”
+
+FINANCE PLAN PAGE UI SPEC (match existing Vault style, clean & minimal)
+
+1) TOP SUMMARY STRIP (not obtrusive, similar to Budget status bar but simpler)
+Show three small summary cards or one slim bar (use existing components):
+- Total Budget (read-only): project.totalBudget
+- Secured Funding: sum Approved sources
+- Funding Gap: computed
+Also show currency (use existing currency dropdown if present, but do not change global currency logic).
+
+2) PRIMARY ACTION
+A prominent button: “Add Funding Source”
+- Opens a modal/popup form
+
+3) ADD FUNDING SOURCE MODAL (quick, clear)
+Fields (required unless marked optional):
+- Name (required, text)
+- Amount (required, number, >= 0)
+- Type (required, selectable list using the type list above)
+- Status (required, dropdown: Targeted / Soft committed / Approved)
+- Expected date (optional; month/year or date input, keep simple)
+- Notes (optional; small textarea)
+Button:
+- Create Source
+Validation:
+- must have name, amount, type, status
+- show errors using existing form error styling
+On create:
+- Add a new FinanceSource card to the list (collapsed by default)
+- If status is Approved: mark as read-only immediately and update secured totals & overview
+
+4) FUNDING SOURCE CARDS (accordion like Budget departments)
+Main list is a vertical stack of source cards collapsed by default.
+Collapsed card displays:
+- Source name
+- Type (small label)
+- Amount
+- Status pill (Targeted / Soft committed / Approved)
+- Document count (e.g., “2 docs”)
+- Expand/collapse chevron
+
+Expanded source card shows a “Source workspace” with:
+A) Source details (top)
+- Name (editable if not Approved)
+- Type (editable if not Approved)
+- Amount (editable if not Approved)
+- Status (editable if not Approved)
+  - If user changes status to Approved, show a confirmation modal:
+    “Approve this funding source? Once approved it becomes read-only and contributes to secured funding.”
+- Expected date (editable if not Approved)
+- Notes (editable if not Approved)
+
+B) Documents (bottom)
+Embed an in-card documents section (same interaction pattern as Budget dept docs):
+- “Upload document” button (only if not Approved OR allow upload always; but keep doc metadata read-only if Approved)
+In design mode, simulate uploads as you already do:
+- add fileName, docType, status
+DocType dropdown options:
+- Term sheet
+- Contract / Agreement
+- LOI
+- Grant letter
+- Tax credit opinion
+- Bank / lender letter
+- Other
+Doc status dropdown options:
+- Reference
+- Pending approval
+- Approved
+Doc status/doc type editable only while the funding source is not Approved. (If you choose to allow doc uploads after approval, allow upload but keep doc status/type read-only.)
+
+C) Actions
+- Delete source (only if not Approved; if Approved, hide or disable)
+- Archive source (optional; skip if not already used elsewhere)
+Keep it minimal.
+
+5) SORTING / FILTERING (keep simple)
+At the top of the list (optional if space allows), add a small segmented filter:
+- All
+- Approved
+- In progress
+Where:
+- Approved = status Approved
+- In progress = Targeted + Soft committed
+If this makes UI crowded, skip it for v1.
+
+FINANCING OVERVIEW PAGE CHANGES (MINIMAL, READ-ONLY)
+Update the Financing Overview so it reflects APPROVED sources only, and remove inline editing:
+- The “Financing Sources” table becomes read-only
+- It lists only Approved sources (name + amount)
+- Total Secured Funding is sum of Approved sources
+- Funding Gap uses totalBudget - securedFunding
+- Pie chart uses Approved sources breakdown (by source name or by type; keep it as source name to match current)
+Add a small button/link near the table: “Manage Finance Plan” that routes to the Finance Plan page. Do not redesign the overview.
+
+IMPORTANT: Do not remove the table layout or styling; just disable editing controls and ensure values are derived from approved sources.
+
+EDGE CASES
+- If no Approved sources: secured = 0, gap = totalBudget
+- If totalBudget is 0 or missing: show secured but show “Funding gap unavailable until a budget is locked.”
+- If approved funding exceeds totalBudget: gap shows 0 and optionally show small text “Overfunded by £X” (optional, subtle)
+
+ACCEPTANCE TESTS (MANUAL)
+After implementing, list files changed and confirm:
+1) Finance Plan shows total budget (read-only), secured funding (approved only), funding gap.
+2) Add Funding Source creates a collapsed card with correct fields.
+3) Editing works for Targeted/Soft committed sources.
+4) Changing a source status to Approved locks it (read-only) and immediately increases secured funding + reduces gap.
+5) Financing Overview table becomes read-only and lists ONLY approved sources; secured/gap update accordingly.
+6) Pie chart reflects approved sources only.
+7) No backend changes and no UI changes outside Finance Plan + minimal Overview read-only adjustment.
+
+REMEMBER:
+Design mode only, front-end state only, keep it clean, simple, and consistent with existing Vault UI.

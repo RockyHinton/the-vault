@@ -125,6 +125,37 @@ export interface Project {
 
   // Budget Tool Data (New)
   budgetState?: ProjectFinanceState;
+
+  // Finance Plan Data (New)
+  financePlan?: {
+    sources: FinanceSource[];
+  };
+}
+
+// --- Finance Plan Types ---
+
+export type FinanceSourceType = 'Equity' | 'Pre-sale' | 'Distributor MG' | 'Grant' | 'Tax Credit' | 'Loan / Lender' | 'Gap Finance' | 'Other';
+export type FinanceSourceStatus = 'Targeted' | 'Soft committed' | 'Approved';
+
+export interface FinanceDocument {
+  id: string;
+  fileName: string;
+  docType: 'Term sheet' | 'Contract / Agreement' | 'LOI' | 'Grant letter' | 'Tax credit opinion' | 'Bank / lender letter' | 'Other';
+  status: 'Reference' | 'Pending approval' | 'Approved';
+  uploadedAt: string;
+}
+
+export interface FinanceSource {
+  id: string;
+  name: string;
+  amount: number;
+  type: FinanceSourceType;
+  status: FinanceSourceStatus;
+  isApproved: boolean; // Derived from status === 'Approved', but helpful to have explicit
+  expectedDate?: string;
+  notes?: string;
+  documents: FinanceDocument[];
+  isExpanded?: boolean; // UI state
 }
 
 // --- Budget Tool Types ---
@@ -362,10 +393,9 @@ const MOCK_PROJECTS: Project[] = [
       secured: 38000000,
       currency: 'USD',
       breakdown: [
-        { category: 'Above the Line', amount: 12000000, percentage: 26.6 },
-        { category: 'Production', amount: 18000000, percentage: 40.0 },
-        { category: 'Post-Production', amount: 8000000, percentage: 17.7 },
-        { category: 'Other (Ins/Legal)', amount: 7000000, percentage: 15.5 },
+        { category: 'Equity - Investor A', amount: 12000000, percentage: 26.6 },
+        { category: 'Pre-sale - Territory B', amount: 18000000, percentage: 40.0 },
+        { category: 'Tax Credit - UK', amount: 8000000, percentage: 17.7 },
       ],
       cashflow: [
         { month: 'Jan', in: 5000000, out: 2000000 },
@@ -377,6 +407,50 @@ const MOCK_PROJECTS: Project[] = [
         { item: 'Top Sheet Budget v4', status: 'Approved', date: '2023-12-01' },
         { item: 'Bond Completion', status: 'Pending' },
         { item: 'Tax Credit Application', status: 'Approved', date: '2023-11-15' },
+      ]
+    },
+    financePlan: {
+      sources: [
+        {
+          id: 'fs1',
+          name: 'Equity - Investor A',
+          amount: 12000000,
+          type: 'Equity',
+          status: 'Approved',
+          isApproved: true,
+          notes: 'Lead investor',
+          documents: [
+            { id: 'fd1', fileName: 'Term_Sheet_InvA.pdf', docType: 'Term sheet', status: 'Approved', uploadedAt: '2023-11-01T10:00:00Z' }
+          ]
+        },
+        {
+          id: 'fs2',
+          name: 'Pre-sale - Territory B',
+          amount: 18000000,
+          type: 'Pre-sale',
+          status: 'Approved',
+          isApproved: true,
+          documents: []
+        },
+        {
+          id: 'fs3',
+          name: 'Tax Credit - UK',
+          amount: 8000000,
+          type: 'Tax Credit',
+          status: 'Approved',
+          isApproved: true,
+          documents: []
+        },
+        {
+          id: 'fs4',
+          name: 'Gap Loan',
+          amount: 5000000,
+          type: 'Gap Finance',
+          status: 'Targeted',
+          isApproved: false,
+          notes: 'Negotiating with bank',
+          documents: []
+        }
       ]
     },
     legal: {
