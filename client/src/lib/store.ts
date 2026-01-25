@@ -951,6 +951,23 @@ export const useStore = create<AppState>()(
     if (category?.slug === 'underlying-rights') {
       return [];
     }
+    
+    // Sort subcategories for Financing manually to ensure correct order
+    // Order: Budget, Finance Plan, Cashflow
+    if (category?.slug === 'financing') {
+      const financeOrder = ['budget', 'finance-plan', 'cashflow'];
+      return subcategories
+        .filter(sc => sc.categoryId === categoryId)
+        .sort((a, b) => {
+          const indexA = financeOrder.indexOf(a.slug);
+          const indexB = financeOrder.indexOf(b.slug);
+          // If not in our custom order list, push to end
+          const safeIndexA = indexA === -1 ? 999 : indexA;
+          const safeIndexB = indexB === -1 ? 999 : indexB;
+          return safeIndexA - safeIndexB;
+        });
+    }
+
     return subcategories.filter(sc => sc.categoryId === categoryId);
   },
 
