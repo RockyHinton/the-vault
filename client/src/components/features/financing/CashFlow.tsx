@@ -162,8 +162,11 @@ export default function CashFlow({ project }: CashFlowProps) {
   });
 
   // Add some padding (e.g. start of this year to end of next year if empty)
-  const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
-  const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
+  const minTime = allDates.reduce((min, d) => Math.min(min, d.getTime()), Infinity);
+  const maxTime = allDates.reduce((max, d) => Math.max(max, d.getTime()), -Infinity);
+  
+  const minDate = new Date(minTime === Infinity ? Date.now() : minTime);
+  const maxDate = new Date(maxTime === -Infinity ? Date.now() : maxTime);
   
   // Snap to start/end of periods
   const startDate = cashFlowState.timeframe === 'monthly' ? startOfMonth(minDate) : startOfWeek(minDate);
@@ -264,7 +267,7 @@ export default function CashFlow({ project }: CashFlowProps) {
   }, [periods, approvedSources, cashFlowState, departments]);
 
   // Metrics
-  const lowestBalance = Math.min(...cashFlowData.map(d => d.balance));
+  const lowestBalance = cashFlowData.reduce((min, d) => Math.min(min, d.balance), Infinity);
   const firstShortfall = cashFlowData.find(d => d.balance < 0);
 
   // -- Handlers --
