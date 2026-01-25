@@ -703,7 +703,7 @@ export default function BudgetTool({ project }: BudgetToolProps) {
             {budgetState.budgetLockedHistory.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">No locked budgets yet.</p>
             ) : (
-              budgetState.budgetLockedHistory.map((version) => (
+              budgetState.budgetLockedHistory.map((version, index) => (
                 <div 
                   key={version.id} 
                   className="flex items-center justify-between p-3 border rounded-md hover:bg-secondary cursor-pointer transition-colors"
@@ -713,7 +713,10 @@ export default function BudgetTool({ project }: BudgetToolProps) {
                   }}
                 >
                   <div className="flex flex-col">
-                    <span className="font-medium">Locked Budget</span>
+                    <span className="font-medium flex items-center gap-2">
+                      Locked Budget
+                      {index === 0 && <Badge variant="default" className="text-[10px] h-4 px-1">Current</Badge>}
+                    </span>
                     <span className="text-xs text-muted-foreground">
                       {format(new Date(version.approvedAt!), 'MMM d, yyyy @ h:mm a')}
                     </span>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { Project, useStore } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,15 +7,6 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -38,7 +30,8 @@ import {
   PieChart as PieIcon, 
   AlertCircle,
   Table as TableIcon,
-  Pencil
+  Pencil,
+  ArrowRight
 } from "lucide-react";
 
 interface FinancingViewProps {
@@ -51,8 +44,6 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'
 
 export default function FinancingView({ project, currentSubcategory, subcategoryId }: FinancingViewProps) {
   const { updateFinancing } = useStore();
-  const [isEditingBudget, setIsEditingBudget] = useState(false);
-  const [budgetInput, setBudgetInput] = useState("");
 
   // If we are drilled down into a subcategory (like "Banking Docs"), just show the docs
   if (subcategoryId) {
@@ -118,21 +109,6 @@ export default function FinancingView({ project, currentSubcategory, subcategory
     updateFinancing(project.id, { currency: value });
   };
 
-  const handleSaveBudget = () => {
-    // Remove commas before parsing
-    const newBudget = parseFloat(budgetInput.replace(/,/g, ''));
-    if (!isNaN(newBudget)) {
-      updateFinancing(project.id, { totalBudget: newBudget });
-    }
-    setIsEditingBudget(false);
-  };
-
-  const openBudgetEdit = () => {
-    // Format existing budget with commas when opening
-    setBudgetInput(finance.totalBudget.toLocaleString());
-    setIsEditingBudget(true);
-  };
-
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       
@@ -174,62 +150,21 @@ export default function FinancingView({ project, currentSubcategory, subcategory
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="text-3xl font-bold font-mono">{formatCurrency(finance.totalBudget)}</div>
-              
-              <Dialog open={isEditingBudget} onOpenChange={setIsEditingBudget}>
-                <DialogTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-4 right-4"
-                    onClick={openBudgetEdit}
-                  >
-                    <Pencil className="h-3 w-3 text-muted-foreground" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Edit Total Budget</DialogTitle>
-                    <DialogDescription>
-                      Update the total estimated budget for this project.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="budget" className="text-right">
-                        Amount
-                      </Label>
-                      <div className="col-span-3 relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currentSymbol}</span>
-                        <Input
-                          id="budget"
-                          value={budgetInput}
-                          onChange={(e) => {
-                            // Strip non-numeric chars for processing
-                            const value = e.target.value.replace(/[^0-9]/g, '');
-                            // Format with commas
-                            if (value) {
-                              setBudgetInput(parseInt(value).toLocaleString());
-                            } else {
-                              setBudgetInput("");
-                            }
-                          }}
-                          className="pl-7"
-                          type="text"
-                          placeholder="0"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={handleSaveBudget}>Save Changes</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">Locked</p>
+            {finance.totalBudget > 0 ? (
+              <>
+                <div className="text-3xl font-bold font-mono">{formatCurrency(finance.totalBudget)}</div>
+                <p className="text-xs text-muted-foreground mt-1">Locked</p>
+              </>
+            ) : (
+              <div className="py-1">
+                 <p className="text-sm text-muted-foreground">
+                   No budget has been approved yet.
+                 </p>
+                 <Link href={`/project/${project.id}/financing/budget`} className="text-sm text-primary hover:underline flex items-center gap-1 mt-2">
+                   Go to Budget Page <ArrowRight className="h-3 w-3" />
+                 </Link>
+              </div>
+            )}
           </CardContent>
         </Card>
         
