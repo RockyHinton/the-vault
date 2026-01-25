@@ -7,6 +7,7 @@ import {
   FinanceSourceStatus, 
   FinanceDocument
 } from "@/lib/store";
+import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -85,7 +86,7 @@ const DOC_STATUS_OPTIONS = [
 ];
 
 export default function FinancePlan({ project }: FinancePlanProps) {
-  const { setProject } = useStore();
+  const { updateProject } = useStore();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
 
@@ -202,7 +203,7 @@ export default function FinancePlan({ project }: FinancePlanProps) {
       percentage: Number(((s.amount / totalSecured) * 100).toFixed(1))
     }));
 
-    setProject(project.id, {
+    updateProject(project.id, {
       financePlan: newFinancePlan,
       financing: {
         ...project.financing!,
@@ -320,13 +321,14 @@ export default function FinancePlan({ project }: FinancePlanProps) {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="amount" className="text-right">Amount</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  value={newSource.amount}
-                  onChange={(e) => setNewSource({ ...newSource, amount: parseFloat(e.target.value) || 0 })}
-                  className="col-span-3"
-                />
+                <div className="col-span-3">
+                  <FormattedNumberInput
+                    id="amount"
+                    value={newSource.amount || 0}
+                    onChange={(val) => setNewSource({ ...newSource, amount: val })}
+                    placeholder="0"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="type" className="text-right">Type</Label>
@@ -456,10 +458,9 @@ export default function FinancePlan({ project }: FinancePlanProps) {
                         <div className="grid grid-cols-2 gap-4">
                            <div className="grid gap-2">
                             <Label>Amount</Label>
-                            <Input 
-                              type="number"
+                            <FormattedNumberInput
                               value={source.amount} 
-                              onChange={(e) => updateSource(source.id, { amount: parseFloat(e.target.value) || 0 })}
+                              onChange={(val) => updateSource(source.id, { amount: val })}
                               disabled={source.isApproved}
                             />
                           </div>

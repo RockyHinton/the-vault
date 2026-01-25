@@ -831,6 +831,9 @@ interface AppState {
   addCreativeProfile: (profile: Omit<CreativeProfile, 'id'>) => void;
   updateCreativeProfile: (id: string, updates: Partial<CreativeProfile>) => void;
   deleteCreativeProfile: (id: string) => void;
+
+  // Generic Project Update
+  updateProject: (projectId: string, updates: Partial<Project>) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -966,6 +969,12 @@ export const useStore = create<AppState>()(
   
   deleteDocument: (documentId) => set((state) => ({
     documents: state.documents.filter(d => d.id !== documentId)
+  })),
+
+  updateProject: (projectId, updates) => set((state) => ({
+    projects: state.projects.map(p => 
+      p.id === projectId ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p
+    )
   })),
 
   getProjectDocuments: (projectId, categoryId, subcategoryId) => {

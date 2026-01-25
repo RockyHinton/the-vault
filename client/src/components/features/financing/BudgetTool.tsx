@@ -21,6 +21,7 @@ import {
   ArrowRight,
   Pencil
 } from "lucide-react";
+import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -589,11 +590,9 @@ export default function BudgetTool({ project }: BudgetToolProps) {
                               <div className="col-span-3">
                                 <div className="relative">
                                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
-                                  <Input 
-                                    type="number"
-                                    min="0"
-                                    value={item.amount || ''}
-                                    onChange={(e) => handleUpdateLineItem(dept.id, item.id, { amount: parseFloat(e.target.value) || 0 })}
+                                  <FormattedNumberInput
+                                    value={item.amount || 0}
+                                    onChange={(val) => handleUpdateLineItem(dept.id, item.id, { amount: val })}
                                     placeholder="0.00"
                                     disabled={isReadOnly}
                                     className="h-9 pl-6 font-mono"
