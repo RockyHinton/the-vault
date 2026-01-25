@@ -393,39 +393,39 @@ export default function CashFlow({ project }: CashFlowProps) {
   }, [departments, cashFlowState, pieView, startDate, endDate]);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500">
       
       {/* 1) TOP SUMMARY STRIP */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <Card className="bg-card/50 border-border/50 col-span-2 md:col-span-2 lg:col-span-1">
+        <Card className="bg-card/50 border-border/50 col-span-2 md:col-span-2 lg:col-span-1 h-28 flex flex-col justify-center">
            <CardContent className="p-4">
              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Budget</p>
              <div className="text-xl font-bold font-mono mt-1">{formatCurrency(totalBudget)}</div>
            </CardContent>
         </Card>
-        <Card className="bg-card/50 border-border/50 col-span-2 md:col-span-2 lg:col-span-1">
+        <Card className="bg-card/50 border-border/50 col-span-2 md:col-span-2 lg:col-span-1 h-28 flex flex-col justify-center">
            <CardContent className="p-4">
              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Secured Funding</p>
              <div className="text-xl font-bold font-mono mt-1 text-green-500">{formatCurrency(securedFunding)}</div>
            </CardContent>
         </Card>
-         <Card className="bg-card/50 border-border/50 col-span-2 md:col-span-2 lg:col-span-1">
+         <Card className="bg-card/50 border-border/50 col-span-2 md:col-span-2 lg:col-span-1 h-28 flex flex-col justify-center">
            <CardContent className="p-4">
              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Funding Gap</p>
              <div className="text-xl font-bold font-mono mt-1 text-amber-500">{formatCurrency(fundingGap)}</div>
            </CardContent>
         </Card>
-        <Card className="bg-card/50 border-border/50 col-span-2 md:col-span-2 lg:col-span-1">
+        <Card className="bg-card/50 border-border/50 col-span-2 md:col-span-2 lg:col-span-1 h-28 flex flex-col justify-center">
            <CardContent className="p-4">
              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Opening Balance</p>
              <FormattedNumberInput 
                 value={cashFlowState.openingBalance}
                 onChange={(val) => updateCashFlow({ openingBalance: val })}
-                className="mt-1 h-8 font-mono text-lg font-bold bg-transparent border-transparent hover:border-input focus:border-primary px-0"
+                className="mt-1 h-8 font-mono text-lg font-bold bg-transparent border-transparent hover:border-input focus:border-primary px-0 w-full"
              />
            </CardContent>
         </Card>
-        <Card className="bg-card/50 border-border/50 col-span-2 md:col-span-2 lg:col-span-1">
+        <Card className="bg-card/50 border-border/50 col-span-2 md:col-span-2 lg:col-span-1 h-28 flex flex-col justify-center">
            <CardContent className="p-4">
              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Low Point</p>
              <div className={cn("text-xl font-bold font-mono mt-1", lowestBalance < 0 ? "text-destructive" : "text-foreground")}>
@@ -433,17 +433,17 @@ export default function CashFlow({ project }: CashFlowProps) {
              </div>
            </CardContent>
         </Card>
-        <Card className="bg-card/50 border-border/50 col-span-2 md:col-span-2 lg:col-span-1">
+        <Card className="bg-card/50 border-border/50 col-span-2 md:col-span-2 lg:col-span-1 h-28 flex flex-col justify-center">
            <CardContent className="p-4">
              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Shortfall</p>
              <div className="text-sm font-medium mt-2 flex items-center gap-1">
                {firstShortfall ? (
-                 <span className="text-destructive flex items-center gap-1">
-                   <AlertCircle className="h-4 w-4" /> {firstShortfall.label}
+                 <span className="text-destructive flex items-center gap-1 text-xs">
+                   <AlertCircle className="h-3 w-3" /> {firstShortfall.label}
                  </span>
                ) : (
-                 <span className="text-green-500 flex items-center gap-1">
-                   <TrendingUp className="h-4 w-4" /> Cash Positive
+                 <span className="text-green-500 flex items-center gap-1 text-xs">
+                   <TrendingUp className="h-3 w-3" /> Cash Positive
                  </span>
                )}
              </div>
@@ -451,13 +451,14 @@ export default function CashFlow({ project }: CashFlowProps) {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* MAIN GRID LAYOUT */}
+      <div className="grid grid-cols-12 gap-6 h-[calc(100vh-220px)] min-h-[600px]">
         
         {/* LEFT COLUMN: Controls & Inputs */}
-        <div className="lg:col-span-1 space-y-6">
+        <div className="col-span-12 lg:col-span-4 space-y-6 flex flex-col h-full">
           
-          {/* Timeframe Toggle */}
-          <div className="flex items-center justify-between">
+          {/* Top Control Bar */}
+          <div className="flex items-center justify-between h-10 shrink-0">
             <h3 className="text-lg font-semibold">Cash Management</h3>
             <div className="flex bg-muted rounded-md p-1">
               <button 
@@ -475,13 +476,13 @@ export default function CashFlow({ project }: CashFlowProps) {
             </div>
           </div>
 
-          {/* Department Timing List */}
-          <Card>
-            <CardHeader className="pb-3">
+          {/* Department Timing List - Takes remaining height but splits with inflows */}
+          <Card className="flex-1 flex flex-col min-h-0">
+            <CardHeader className="pb-3 shrink-0">
               <CardTitle className="text-base">Department Timing</CardTitle>
               <CardDescription>Set spend windows for each department.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+            <CardContent className="flex-1 overflow-y-auto pr-2 space-y-2">
               {departments.length === 0 ? (
                 <div className="text-sm text-muted-foreground text-center py-4 italic bg-muted/20 rounded">
                   Lock a budget to manage department cash flow.
@@ -500,16 +501,16 @@ export default function CashFlow({ project }: CashFlowProps) {
                         onClick={() => toggleExpand(dept.id)}
                       >
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">{dept.name}</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2">
+                          <div className="font-medium truncate text-sm">{dept.name}</div>
+                          <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
                              <span>{formatCurrency(deptTotal)}</span>
                              {timing?.startDate && (
-                               <Badge variant="outline" className="text-[10px] h-4 px-1 py-0 font-normal">
+                               <Badge variant="outline" className="text-[9px] h-4 px-1 py-0 font-normal">
                                  Set
                                </Badge>
                              )}
                              {payments.length > 0 && (
-                               <Badge variant="secondary" className="text-[10px] h-4 px-1 py-0 font-normal">
+                               <Badge variant="secondary" className="text-[9px] h-4 px-1 py-0 font-normal">
                                  {payments.length} payments
                                </Badge>
                              )}
@@ -525,33 +526,33 @@ export default function CashFlow({ project }: CashFlowProps) {
                           {/* Timing Inputs */}
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <Label className="text-xs">Start</Label>
+                              <Label className="text-[10px] uppercase text-muted-foreground font-semibold">Start</Label>
                               <Input 
                                 type="date" 
-                                className="h-8 text-xs"
+                                className="h-7 text-xs"
                                 value={timing?.startDate || ''}
                                 onChange={(e) => handleUpdateDeptTiming(dept.id, 'startDate', e.target.value)}
                               />
                             </div>
                             <div>
-                              <Label className="text-xs">End</Label>
+                              <Label className="text-[10px] uppercase text-muted-foreground font-semibold">End</Label>
                               <Input 
                                 type="date" 
-                                className="h-8 text-xs"
+                                className="h-7 text-xs"
                                 value={timing?.endDate || ''}
                                 onChange={(e) => handleUpdateDeptTiming(dept.id, 'endDate', e.target.value)}
                               />
                             </div>
                           </div>
-                          <p className="text-[10px] text-muted-foreground">
-                            <Info className="h-3 w-3 inline mr-1" />
-                            Budget spreads evenly across this window.
+                          <p className="text-[10px] text-muted-foreground flex items-start gap-1.5 leading-tight">
+                            <Info className="h-3 w-3 mt-0.5 shrink-0" />
+                            <span>Budget spreads evenly across this window.</span>
                           </p>
                           
                           {/* One-off Payments List */}
                           {payments.length > 0 && (
-                            <div className="space-y-2">
-                              <Label className="text-xs font-semibold">One-off Payments</Label>
+                            <div className="space-y-2 pt-2 border-t border-border/50">
+                              <Label className="text-[10px] uppercase text-muted-foreground font-semibold">One-off Payments</Label>
                               {payments.map(p => (
                                 <div key={p.id} className="flex items-center justify-between bg-background border rounded px-2 py-1.5">
                                   <div>
@@ -587,21 +588,21 @@ export default function CashFlow({ project }: CashFlowProps) {
             </CardContent>
           </Card>
 
-          {/* Inflows Read-only List */}
-          <Card>
-            <CardHeader className="pb-3">
+          {/* Inflows Read-only List - Fixed height */}
+          <Card className="h-1/3 min-h-[200px] shrink-0 flex flex-col">
+            <CardHeader className="pb-3 shrink-0">
                <CardTitle className="text-base">Inflows (Approved)</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 max-h-[300px] overflow-y-auto">
+            <CardContent className="flex-1 overflow-y-auto space-y-2 pr-2">
                {approvedSources.length === 0 ? (
-                 <div className="text-sm text-muted-foreground italic">No approved sources.</div>
+                 <div className="text-sm text-muted-foreground italic text-center pt-4">No approved sources.</div>
                ) : (
                  approvedSources.map(s => {
                     const adj = cashFlowState.sourceAdjustments[s.id];
                     return (
                       <div key={s.id} className="flex items-center justify-between text-sm p-2 border rounded-md bg-muted/5">
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium truncate">{s.name}</div>
+                          <div className="font-medium truncate text-xs">{s.name}</div>
                           <div className="flex items-center gap-2 mt-1">
                              <input 
                                type="date" 
@@ -621,7 +622,7 @@ export default function CashFlow({ project }: CashFlowProps) {
                           </div>
                         </div>
                         <div className="text-right ml-2">
-                           <div className="font-mono font-medium text-green-600">{formatCurrency(s.amount)}</div>
+                           <div className="font-mono font-medium text-xs text-green-600">{formatCurrency(s.amount)}</div>
                            <div className="text-[10px] text-muted-foreground">Expected</div>
                         </div>
                       </div>
@@ -630,69 +631,20 @@ export default function CashFlow({ project }: CashFlowProps) {
                )}
             </CardContent>
           </Card>
-          
-           {/* Budget Distribution Chart (If space permits) */}
-           <Card>
-             <CardHeader className="pb-2">
-               <div className="flex items-center justify-between">
-                 <CardTitle className="text-base">Distribution</CardTitle>
-                 <div className="flex bg-muted rounded-md p-0.5">
-                    <button 
-                      className={cn("px-2 py-0.5 text-[10px] font-medium rounded-sm transition-all", pieView === 'total' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
-                      onClick={() => setPieView('total')}
-                    >
-                      Budget
-                    </button>
-                    <button 
-                      className={cn("px-2 py-0.5 text-[10px] font-medium rounded-sm transition-all", pieView === 'outflow' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
-                      onClick={() => setPieView('outflow')}
-                    >
-                      Cashflow
-                    </button>
-                 </div>
-               </div>
-               <CardDescription className="text-xs">
-                 {pieView === 'total' ? 'Total budget allocation' : 'Projected spend in this timeframe'}
-               </CardDescription>
-             </CardHeader>
-             <CardContent>
-                <div className="h-[200px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={deptDataForPie}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={40}
-                        outerRadius={70}
-                        paddingAngle={2}
-                        dataKey="value"
-                        stroke="none"
-                      >
-                        {deptDataForPie.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-             </CardContent>
-           </Card>
 
         </div>
 
         {/* RIGHT COLUMN: Visuals & Table */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="col-span-12 lg:col-span-8 space-y-6 flex flex-col h-full">
           
-          {/* Chart Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Cash Position</CardTitle>
-              <CardDescription>Projected running balance over time.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px] w-full">
+          <div className="grid grid-cols-12 gap-6 h-1/2 min-h-[300px]">
+             {/* Chart Section */}
+             <Card className="col-span-12 md:col-span-8 h-full flex flex-col">
+              <CardHeader className="shrink-0 pb-2">
+                <CardTitle>Cash Position</CardTitle>
+                <CardDescription>Projected running balance over time.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex-1 min-h-0 pt-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={cashFlowData}>
                     <defs>
@@ -704,20 +656,22 @@ export default function CashFlow({ project }: CashFlowProps) {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
                     <XAxis 
                       dataKey="label" 
-                      fontSize={12} 
+                      fontSize={10} 
                       tickLine={false} 
                       axisLine={false}
                       minTickGap={30}
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
                     />
                     <YAxis 
-                      fontSize={12} 
+                      fontSize={10} 
                       tickLine={false} 
                       axisLine={false}
                       tickFormatter={(val) => `${val / 1000}k`}
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
                     />
                     <Tooltip 
                       formatter={(val: number) => formatCurrency(val)}
-                      contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', border: '1px solid hsl(var(--border))' }}
+                      contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', border: '1px solid hsl(var(--border))', fontSize: '12px' }}
                     />
                     <ReferenceLine y={0} stroke="hsl(var(--destructive))" strokeDasharray="3 3" />
                     <Area 
@@ -729,46 +683,93 @@ export default function CashFlow({ project }: CashFlowProps) {
                     />
                   </AreaChart>
                 </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* Data Table */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Cash Flow Schedule</CardTitle>
-              <Button variant="outline" size="sm">Export CSV</Button>
+            {/* Budget Distribution Chart */}
+            <Card className="col-span-12 md:col-span-4 h-full flex flex-col">
+               <CardHeader className="pb-2 shrink-0">
+                 <div className="flex flex-col gap-2">
+                   <CardTitle className="text-base">Distribution</CardTitle>
+                   <div className="flex bg-muted rounded-md p-0.5 w-full">
+                      <button 
+                        className={cn("flex-1 px-2 py-1 text-[10px] font-medium rounded-sm transition-all", pieView === 'total' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+                        onClick={() => setPieView('total')}
+                      >
+                        Budget
+                      </button>
+                      <button 
+                        className={cn("flex-1 px-2 py-1 text-[10px] font-medium rounded-sm transition-all", pieView === 'outflow' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+                        onClick={() => setPieView('outflow')}
+                      >
+                        Cashflow
+                      </button>
+                   </div>
+                 </div>
+                 <CardDescription className="text-[10px] h-4 truncate mt-1">
+                   {pieView === 'total' ? 'Total budget allocation' : 'Projected spend in range'}
+                 </CardDescription>
+               </CardHeader>
+               <CardContent className="flex-1 min-h-0 relative">
+                  <div className="absolute inset-0 pb-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={deptDataForPie}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius="50%"
+                          outerRadius="80%"
+                          paddingAngle={2}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {deptDataForPie.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ fontSize: '12px' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+               </CardContent>
+            </Card>
+          </div>
+
+          {/* Data Table - Takes remaining height */}
+          <Card className="flex-1 flex flex-col min-h-0 h-1/2">
+            <CardHeader className="flex flex-row items-center justify-between shrink-0 py-3">
+              <CardTitle className="text-base">Cash Flow Schedule</CardTitle>
+              <Button variant="outline" size="sm" className="h-7 text-xs">Export CSV</Button>
             </CardHeader>
-            <CardContent>
-              <div className="rounded-md border overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-muted/50 text-muted-foreground font-medium text-xs uppercase">
-                      <tr>
-                        <th className="px-4 py-3">Period</th>
-                        <th className="px-4 py-3 text-right text-green-600">Inflows</th>
-                        <th className="px-4 py-3 text-right text-red-600">Outflows</th>
-                        <th className="px-4 py-3 text-right">Net Change</th>
-                        <th className="px-4 py-3 text-right">Running Balance</th>
+            <CardContent className="flex-1 min-h-0 overflow-hidden p-0">
+              <div className="h-full overflow-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-muted/50 text-muted-foreground font-medium text-xs uppercase sticky top-0 z-10 backdrop-blur-md">
+                    <tr>
+                      <th className="px-4 py-3">Period</th>
+                      <th className="px-4 py-3 text-right text-green-600">Inflows</th>
+                      <th className="px-4 py-3 text-right text-red-600">Outflows</th>
+                      <th className="px-4 py-3 text-right">Net Change</th>
+                      <th className="px-4 py-3 text-right">Running Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {cashFlowData.map((row) => (
+                      <tr key={row.id} className={cn("hover:bg-muted/30 transition-colors", row.balance < 0 ? "bg-red-50/50 dark:bg-red-900/10" : "")}>
+                        <td className="px-4 py-2 font-medium text-xs">{row.label}</td>
+                        <td className="px-4 py-2 text-right text-green-600 text-xs">{row.inflow > 0 ? formatCurrency(row.inflow) : '-'}</td>
+                        <td className="px-4 py-2 text-right text-red-500 text-xs">{row.outflow > 0 ? `(${formatCurrency(row.outflow)})` : '-'}</td>
+                        <td className={cn("px-4 py-2 text-right font-medium text-xs", row.net > 0 ? "text-green-600" : row.net < 0 ? "text-red-500" : "")}>
+                           {row.net !== 0 ? formatCurrency(Math.abs(row.net)) : '-'} {row.net < 0 ? '(Out)' : ''}
+                        </td>
+                        <td className={cn("px-4 py-2 text-right font-mono font-bold text-xs", row.balance < 0 ? "text-destructive" : "")}>
+                           {formatCurrency(row.balance)}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {cashFlowData.map((row) => (
-                        <tr key={row.id} className={cn("hover:bg-muted/30 transition-colors", row.balance < 0 ? "bg-red-50/50 dark:bg-red-900/10" : "")}>
-                          <td className="px-4 py-3 font-medium">{row.label}</td>
-                          <td className="px-4 py-3 text-right text-green-600">{row.inflow > 0 ? formatCurrency(row.inflow) : '-'}</td>
-                          <td className="px-4 py-3 text-right text-red-500">{row.outflow > 0 ? `(${formatCurrency(row.outflow)})` : '-'}</td>
-                          <td className={cn("px-4 py-3 text-right font-medium", row.net > 0 ? "text-green-600" : row.net < 0 ? "text-red-500" : "")}>
-                             {row.net !== 0 ? formatCurrency(Math.abs(row.net)) : '-'} {row.net < 0 ? '(Out)' : ''}
-                          </td>
-                          <td className={cn("px-4 py-3 text-right font-mono font-bold", row.balance < 0 ? "text-destructive" : "")}>
-                             {formatCurrency(row.balance)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </CardContent>
           </Card>
