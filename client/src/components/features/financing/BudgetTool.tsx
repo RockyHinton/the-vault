@@ -279,6 +279,25 @@ export default function BudgetTool({ project }: BudgetToolProps) {
     toast.info("New draft created from locked budget.");
   };
 
+  const handleDeleteDocument = (deptId: string, docId: string) => {
+    if (!activeVersion || activeVersion.status !== 'draft') return;
+    const newDepts = activeVersion.departments.map(d => {
+      if (d.id !== deptId) return d;
+      return { ...d, documents: d.documents.filter(doc => doc.id !== docId) };
+    });
+    updateBudgetDraft(project.id, { departments: newDepts });
+  };
+
+  const handleRenameDepartment = (deptId: string) => {
+    if (!expandedDepts.includes(deptId)) {
+        setExpandedDepartments(prev => [...prev, deptId]);
+    }
+    // We rely on the user to edit the input that appears when expanded.
+    // Ideally we would focus it, but just expanding is a good start for "access to rename".
+    // Alternatively, we could open a small dialog, but inline is better.
+    // Let's just expand it, and maybe show a toast or rely on UI affordance.
+  };
+
   // --- Document Mock Upload ---
   const handleUploadDoc = () => {
     if (!uploadDeptId || !activeVersion) return;
@@ -471,18 +490,40 @@ export default function BudgetTool({ project }: BudgetToolProps) {
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="font-mono font-medium">{formatCurrency(deptTotal)}</span>
-                  {!isReadOnly && dept.lineItems.length === 0 && dept.documents.length === 0 && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteDepartment(dept.id);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  {!isReadOnly && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          handleRenameDepartment(dept.id);
+                        }}>
+                          <Pencil className="h-4 w-4 mr-2" /> Rename
+                        </DropdownMenuItem>
+                        {dept.lineItems.length === 0 && dept.documents.length === 0 && (
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm("Are you sure you want to delete this department?")) {
+                                handleDeleteDepartment(dept.id);
+                              }
+                            }}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" /> Delete
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                 </div>
               </div>
@@ -620,6 +661,23 @@ export default function BudgetTool({ project }: BudgetToolProps) {
                                   {doc.status}
                                 </Badge>
                               </div>
+                              {!isReadOnly && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 ml-2">
+                                      <MoreHorizontal className="h-3 w-3" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem 
+                                      onClick={() => handleDeleteDocument(dept.id, doc.id)}
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" /> Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
                             </div>
                           ))}
                         </div>
