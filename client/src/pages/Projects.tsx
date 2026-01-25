@@ -40,7 +40,8 @@ import {
   Clapperboard,
   Archive,
   ArrowRight,
-  Trash2
+  Trash2,
+  Star
 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
@@ -48,7 +49,17 @@ import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { NewProjectDialog } from "@/components/features/NewProjectDialog";
+import { ArchiveProjectDialog } from "@/components/features/ArchiveProjectDialog";
 import { toast } from "sonner";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 const stageColors: Record<ProjectStage, string> = {
   Evaluation: "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20",
@@ -69,6 +80,12 @@ export default function ProjectsPage() {
   const [activeTab, setActiveTab] = useState<ProjectStage | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
+  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
+  const [projectToArchive, setProjectToArchive] = useState<{id: string, title: string} | null>(null);
+
+  // Archive Filter State
+  const [archiveFilterReason, setArchiveFilterReason] = useState<'All' | 'Completed' | 'Shelved' | 'Pass'>('All');
+  const [archiveFilterStarred, setArchiveFilterStarred] = useState(false);
   
   // Delete confirmation state
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
@@ -80,13 +97,26 @@ export default function ProjectsPage() {
       : p.stage === activeTab;
 
     // 2. Filter by Search Query
-    if (!searchQuery) return matchesStage;
+    if (!searchQuery && activeTab !== 'Archived') return matchesStage;
     
     const query = searchQuery.toLowerCase();
     const matchesSearch = 
       p.title.toLowerCase().includes(query) || 
       p.genre?.toLowerCase().includes(query) ||
       p.logline?.toLowerCase().includes(query);
+
+    // 3. Special Filters for Archived Stage
+    if (activeTab === 'Archived') {
+       const details = p.archiveDetails;
+       
+       // Filter by Reason
+       const matchesReason = archiveFilterReason === 'All' || details?.reason === archiveFilterReason;
+       
+       // Filter by Starred
+       const matchesStarred = !archiveFilterStarred || details?.starred === true;
+
+       return matchesStage && matchesSearch && matchesReason && matchesStarred;
+    }
 
     return matchesStage && matchesSearch;
   });
@@ -102,9 +132,9 @@ export default function ProjectsPage() {
     }
   };
 
-  const handleArchive = (projectId: string) => {
-    setProjectStage(projectId, 'Archived');
-    toast.success("Project archived");
+  const openArchiveDialog = (projectId: string, title: string) => {
+    setProjectToArchive({ id: projectId, title });
+    setIsArchiveDialogOpen(true);
   };
 
   const confirmDelete = () => {
@@ -164,6 +194,59 @@ export default function ProjectsPage() {
           </div>
 
           <div className="mt-12">
+             
+             {/* Archive Filters (Only Visible in Archive Tab) */}
+             {activeTab === 'Archived' && (
+               <div className="mb-6 flex flex-wrap items-center gap-4 p-4 bg-secondary/10 border border-border/50 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
+                 <div className="flex items-center gap-2">
+                   <Filter className="h-4 w-4 text-muted-foreground" />
+                   <span className="text-sm font-medium">Filter Archive:</span>
+                 </div>
+                 
+                 <Select 
+                   value={archiveFilterReason} 
+                   onValueChange={(val: any) => setArchiveFilterReason(val)}
+                 >
+                   <SelectTrigger className="w-[180px] h-8 text-xs">
+                     <SelectValue placeholder="Reason" />
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="All">All Reasons</SelectItem>
+                     <SelectItem value="Completed">Completed</SelectItem>
+                     <SelectItem value="Shelved">Shelved</SelectItem>
+                     <SelectItem value="Pass">Pass</SelectItem>
+                   </SelectContent>
+                 </Select>
+
+                 <div className="flex items-center space-x-2 border border-input rounded-md px-3 py-1.5 h-8 bg-background">
+                   <Checkbox 
+                     id="filter-starred" 
+                     checked={archiveFilterStarred}
+                     onCheckedChange={(checked) => setArchiveFilterStarred(checked as boolean)}
+                   />
+                   <Label htmlFor="filter-starred" className="text-xs cursor-pointer flex items-center gap-1.5 font-normal">
+                     <Star className={`h-3 w-3 ${archiveFilterStarred ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`} />
+                     Starred Only
+                   </Label>
+                 </div>
+
+                 {/* Reset Filter Button if active */}
+                 {(archiveFilterReason !== 'All' || archiveFilterStarred) && (
+                   <Button 
+                     variant="ghost" 
+                     size="sm" 
+                     className="h-8 text-xs text-muted-foreground hover:text-foreground ml-auto"
+                     onClick={() => {
+                       setArchiveFilterReason('All');
+                       setArchiveFilterStarred(false);
+                     }}
+                   >
+                     Reset Filters
+                   </Button>
+                 )}
+               </div>
+             )}
+
              {/* Projects Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProjects.map((project, index) => {
@@ -184,6 +267,10 @@ export default function ProjectsPage() {
                               <StageIcon className="h-3 w-3 mr-1" />
                               {project.stage}
                             </Badge>
+
+                            {project.archiveDetails?.starred && (
+                                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 animate-in zoom-in duration-300" />
+                            )}
                             
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -210,7 +297,7 @@ export default function ProjectsPage() {
                                 {project.stage !== 'Archived' && (
                                   <DropdownMenuItem onClick={(e) => {
                                     e.stopPropagation();
-                                    handleArchive(project.id);
+                                    openArchiveDialog(project.id, project.title);
                                   }}>
                                     <Archive className="mr-2 h-4 w-4" />
                                     Archive
@@ -257,6 +344,28 @@ export default function ProjectsPage() {
                                  <span className="text-foreground">{project.evaluation.scores?.creative || '-'} / 10</span>
                                </div>
                              )}
+
+                             {/* Archived Stats */}
+                             {project.stage === 'Archived' && project.archiveDetails && (
+                               <>
+                                 <div>
+                                   <span className="block text-foreground/50 text-[10px] uppercase">Reason</span>
+                                   <Badge variant="outline" className="h-5 text-[10px] px-1 font-normal bg-secondary/30">
+                                     {project.archiveDetails.reason}
+                                   </Badge>
+                                 </div>
+                                 {project.archiveDetails.tags && project.archiveDetails.tags.length > 0 && (
+                                   <div>
+                                     <span className="block text-foreground/50 text-[10px] uppercase">Tags</span>
+                                     <div className="flex gap-1 overflow-hidden max-w-[120px]">
+                                       <span className="truncate text-foreground" title={project.archiveDetails.tags.join(', ')}>
+                                         {project.archiveDetails.tags[0]} {project.archiveDetails.tags.length > 1 && `+${project.archiveDetails.tags.length - 1}`}
+                                       </span>
+                                     </div>
+                                   </div>
+                                 )}
+                               </>
+                             )}
                           </div>
 
                         </CardContent>
@@ -301,8 +410,12 @@ export default function ProjectsPage() {
                 <div className="h-16 w-16 bg-secondary/20 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Archive className="h-8 w-8 opacity-50" />
                 </div>
-                <h3 className="text-lg font-medium">No projects in {activeTab}</h3>
-                <p className="mt-2">Projects will appear here when they move to this stage.</p>
+                <h3 className="text-lg font-medium">No projects found in {activeTab}</h3>
+                <p className="mt-2">
+                  {activeTab === 'Archived' 
+                    ? "Try adjusting your filters to see more archived projects." 
+                    : "Projects will appear here when they move to this stage."}
+                </p>
               </div>
             )}
           </div>
@@ -312,6 +425,18 @@ export default function ProjectsPage() {
           isOpen={isNewProjectDialogOpen} 
           onClose={() => setIsNewProjectDialogOpen(false)} 
         />
+
+        {projectToArchive && (
+          <ArchiveProjectDialog 
+            isOpen={isArchiveDialogOpen}
+            onClose={() => {
+              setIsArchiveDialogOpen(false);
+              setProjectToArchive(null);
+            }}
+            projectId={projectToArchive.id}
+            projectTitle={projectToArchive.title}
+          />
+        )}
 
         <AlertDialog open={!!projectToDelete} onOpenChange={(open) => !open && setProjectToDelete(null)}>
           <AlertDialogContent>

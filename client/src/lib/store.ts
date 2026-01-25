@@ -111,6 +111,13 @@ export interface Project {
       callSheetStatus: 'Published' | 'Draft' | 'Pending';
     }[];
   };
+
+  // Archive Details (New)
+  archiveDetails?: {
+    reason: 'Completed' | 'Shelved' | 'Pass';
+    starred: boolean;
+    tags?: string[];
+  };
 }
 
 export interface Category {
@@ -653,6 +660,7 @@ interface AppState {
   getCategorySubcategories: (categoryId: string) => Subcategory[];
   
   setProjectStage: (projectId: string, stage: ProjectStage) => void;
+  archiveProject: (projectId: string, details: { reason: 'Completed' | 'Shelved' | 'Pass'; starred: boolean; tags?: string[] }) => void;
   updateClosingChecklist: (projectId: string, checklist: Partial<Project['closingChecklist']>) => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'authorId' | 'authorName'>) => void;
   deleteTask: (taskId: string) => void;
@@ -888,6 +896,17 @@ export const useStore = create<AppState>()(
   setProjectStage: (projectId, stage) => set((state) => ({
     projects: state.projects.map(p => 
       p.id === projectId ? { ...p, stage, updatedAt: new Date().toISOString() } : p
+    )
+  })),
+
+  archiveProject: (projectId, details) => set((state) => ({
+    projects: state.projects.map(p => 
+      p.id === projectId ? { 
+        ...p, 
+        stage: 'Archived', 
+        updatedAt: new Date().toISOString(),
+        archiveDetails: details
+      } : p
     )
   })),
 
