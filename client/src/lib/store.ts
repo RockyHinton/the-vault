@@ -511,8 +511,8 @@ const MOCK_SUBCATEGORIES: Subcategory[] = [
   { id: 'sc3', categoryId: 'c1', name: 'Script Versions', slug: 'script-versions' },
   // Financing
   { id: 'sc4', categoryId: 'c3', name: 'Budget', slug: 'budget' },
-  { id: 'sc5', categoryId: 'c3', name: 'Cashflow', slug: 'cashflow' },
   { id: 'sc6', categoryId: 'c3', name: 'Finance Plan', slug: 'finance-plan' },
+  { id: 'sc5', categoryId: 'c3', name: 'Cashflow', slug: 'cashflow' },
   // Documentation (Development)
   { id: 'sc20', categoryId: 'c9', name: 'Chain of Title', slug: 'chain-of-title' },
   { id: 'sc21', categoryId: 'c9', name: 'Writer Agreements', slug: 'writer-agreements' },
