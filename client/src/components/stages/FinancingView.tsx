@@ -18,6 +18,7 @@ import DocumentLibrary from "@/pages/DocumentLibrary";
 import { FinancingSourcesTable } from "@/components/features/FinancingSourcesTable";
 import BudgetTool from "@/components/features/financing/BudgetTool";
 import FinancePlan from "@/components/features/financing/FinancePlan";
+import CashFlow from "@/components/features/financing/CashFlow";
 import { 
   PieChart, 
   Pie, 
@@ -54,6 +55,10 @@ export default function FinancingView({ project, currentSubcategory, subcategory
     
     if (currentSubcategory === "Finance Plan") {
       return <FinancePlan project={project} />;
+    }
+
+    if (currentSubcategory === "Cashflow") {
+      return <CashFlow project={project} />;
     }
 
     return (

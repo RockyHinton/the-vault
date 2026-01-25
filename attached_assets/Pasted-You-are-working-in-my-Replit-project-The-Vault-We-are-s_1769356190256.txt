@@ -1,0 +1,210 @@
+You are working in my Replit project “The Vault”. We are still in DESIGN MODE: DO NOT make any backend/database/schema/API changes. Implement the Cash Flow page upgrade using ONLY front-end/state changes and mock/local data handling consistent with our current design-mode approach.
+
+CRITICAL SCOPE LIMIT
+ONLY modify:
+1) Financing → Cash Flow sub-page UI + its local/front-end state logic
+2) Minimal shared finance state reading (read-only) from Budget + Finance Plan front-end state that already exists in design mode
+Do NOT change Budget page behavior or Finance Plan page behavior.
+Do NOT change global navigation, routes, layouts, themes, or other pages.
+Do NOT add libraries. Do NOT refactor unrelated code.
+
+IMPORTANT PROCESS REQUIREMENT
+Before implementing, first create an internal implementation plan in comments at the top of the main Cash Flow page file describing:
+- what existing state you will read from (budget + finance plan)
+- what new local state you will add for cash flow timing + one-off payments
+- how calculations are performed
+Then implement step-by-step.
+
+GOAL
+Upgrade the Cash Flow page so it clearly links:
+- Budget (department totals from the last LOCKED budget)
+- Finance Plan (APPROVED funding sources and their dates)
+And lets users add:
+- Department spend windows (timing for when each department spends its budget)
+- One-off payments (spikes) tied to a department and a date
+Then generate:
+- A cashflow table (period-based) with inflows/outflows and running balance
+- A simple analytics visual: 
+  A) A line chart of running balance over time (preferred if chart component already exists),
+  OR
+  B) If no chart system exists, show a simple bar/summary and keep it minimal.
+Also include a pie/donut chart showing department budget distribution (pulled from locked budget totals).
+
+NO BACKEND. FRONT-END ONLY.
+
+DATA SOURCES (READ-ONLY)
+Read from existing design-mode state (whatever your store/context is) with these semantics:
+- project.totalBudget (number) and project.currency
+- last locked budget departments with:
+  - department name
+  - department total (sum of line items)
+- approved finance sources with:
+  - name
+  - amount
+  - expected date (or “expectedDate” field if stored)
+If there is no locked budget or no approved finance sources, show friendly empty states and allow manual inputs where relevant.
+
+NEW CASH FLOW STATE (FRONT-END ONLY)
+Add front-end-only cashflow state for the current project:
+
+CashFlowState:
+- timeframe: "monthly" | "weekly"  (default "monthly")
+- openingBalance: number (default 0; editable)
+- departmentTimings: { [departmentIdOrName]: SpendWindow }
+- oneOffPayments: OneOffPayment[]
+
+SpendWindow:
+- startDate: string (ISO or YYYY-MM)
+- endDate: string (ISO or YYYY-MM)
+
+OneOffPayment:
+- id: string
+- name: string (required)  // e.g., “Camera deposit”
+- department: string (required) // match department name
+- amount: number (required, >= 0)
+- date: string (required) // ISO date or YYYY-MM depending on timeframe
+- direction: "outflow" | "inflow" (default "outflow")  // allow rare manual inflow if needed, but keep UI simple
+- note: string optional
+
+Keep this state in the same design-mode store pattern used elsewhere.
+
+TIMEFRAME / PERIODS
+- Provide a small toggle at top: Monthly (default) / Weekly
+- Monthly groups by month; Weekly groups by week (ISO week)
+- Keep v1 timeframe range simple:
+  - Auto-generate periods from earliest inflow/outflow date to latest (plus 1 period padding)
+  - Also allow user to set a “Start period” and “End period” (optional, simple date pickers). If too much UI, skip and just auto-range.
+
+PAGE LAYOUT (CLEAN, INTUITIVE)
+
+1) TOP SUMMARY STRIP
+Show:
+- Total Budget (read-only, from locked budget)
+- Secured Funding (read-only, sum of approved sources)
+- Funding Gap (read-only, budget - secured)
+- Opening Balance (editable input)
+- Lowest Projected Balance (computed)
+- First Shortfall Period (computed; if none, show “Cash positive”)
+Keep this unobtrusive.
+
+2) DEPARTMENT CASH TIMING SECTION (core user input)
+Pull all departments from the locked budget and render them as collapsed cards (accordion), similar to Budget departments:
+Collapsed row shows:
+- Department name
+- Department total (read-only)
+- Spend window summary (e.g., “Weeks 3–10” or “Mar–Jun”) if set
+- One-off payments count for this department
+
+Expanded card shows:
+A) Department overview:
+- Total (read-only)
+- Timing inputs (editable):
+  - Spend window start
+  - Spend window end
+Helper text:
+“Vault spreads this department’s budget evenly across this window to estimate cash outflows.”
+
+B) One-off payments list for this department (subset of global oneOffPayments):
+- List with date, name, amount
+- Edit / delete controls
+
+C) “Add one-off payment” button (department-scoped):
+- Opens modal pre-filled with department name
+
+3) INFLOWS SECTION (read-only + small adjustments)
+Show approved finance sources as a simple list/table:
+- source name
+- amount
+- expected date
+Allow light adjustment ONLY in Cash Flow (design-mode):
+- users can adjust the expected receipt date and optionally split into 2+ tranches (keep this optional; if too hard, allow only date override)
+Implement as “Cashflow receipt schedule” that references finance source id but does NOT alter the Finance Plan page state.
+Fields:
+- receipt date
+- receipt amount
+- status: expected/received (optional)
+
+Keep this minimal—do not overbuild.
+
+4) CASH FLOW TABLE (generated)
+Below, show a table for the selected timeframe:
+
+Columns:
+- Period (Month or Week)
+- Inflows (sum)
+- Outflows (sum)
+- Net (in - out)
+- Running Balance
+
+Rules:
+- Running balance starts at openingBalance, then adds Net each period.
+- Inflows are from approved sources’ receipt schedule + any oneOffPayments marked inflow
+- Outflows are:
+  - department spread outflows across each department’s spend window (even distribution)
+  - plus oneOffPayments marked outflow
+If a department has no spend window set:
+- Do not assume spend (treat as 0) AND show a subtle warning in that department card: “Timing not set”
+(or optionally default to whole project range, but warning is clearer).
+
+Highlighting:
+- If running balance < 0, highlight that row subtly (warning style consistent with Vault).
+- Show a top banner if any shortfall exists: “Projected shortfall in [period].”
+
+5) ANALYTICS VISUALS (minimal but valuable)
+A) Running balance line chart (preferred if an existing chart component/library is already in the project)
+- X axis: period
+- Y axis: running balance
+If no chart support exists, implement a simple “sparkline-like” minimal chart only if already available. Do not add libraries.
+
+B) Department budget distribution pie/donut chart
+- Based on locked budget department totals
+- This is NOT cashflow timing; it is budget distribution.
+If a chart exists, render pie/donut.
+If charts are not available, replace with a simple list with percentage bars (no new libs).
+
+ONE-OFF PAYMENT MODAL (required)
+When user clicks “Add one-off payment”:
+Fields:
+- Payment name (required)
+- Department (required dropdown populated from locked budget departments; default to the department card context)
+- Amount (required number >= 0)
+- Date (required; month picker for monthly timeframe; date picker for weekly timeframe)
+- Direction (segmented): Outflow / Inflow (default Outflow)
+- Note (optional)
+Create payment and immediately reflect in:
+- department card payment list
+- cashflow table calculations
+Validation uses existing styling.
+
+LINKING RULES (do not change other pages)
+- Budget totals and departments are read from the last LOCKED budget snapshot (already implemented in Budget).
+- Approved finance sources are read from the Finance Plan approved sources state.
+- Cashflow adjustments (timing windows, receipt date overrides, one-off payments) live ONLY in Cash Flow state and do not modify Budget or Finance Plan data.
+
+EMPTY STATES
+If no locked budget:
+- Show message: “Lock a budget to generate department cash timing.”
+- Disable department timing section and pie chart.
+If no approved finance sources:
+- Show message: “Approve funding sources in Finance Plan to model inflows.”
+- Still allow department timing + one-off payments so outflows can be modeled.
+
+ACCEPTANCE TESTS (MANUAL)
+After implementing, list files changed and confirm:
+1) Departments are pulled from locked budget and shown as collapsible cards with totals.
+2) User can set spend window start/end per department; changes affect outflows.
+3) User can add one-off payments tied to a department; appears in that department and affects cashflow.
+4) Approved finance sources appear as inflows; secured funding is read-only.
+5) Cashflow table computes inflows/outflows/net/running balance; highlights negative periods.
+6) Running balance visual exists if chart support already exists; otherwise show fallback summary.
+7) Department budget distribution pie/donut is shown if chart support exists; otherwise show fallback list.
+8) No backend changes; only front-end design-mode state.
+
+IMPLEMENTATION NOTES
+- Reuse existing accordion/card/modal components used in Budget/Finance Plan for consistent UI.
+- Keep the page clean and not crowded; prioritize the department timing + cash table.
+- Avoid complex scheduling algorithms: department spend is evenly distributed across the window.
+- Do not add heavy features like payroll, invoices, reconciliation.
+
+REMEMBER:
+Design mode only. Highest chance of success. Minimal scope. Clear UI. Clear calculations.

@@ -130,6 +130,9 @@ export interface Project {
   financePlan?: {
     sources: FinanceSource[];
   };
+
+  // Cash Flow Data (New)
+  cashFlow?: CashFlowState;
 }
 
 // --- Finance Plan Types ---
@@ -156,6 +159,34 @@ export interface FinanceSource {
   notes?: string;
   documents: FinanceDocument[];
   isExpanded?: boolean; // UI state
+}
+
+// --- Cash Flow Types ---
+
+export interface SpendWindow {
+  startDate: string; // ISO or YYYY-MM
+  endDate: string; // ISO or YYYY-MM
+}
+
+export interface OneOffPayment {
+  id: string;
+  name: string;
+  departmentId: string; // Link to department
+  departmentName: string; // Fallback
+  amount: number;
+  date: string;
+  direction: 'outflow' | 'inflow';
+  note?: string;
+}
+
+export interface CashFlowState {
+  timeframe: 'monthly' | 'weekly';
+  openingBalance: number;
+  departmentTimings: Record<string, SpendWindow>; // Keyed by department ID
+  oneOffPayments: OneOffPayment[];
+  sourceAdjustments: Record<string, {
+    expectedDate?: string;
+  }>;
 }
 
 // --- Budget Tool Types ---
