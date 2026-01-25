@@ -115,6 +115,7 @@ export default function CashFlow({ project }: CashFlowProps) {
 
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({});
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [pieView, setPieView] = useState<'total' | 'outflow'>('total');
   
   // Payment Modal State
   const [newPayment, setNewPayment] = useState<Partial<OneOffPayment>>({
@@ -328,10 +329,68 @@ export default function CashFlow({ project }: CashFlowProps) {
     setExpandedDepts(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const deptDataForPie = departments.map(d => ({
-    name: d.name,
-    value: d.lineItems.reduce((s, i) => s + i.amount, 0)
-  })).filter(d => d.value > 0);
+  const deptDataForPie = useMemo(() => {
+    if (pieView === 'total') {
+      return departments.map(d => ({
+        name: d.name,
+        value: d.lineItems.reduce((s, i) => s + i.amount, 0)
+      })).filter(d => d.value > 0);
+    } else {
+      // Outflow view: sum of all calculated outflows for each department in the cashFlowData
+      // Wait, cashFlowData is aggregated by period. We need aggregation by department.
+      // Let's recalculate simply over the full range.
+      return departments.map(d => {
+        // 1. Spend Window Outflow
+        let totalOutflow = 0;
+        const window = cashFlowState.departmentTimings[d.id];
+        const deptTotal = d.lineItems.reduce((s, i) => s + i.amount, 0);
+        
+        if (window && window.startDate && window.endDate && deptTotal > 0) {
+           const wStart = new Date(window.startDate);
+           const wEnd = new Date(window.endDate);
+           if (wEnd >= wStart) {
+             // For simplicity in "Projected Spend" pie, we assume if a window is set, 
+             // the full amount is projected to be spent, UNLESS the window falls outside our calculated timeline?
+             // Actually, "Projected Spend" usually implies "Total Cash Required". 
+             // If a window is set, the cash will go out. 
+             // Let's just use the full department total if a window is set.
+             // But wait, the user wants "on the same timescales". 
+             // If we just show total, it's same as 'total' view. 
+             // Ah, maybe they mean "Amount Spent in the Visible Timeline"? 
+             // Let's calculate the overlap of the window with [startDate, endDate] of the graph.
+             
+             // Graph range:
+             // startDate, endDate from calculations above.
+             
+             const overlapStart = new Date(Math.max(wStart.getTime(), startDate.getTime()));
+             const overlapEnd = new Date(Math.min(wEnd.getTime(), endDate.getTime()));
+             
+             if (overlapStart <= overlapEnd) {
+                const totalWindowDays = Math.max(1, (wEnd.getTime() - wStart.getTime()) / (1000 * 60 * 60 * 24));
+                const overlapDays = (overlapEnd.getTime() - overlapStart.getTime()) / (1000 * 60 * 60 * 24);
+                const ratio = Math.min(1, Math.max(0, overlapDays / totalWindowDays));
+                totalOutflow += deptTotal * ratio;
+             }
+           }
+        }
+        
+        // 2. One-off Payments Outflow (in range)
+        cashFlowState.oneOffPayments
+          .filter(p => p.departmentId === d.id && p.direction === 'outflow')
+          .forEach(p => {
+             const dDate = new Date(p.date);
+             if (isValid(dDate) && isWithinInterval(dDate, { start: startDate, end: endDate })) {
+               totalOutflow += p.amount;
+             }
+          });
+
+        return {
+          name: d.name,
+          value: totalOutflow
+        };
+      }).filter(d => d.value > 0);
+    }
+  }, [departments, cashFlowState, pieView, startDate, endDate]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -547,13 +606,17 @@ export default function CashFlow({ project }: CashFlowProps) {
                              <input 
                                type="date" 
                                className="h-5 w-24 text-[10px] bg-transparent border-b border-dashed border-muted-foreground focus:outline-none focus:border-primary"
-                               value={adj?.expectedDate || s.expectedDate || ''}
-                               onChange={(e) => updateCashFlow({
-                                  sourceAdjustments: {
-                                    ...cashFlowState.sourceAdjustments,
-                                    [s.id]: { expectedDate: e.target.value }
+                               defaultValue={adj?.expectedDate || s.expectedDate || ''}
+                               onBlur={(e) => {
+                                  if (e.target.value !== (adj?.expectedDate || s.expectedDate)) {
+                                    updateCashFlow({
+                                      sourceAdjustments: {
+                                        ...cashFlowState.sourceAdjustments,
+                                        [s.id]: { expectedDate: e.target.value }
+                                      }
+                                    });
                                   }
-                               })}
+                               }}
                              />
                           </div>
                         </div>
@@ -571,7 +634,26 @@ export default function CashFlow({ project }: CashFlowProps) {
            {/* Budget Distribution Chart (If space permits) */}
            <Card>
              <CardHeader className="pb-2">
-               <CardTitle className="text-base">Budget Distribution</CardTitle>
+               <div className="flex items-center justify-between">
+                 <CardTitle className="text-base">Distribution</CardTitle>
+                 <div className="flex bg-muted rounded-md p-0.5">
+                    <button 
+                      className={cn("px-2 py-0.5 text-[10px] font-medium rounded-sm transition-all", pieView === 'total' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+                      onClick={() => setPieView('total')}
+                    >
+                      Budget
+                    </button>
+                    <button 
+                      className={cn("px-2 py-0.5 text-[10px] font-medium rounded-sm transition-all", pieView === 'outflow' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+                      onClick={() => setPieView('outflow')}
+                    >
+                      Cashflow
+                    </button>
+                 </div>
+               </div>
+               <CardDescription className="text-xs">
+                 {pieView === 'total' ? 'Total budget allocation' : 'Projected spend in this timeframe'}
+               </CardDescription>
              </CardHeader>
              <CardContent>
                 <div className="h-[200px] w-full">
