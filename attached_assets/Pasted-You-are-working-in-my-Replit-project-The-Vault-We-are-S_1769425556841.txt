@@ -1,0 +1,171 @@
+You are working in my Replit project “The Vault”. We are STILL IN DESIGN MODE.
+DO NOT make any backend/database/schema/API changes.
+This task ONLY updates the **Documentation Overview page** (the main Documentation landing page).
+
+CRITICAL SCOPE LIMIT
+ONLY modify:
+- The Documentation Overview page UI
+- Its front-end, read-only logic for deriving status from existing Documentation sub-page state
+
+DO NOT modify:
+- Any Documentation sub-pages
+- Navigation/sidebar
+- Routing
+- Layout system
+- Styling system
+- Other stages or modules (Financing, Script, etc.)
+DO NOT add libraries.
+DO NOT refactor unrelated code.
+
+GOAL
+Replace the current checklist-style Documentation Overview with a **card-based, read-only dashboard** that:
+- Derives its status automatically from each documentation sub-page
+- Shows clear progress per documentation type
+- Allows filtering and searching
+- Acts as a navigation hub into each documentation sub-page
+
+NO MANUAL CHECKBOXES. COMPLETION IS DERIVED ONLY.
+
+--------------------------------------------------------------------
+DATA SOURCE (READ-ONLY)
+Read from the existing front-end documentation state already implemented for sub-pages.
+
+For each documentation type (docTypeKey), you already have:
+- entities: Entity[]
+Each Entity has:
+- documents: DocFile[]
+Each DocFile has:
+- status: Draft | Pending | Signed | Approved
+
+Rules (MUST USE):
+- Entity is APPROVED when ALL its documents have status === "Approved"
+- Entity is PENDING when:
+  - it has documents but not all Approved, OR
+  - it has zero documents
+- Documentation Type status:
+  - EMPTY → entities.length === 0
+  - COMPLETED → entities.length > 0 AND pendingEntities === 0
+  - IN_PROGRESS → entities.length > 0 AND pendingEntities > 0
+
+--------------------------------------------------------------------
+PAGE LAYOUT (NEW)
+
+1) PAGE HEADER (keep existing)
+- Title: Documentation
+- Subtitle: Manage and track completion of required project documentation.
+
+2) TOP SUMMARY STRIP (NEW, SIMPLE)
+Add a slim summary bar under the header showing:
+- Total Types (static count, e.g. 11)
+- Completed (count)
+- In Progress (count)
+- Empty (count)
+
+These values must be derived dynamically from the documentation state.
+
+3) FILTER + SEARCH ROW (NEW)
+Below the summary strip, add a control row containing:
+
+A) Status Filter (segmented control or chips)
+Options:
+- All
+- Completed
+- In Progress
+- Empty
+
+Default selection: All
+
+B) Search Input
+- Placeholder: “Search documentation…”
+- Filters by documentation type name (case-insensitive)
+
+C) Optional sort behavior (if easy):
+Default sorting order:
+1. In Progress
+2. Empty
+3. Completed
+
+If sorting complicates implementation, skip explicit sort UI and just apply this default order silently.
+
+4) DOCUMENTATION TYPE CARDS GRID (CORE UI)
+Replace the old checklist list entirely.
+
+Render a grid (or stacked cards on smaller screens) of **clickable cards**, one per documentation type.
+
+Each card represents ONE documentation sub-page.
+
+CARD CONTENT (MUST INCLUDE):
+- Documentation type name (e.g. “Cast Agreements”)
+- Status badge:
+  - COMPLETED → green tick icon + “Completed”
+  - IN_PROGRESS → amber/neutral icon + “In progress”
+  - EMPTY → muted icon + “No entities yet”
+- Stats (small text):
+  - Entities: X
+  - Approved: Y
+  - Pending: Z
+
+CARD BEHAVIOR:
+- Entire card is clickable
+- Clicking routes to the corresponding documentation sub-page
+  (use existing routing; do not invent new routes)
+
+VISUAL RULES:
+- Completed cards: subtle green accent (border, icon, or badge)
+- In progress: neutral/amber accent
+- Empty: muted appearance
+Keep styling consistent with Vault UI—no loud colors.
+
+5) EMPTY STATES
+If search/filter results in zero cards:
+- Show a clean message:
+  “No documentation types match your filters.”
+
+--------------------------------------------------------------------
+DOCUMENTATION TYPES (STATIC LIST)
+The overview must include these documentation types (do not add/remove):
+- Chain of Title
+- Writer Agreements
+- Investment Agreements
+- Co-Production
+- Producers Agreements
+- Director Agreements
+- Cast Agreements
+- Banking Docs
+- Funding / Tax Credit
+- Sales Agency
+- CAMA
+
+Each card must map correctly to its existing sub-page docTypeKey.
+
+--------------------------------------------------------------------
+IMPLEMENTATION GUIDELINES
+- Build a single configuration array for documentation types:
+  - name
+  - docTypeKey
+  - route
+This avoids duplication and keeps the overview clean.
+
+- Derive all metrics dynamically; do NOT store status manually.
+- Remove all checkbox/tick UI from the overview.
+- Keep this page read-only: no uploads, no edits, no approvals here.
+
+--------------------------------------------------------------------
+ACCEPTANCE TESTS (MANUAL)
+After implementation, list files changed and confirm:
+
+1) Overview page no longer shows a checklist or checkboxes.
+2) Each documentation type is displayed as a card.
+3) Card status correctly updates based on entity/document approval state.
+4) Completed cards show a green tick/accent.
+5) In-progress and empty cards show correct status text.
+6) Filter chips correctly filter cards.
+7) Search filters cards by name.
+8) Clicking a card navigates to the correct sub-page.
+9) No sub-pages or backend logic were changed.
+
+REMEMBER:
+Design mode only.
+Overview page only.
+Status is derived, never manually set.
+Keep UI clean, calm, and producer-friendly.
