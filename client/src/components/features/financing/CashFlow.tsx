@@ -756,7 +756,7 @@ export default function CashFlow({ project }: CashFlowProps) {
                   </thead>
                   <tbody className="divide-y">
                     {cashFlowData.map((row) => (
-                      <tr key={row.id} className={cn("hover:bg-muted/30 transition-colors", row.balance < 0 ? "bg-red-50/50 dark:bg-red-900/10" : "")}>
+                      <tr key={row.id} className="hover:bg-muted/30 transition-colors">
                         <td className="px-4 py-2 font-medium text-xs">{row.label}</td>
                         <td className="px-4 py-2 text-right text-green-600 text-xs">{row.inflow > 0 ? formatCurrency(row.inflow) : '-'}</td>
                         <td className="px-4 py-2 text-right text-red-500 text-xs">{row.outflow > 0 ? `(${formatCurrency(row.outflow)})` : '-'}</td>
