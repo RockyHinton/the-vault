@@ -13,6 +13,7 @@ import ScriptView from "@/components/stages/ScriptView";
 import ProjectNotesView from "@/components/stages/ProjectNotesView";
 import ProducersView from "@/components/stages/ProducersView";
 import CreativesView from "@/components/stages/CreativesView";
+import DocumentationEntityPage from "@/components/features/documentation/DocumentationEntityPage";
 import { UploadDocumentDialog } from "@/components/features/UploadDocumentDialog";
 import { Button } from "@/components/ui/button";
 import { 
@@ -300,13 +301,32 @@ export default function ProjectWorkspace() {
       );
     }
 
-    // SPECIAL CASE: Legal Dashboard
+    // SPECIAL CASE: Documentation / Legal
     if (currentCategory?.slug === 'legal') {
+      // If we are in a subcategory, use the Entity Page System
+      if (currentSubcategory) {
+        const docTypeKey = currentSubcategory.slug.replace(/-/g, '_');
+        return (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+             <div className="flex items-end justify-between border-b border-border pb-6">
+                <div>
+                   <h2 className="text-3xl font-display font-bold text-foreground tracking-tight">
+                     {currentSubcategory.name}
+                   </h2>
+                   <p className="text-muted-foreground mt-1">
+                     Manage {currentSubcategory.name.toLowerCase()} documentation and records.
+                   </p>
+                </div>
+             </div>
+             <DocumentationEntityPage project={project} docTypeKey={docTypeKey} />
+          </div>
+        );
+      }
+
+      // Otherwise, show the Legal Dashboard / Checklist
       return (
         <LegalView 
           project={project} 
-          currentSubcategory={currentSubcategory?.name}
-          subcategoryId={currentSubcategory?.id}
         />
       );
     }

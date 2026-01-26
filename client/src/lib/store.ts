@@ -133,6 +133,36 @@ export interface Project {
 
   // Cash Flow Data (New)
   cashFlow?: CashFlowState;
+
+  // Documentation Entity State (New)
+  documentationState?: DocumentationState;
+}
+
+// --- Documentation Entity Types ---
+
+export interface DocFile {
+  id: string;
+  fileName: string;
+  docType: string;
+  status: 'Draft' | 'Pending' | 'Signed' | 'Approved';
+  uploadedAt: string;
+  notes?: string;
+}
+
+export interface DocEntity {
+  id: string;
+  title: string;
+  meta: Record<string, any>;
+  isExpanded?: boolean;
+  documents: DocFile[];
+}
+
+export interface DocumentationState {
+  // Keyed by docTypeKey (e.g., "chain_of_title", "writer_agreements")
+  [docTypeKey: string]: {
+    entities: DocEntity[];
+    lastUpdatedAt: string;
+  };
 }
 
 // --- Finance Plan Types ---

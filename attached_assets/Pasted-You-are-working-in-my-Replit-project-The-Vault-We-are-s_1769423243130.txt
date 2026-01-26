@@ -1,0 +1,413 @@
+You are working in my Replit project “The Vault”. We are still in DESIGN MODE: DO NOT make any backend/database/schema/API changes. Implement the new entity-based Documentation subpages using ONLY front-end/state changes and mock/local data handling consistent with our current design-mode approach.
+
+CRITICAL SCOPE LIMIT
+ONLY modify the Documentation subpages (the individual pages like “Chain of Title”, “Writer Agreements”, etc.).
+DO NOT modify the Documentation Overview / Checklist page yet.
+DO NOT modify navigation/sidebar items, routing structure, layout, theme, or other areas (Financing, Script, etc.).
+DO NOT add libraries. DO NOT refactor unrelated code.
+
+GOAL
+For EACH Documentation subpage:
+- Add a top stat bar (simple, unobtrusive) showing status metrics for that document type.
+- Replace the “file dump” single upload area with an entity-based system:
+  - Main “Add …” button at top of entities section (label varies per page).
+  - Clicking “Add …” opens a modal form specific to that entity type (NOT generic).
+  - Creating an entity adds a collapsed accordion card.
+  - Cards are collapsed by default, expandable to show entity details and a document uploads section at the bottom.
+- Each entity can contain multiple documents with doc type + status, similar to how Budget/Finance Plan cards handle documents.
+- Keep everything clean, consistent with Vault UI, minimal clutter.
+
+STATE (FRONT-END ONLY)
+Implement a design-mode-only documentation store keyed by projectId and docType.
+
+Suggested structure (adapt naming to your existing store conventions):
+DocumentationState:
+- byProject: {
+    [projectId]: {
+      [docTypeKey]: {
+        entities: Entity[],
+        lastUpdatedAt: string
+      }
+    }
+  }
+
+Entity (base fields):
+- id: string
+- title: string                 // display label (e.g., “John Smith”, “ABC Films Ltd”)
+- meta: object                  // doc-type-specific details
+- isExpanded: boolean           // UI only
+- documents: DocFile[]          // uploaded docs for this entity
+
+DocFile:
+- id: string
+- fileName: string
+- docType: string               // dropdown per page (see below for defaults)
+- status: string                // Draft / Pending / Signed / Approved (keep consistent)
+- uploadedAt: string
+- notes?: string optional
+
+DOCUMENT STATUS OPTIONS (use these exact labels everywhere)
+- Draft
+- Pending
+- Signed
+- Approved
+
+DOCUMENT UPLOAD (DESIGN MODE)
+Do not implement real file upload storage. Use the existing upload component if present; otherwise simulate an upload by prompting for fileName, docType, and status and then creating a DocFile entry.
+
+COMMON SUBPAGE LAYOUT (applies to every Documentation subpage)
+1) Page header remains (title + subtitle) as-is.
+2) Add a STAT BAR directly under the header:
+   - Status: Complete / In progress (derived)
+   - Entities: X
+   - Confirmed: Y
+   - Pending: Z
+   - Last updated: date/time
+   Definition for MVP:
+   - “Confirmed” entity = entity has at least ONE document with status “Approved” OR “Signed”
+   - “Pending” entity = entity exists but has 0 confirmed documents
+   - Page “Complete” = entities count > 0 AND pending == 0 (no pending entities)
+   Keep these rules simple.
+
+3) Under stat bar, add a primary action button:
+   - Label depends on page (see per-page config below)
+   - Opens modal specific to that page
+
+4) Entities list section:
+   - Vertical stack of accordion cards, collapsed by default.
+   - Collapsed card shows:
+     - Entity title
+     - small secondary line (key meta info like role/company/territory where relevant)
+     - confirmed/pending badge (based on doc statuses)
+     - document count
+     - expand/collapse icon
+   - Expanded card shows:
+     A) “Details” area (read-only text fields, editable optionally in design mode if you already have patterns; but keep v1 minimal—editable only via an “Edit” button if easy)
+     B) “Notes” optional textarea (optional; if too much, skip)
+     C) “Documents” area at bottom:
+        - Upload document button
+        - List of documents with:
+          - fileName
+          - docType dropdown
+          - status dropdown
+          - uploadedAt
+          - delete icon (optional)
+        DocType dropdown should be page-specific (provide defaults below).
+        Allow editing docType/status for design mode.
+
+PER-PAGE CONFIGURATION (MUST IMPLEMENT EXACTLY)
+Implement each subpage using a per-page config object keyed by docTypeKey so the code is maintainable without refactoring the whole app.
+
+For each page, implement:
+- Add button label
+- Modal title
+- Modal fields (unique per page)
+- Entity title formatting
+- A short “secondary line” display
+- Default docType dropdown options for documents on that page
+
+IMPORTANT: Modal forms MUST NOT be generic. Use different fields depending on the doc type below.
+
+--------------------------------------------
+1) CHAIN OF TITLE
+docTypeKey: "chain_of_title"
+Add button label: "Add Rights Item"
+Modal title: "Add Rights Item"
+Modal fields (required unless marked optional):
+- Rights item title (required)  // e.g., “Original Screenplay”, “Novel”, “Rewrite”
+- Rights holder / Author (required)
+- Rights type (required dropdown):
+  - Original Screenplay
+  - Underlying Work (Book/Article)
+  - Rewrite
+  - Assignment
+  - Option
+  - Other
+- Option / Agreement date (optional date)
+- Notes (optional)
+Entity title: "{Rights item title} — {Rights holder / Author}"
+Secondary line: "{Rights type}"
+DocType options:
+- Option Agreement
+- Assignment Agreement
+- Writer Agreement
+- Amendment
+- Release
+- Chain of Title Summary
+- Other
+
+--------------------------------------------
+2) WRITER AGREEMENTS
+docTypeKey: "writer_agreements"
+Add button label: "Add Writer"
+Modal title: "Add Writer"
+Modal fields:
+- Writer name (required)
+- Role (required dropdown):
+  - Original Writer
+  - Co-writer
+  - Rewrite
+  - Polish
+  - Story By
+  - Other
+- Company (optional)
+- Email (optional)
+- Notes (optional)
+Entity title: "{Writer name}"
+Secondary line: "{Role}" (append company if provided)
+DocType options:
+- Writer Agreement
+- Deal Memo
+- Assignment
+- Amendment
+- NDA
+- Other
+
+--------------------------------------------
+3) INVESTMENT AGREEMENTS
+docTypeKey: "investment_agreements"
+Add button label: "Add Investor"
+Modal title: "Add Investor"
+Modal fields:
+- Investor name / entity (required)
+- Investor type (required dropdown):
+  - Individual
+  - Company
+  - Fund
+  - Other
+- Amount committed (required number)
+- Status (required dropdown):
+  - Targeted
+  - Soft committed
+  - Closed
+- Contact email (optional)
+- Notes (optional)
+Entity title: "{Investor name / entity}"
+Secondary line: "£{Amount committed} · {Status}"
+DocType options:
+- Subscription Agreement
+- Term Sheet
+- Side Letter
+- Proof of Funds
+- KYC / ID
+- Amendment
+- Other
+
+--------------------------------------------
+4) CO-PRODUCTION
+docTypeKey: "co_production"
+Add button label: "Add Co-Producer"
+Modal title: "Add Co-Producer"
+Modal fields:
+- Partner company name (required)
+- Country (optional)
+- Contact name (optional)
+- Contact email (optional)
+- Notes (optional)
+Entity title: "{Partner company name}"
+Secondary line: "{Country}" (if provided)
+DocType options:
+- Co-Production Agreement
+- Annex / Schedule
+- Amendment
+- Letter of Intent
+- Other
+
+--------------------------------------------
+5) PRODUCERS AGREEMENTS
+docTypeKey: "producers_agreements"
+Add button label: "Add Producer"
+Modal title: "Add Producer"
+Modal fields:
+- Producer name (required)
+- Producer role (required dropdown):
+  - Producer
+  - Executive Producer
+  - Line Producer
+  - Co-Producer
+  - Associate Producer
+  - Other
+- Company (optional)
+- Email (optional)
+- Notes (optional)
+Entity title: "{Producer name}"
+Secondary line: "{Producer role}" (append company if provided)
+DocType options:
+- Producer Agreement
+- Deal Memo
+- Amendment
+- NDA
+- Other
+
+--------------------------------------------
+6) DIRECTOR AGREEMENTS
+docTypeKey: "director_agreements"
+Add button label: "Add Director"
+Modal title: "Add Director"
+Modal fields:
+- Director name (required)
+- Company (optional)
+- Email (optional)
+- Notes (optional)
+Entity title: "{Director name}"
+Secondary line: "Director"
+DocType options:
+- Director Agreement
+- Deal Memo
+- Amendment
+- NDA
+- Other
+
+--------------------------------------------
+7) CAST AGREEMENTS
+docTypeKey: "cast_agreements"
+Add button label: "Add Cast Member"
+Modal title: "Add Cast Member"
+Modal fields:
+- Cast name (required)
+- Role / Character name (required)
+- Cast type (required dropdown):
+  - Lead
+  - Supporting
+  - Day Player
+  - Extra
+  - Other
+- Fee (optional number)
+- Agent / Representative (optional)
+- Notes (optional)
+Entity title: "{Cast name}"
+Secondary line: "{Role / Character name} · {Cast type}"
+DocType options:
+- Cast Agreement
+- Deal Memo
+- Amendment
+- Release
+- NDA
+- Other
+
+--------------------------------------------
+8) BANKING DOCS
+docTypeKey: "banking_docs"
+Add button label: "Add Bank"
+Modal title: "Add Bank / Financial Entity"
+Modal fields:
+- Bank / entity name (required)
+- Purpose (required dropdown):
+  - Production Account
+  - Escrow
+  - Completion Bond
+  - Loan Facility
+  - Other
+- Contact name (optional)
+- Contact email (optional)
+- Notes (optional)
+Entity title: "{Bank / entity name}"
+Secondary line: "{Purpose}"
+DocType options:
+- Account Agreement
+- Escrow Agreement
+- Bond Documents
+- Loan Agreement
+- Bank Letter
+- Amendment
+- Other
+
+--------------------------------------------
+9) FUNDING / TAX CREDIT
+docTypeKey: "funding_tax_credit"
+Add button label: "Add Funding Body"
+Modal title: "Add Funding Body / Authority"
+Modal fields:
+- Funding body / authority name (required)
+- Funding type (required dropdown):
+  - Tax Credit
+  - Grant
+  - Public Fund
+  - Rebate / Incentive
+  - Other
+- Expected amount (optional number)
+- Country/Region (optional)
+- Notes (optional)
+Entity title: "{Funding body / authority name}"
+Secondary line: "{Funding type}" (append region if provided)
+DocType options:
+- Application
+- Approval Letter
+- Opinion Letter
+- Interim Claim
+- Final Claim
+- Payment Confirmation
+- Other
+
+--------------------------------------------
+10) SALES AGENCY
+docTypeKey: "sales_agency"
+Add button label: "Add Sales Agent"
+Modal title: "Add Sales Agent"
+Modal fields:
+- Sales agent name (required)
+- Territory focus (optional)  // e.g., “Worldwide”, “Europe”, etc.
+- Contact name (optional)
+- Contact email (optional)
+- Notes (optional)
+Entity title: "{Sales agent name}"
+Secondary line: "{Territory focus}" (if provided)
+DocType options:
+- Sales Agency Agreement
+- Territory Schedule
+- Amendment
+- Letter of Intent
+- Other
+
+--------------------------------------------
+11) CAMA
+docTypeKey: "cama"
+Add button label: "Add Collection Account Manager"
+Modal title: "Add Collection Account Manager"
+Modal fields:
+- CAMA provider name (required)
+- Contact name (optional)
+- Contact email (optional)
+- Notes (optional)
+Entity title: "{CAMA provider name}"
+Secondary line: "CAMA"
+DocType options:
+- CAMA Agreement
+- Account Details
+- Schedule / Annex
+- Amendment
+- Notices
+- Other
+
+--------------------------------------------
+
+IMPLEMENTATION DETAILS
+- For each page, use the config object to render:
+  - stat bar metrics derived from entities/documents
+  - the correct Add button label
+  - the correct modal form fields
+  - the entity card title and secondary line
+  - the docType dropdown list
+- Ensure entities are collapsed by default when created.
+- Expanded state toggles per entity.
+- Documents list lives inside the entity card at the bottom.
+- Use consistent components/patterns from Budget and Finance Plan (accordion cards, modals, dropdowns, etc.) so UI stays consistent with The Vault.
+
+EMPTY STATES
+If there are no entities:
+- Show a clean empty state message: “No entities added yet. Click ‘Add …’ to get started.”
+- Still show the stat bar (Entities: 0, Confirmed: 0, Pending: 0).
+
+ACCEPTANCE TESTS (MANUAL)
+After implementing, list files changed and confirm:
+1) Each Documentation subpage shows the stat bar at top with correct computed metrics.
+2) Each subpage has the correct Add button label.
+3) Clicking Add opens a doc-type-specific modal with the correct fields (not generic).
+4) Submitting creates a collapsed entity card with correct title/secondary line.
+5) Expanding shows entity details and a documents section where multiple docs can be added and statuses changed.
+6) Confirmed/Pending metrics update when documents are marked Signed/Approved.
+7) Documentation Overview page is unchanged.
+
+REMEMBER:
+Design mode only. No backend changes. Modify only Documentation subpages.
+Keep UI clean, minimal, and consistent with existing Vault styling.
