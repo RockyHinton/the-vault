@@ -184,7 +184,7 @@ export default function FinancePlan({ project }: FinancePlanProps) {
         // If status changed to Approved, set isApproved
         if (updates.status === 'Approved') {
           updatedSource.isApproved = true;
-        } else if (updates.status && updates.status !== 'Approved') {
+        } else if (updates.status) {
           updatedSource.isApproved = false;
         }
         return updatedSource;
@@ -244,7 +244,8 @@ export default function FinancePlan({ project }: FinancePlanProps) {
         fileName: file.name,
         docType: 'Term sheet', // Default
         status: 'Reference',
-        uploadedAt: new Date().toISOString()
+        uploadedAt: new Date().toISOString(),
+        fileSize: '1.2 MB' // Mock size
       };
       
       const source = sources.find(s => s.id === uploadSourceId);
@@ -658,11 +659,9 @@ export default function FinancePlan({ project }: FinancePlanProps) {
                       <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                         <FileText className="h-4 w-4" /> Supporting Documents
                       </h4>
-                      {!source.isApproved && (
-                        <Button variant="outline" size="sm" onClick={() => triggerFileUpload(source.id)}>
-                          <Upload className="h-3 w-3 mr-2" /> Upload Document
-                        </Button>
-                      )}
+                      <Button variant="outline" size="sm" onClick={() => triggerFileUpload(source.id)}>
+                        <Upload className="h-3 w-3 mr-2" /> Upload Document
+                      </Button>
                     </div>
                     
                     <div className="bg-card border rounded-md overflow-hidden shadow-sm">

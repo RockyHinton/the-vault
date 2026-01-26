@@ -176,6 +176,7 @@ export interface FinanceDocument {
   docType: 'Term sheet' | 'Contract / Agreement' | 'LOI' | 'Grant letter' | 'Tax credit opinion' | 'Bank / lender letter' | 'Other';
   status: 'Reference' | 'Pending approval' | 'Approved';
   uploadedAt: string;
+  fileSize?: string;
 }
 
 export interface FinanceSource {
