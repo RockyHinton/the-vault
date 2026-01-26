@@ -16,6 +16,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -222,6 +232,7 @@ export default function DocumentationEntityPage({ project, docTypeKey }: Documen
   const { updateProject } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newEntityData, setNewEntityData] = useState<Record<string, any>>({});
+  const [entityToDelete, setEntityToDelete] = useState<string | null>(null);
   
   // Get current page config
   const config = DOC_PAGE_CONFIG[docTypeKey];
@@ -275,6 +286,7 @@ export default function DocumentationEntityPage({ project, docTypeKey }: Documen
 
   const deleteEntity = (id: string) => {
     updateEntities(entities.filter(e => e.id !== id));
+    setEntityToDelete(null);
   };
 
   // -- Document Helpers --
@@ -600,11 +612,7 @@ export default function DocumentationEntityPage({ project, docTypeKey }: Documen
                          variant="ghost" 
                          size="sm" 
                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                         onClick={() => {
-                           if (confirm("Are you sure you want to delete this entity and all its documents?")) {
-                             deleteEntity(entity.id);
-                           }
-                         }}
+                         onClick={() => setEntityToDelete(entity.id)}
                        >
                          <Trash2 className="h-3 w-3 mr-1.5" />
                          Remove Entity
@@ -618,6 +626,27 @@ export default function DocumentationEntityPage({ project, docTypeKey }: Documen
           })
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!entityToDelete} onOpenChange={(open) => !open && setEntityToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the entity and all {entities.find(e => e.id === entityToDelete)?.documents.length || 0} attached documents from the project.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={() => entityToDelete && deleteEntity(entityToDelete)}
+            >
+              Delete Entity
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );
