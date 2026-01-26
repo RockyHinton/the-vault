@@ -30,6 +30,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Plus, 
   Trash2, 
@@ -91,6 +101,7 @@ export default function FinancePlan({ project }: FinancePlanProps) {
   
   // UI State for interactions
   const [confirmApproveId, setConfirmApproveId] = useState<string | null>(null);
+  const [sourceToDelete, setSourceToDelete] = useState<string | null>(null);
   const [uploadSourceId, setUploadSourceId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -309,6 +320,31 @@ export default function FinancePlan({ project }: FinancePlanProps) {
         </DialogContent>
       </Dialog>
 
+      <AlertDialog open={!!sourceToDelete} onOpenChange={(open) => !open && setSourceToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Funding Source</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this funding source? This will remove it from your finance plan and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={() => {
+                if (sourceToDelete) {
+                  deleteSource(sourceToDelete);
+                  setSourceToDelete(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Top Summary Strip */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-card/50 border-border/50">
@@ -515,9 +551,7 @@ export default function FinancePlan({ project }: FinancePlanProps) {
                           className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                           onClick={(e) => {
                             e.stopPropagation(); 
-                            if (confirm('Are you sure you want to delete this funding source?')) {
-                              deleteSource(source.id);
-                            }
+                            setSourceToDelete(source.id);
                           }}
                         >
                           <Trash2 className="h-4 w-4 mr-2" /> Delete Source

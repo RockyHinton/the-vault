@@ -4,6 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { FileText, User, Users, DollarSign, BarChart3, Upload, CheckCircle, XCircle, CheckSquare, Square, Star, Plus, Pencil, MessageSquare } from "lucide-react";
 import { UploadDocumentDialog } from "@/components/features/UploadDocumentDialog";
 import { EditEvaluationDialog } from "@/components/features/EditEvaluationDialog";
@@ -21,6 +31,8 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
   const { setProjectStage, getProjectReviews } = useStore();
   const [isScoringMode, setIsScoringMode] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [showApproveDialog, setShowApproveDialog] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
   
   // Calculate Scores from Reviews
   const reviews = getProjectReviews(project.id);
@@ -63,15 +75,11 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
 
   const handleApprove = () => {
     if (!allChecked) return;
-    if (confirm("Move this project to Development? This will unlock packaging tools.")) {
-      setProjectStage(project.id, 'Development');
-    }
+    setShowApproveDialog(true);
   };
 
   const handleReject = () => {
-    if (confirm("Archive this project? All data will be saved.")) {
-      setProjectStage(project.id, 'Archived');
-    }
+    setShowRejectDialog(true);
   };
 
   if (isScoringMode) {
@@ -291,6 +299,52 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
            <DocumentLibrary projectId={project.id} categoryId="c1" />
         </div>
       </div>
+
+      <AlertDialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve for Development</AlertDialogTitle>
+            <AlertDialogDescription>
+              Move this project to Development? This will unlock packaging tools and allow you to begin the next phase.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-primary hover:bg-primary/90"
+              onClick={() => {
+                setProjectStage(project.id, 'Development');
+                setShowApproveDialog(false);
+              }}
+            >
+              Approve Project
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive Project</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to archive this project? All data will be saved, but it will be moved to the Archived stage.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={() => {
+                setProjectStage(project.id, 'Archived');
+                setShowRejectDialog(false);
+              }}
+            >
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );

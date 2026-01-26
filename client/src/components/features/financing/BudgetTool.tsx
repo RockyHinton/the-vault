@@ -38,6 +38,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -68,6 +78,7 @@ export default function BudgetTool({ project }: BudgetToolProps) {
   const [expandedDepts, setExpandedDepartments] = useState<string[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedHistoryVersion, setSelectedHistoryVersion] = useState<BudgetVersion | null>(null);
+  const [deptToDelete, setDeptToDelete] = useState<string | null>(null);
   
   // Add Department State
   const [newDeptName, setNewDeptName] = useState("");
@@ -514,9 +525,7 @@ export default function BudgetTool({ project }: BudgetToolProps) {
                           <DropdownMenuItem 
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (confirm("Are you sure you want to delete this department?")) {
-                                handleDeleteDepartment(dept.id);
-                              }
+                              setDeptToDelete(dept.id);
                             }}
                             className="text-destructive focus:text-destructive"
                           >
@@ -768,6 +777,31 @@ export default function BudgetTool({ project }: BudgetToolProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deptToDelete} onOpenChange={(open) => !open && setDeptToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Department</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this department? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={() => {
+                if (deptToDelete) {
+                  handleDeleteDepartment(deptToDelete);
+                  setDeptToDelete(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );

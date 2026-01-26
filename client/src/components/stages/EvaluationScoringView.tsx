@@ -7,6 +7,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   ArrowLeft, 
   Star, 
@@ -61,6 +71,7 @@ export default function EvaluationScoringView({ project, onBack }: EvaluationSco
 
   // Expanded Review State
   const [expandedReviews, setExpandedReviews] = useState<Record<string, boolean>>({});
+  const [reviewToDelete, setReviewToDelete] = useState<string | null>(null);
 
   const toggleReview = (id: string) => {
     setExpandedReviews(prev => ({ ...prev, [id]: !prev[id] }));
@@ -85,17 +96,23 @@ export default function EvaluationScoringView({ project, onBack }: EvaluationSco
     }, 600);
   };
 
-  const handleDelete = (reviewId: string, e: React.MouseEvent) => {
+  const handleDeleteClick = (reviewId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm("Are you sure you want to delete this review?")) {
-      deleteReview(reviewId);
+    setReviewToDelete(reviewId);
+  };
+
+  const confirmDelete = () => {
+    if (reviewToDelete) {
+      deleteReview(reviewToDelete);
       toast.success("Review deleted");
+      
       // If the deleted review was the current user's, reset form
-      const deletedReview = reviews.find(r => r.id === reviewId);
+      const deletedReview = reviews.find(r => r.id === reviewToDelete);
       if (deletedReview && deletedReview.authorId === user?.id) {
         setScores({ script: 5, director: 5, cast: 5, financing: 5 });
         setNotes("");
       }
+      setReviewToDelete(null);
     }
   };
 
@@ -290,7 +307,7 @@ export default function EvaluationScoringView({ project, onBack }: EvaluationSco
                                    variant="ghost" 
                                    size="sm" 
                                    className="text-destructive hover:text-destructive hover:bg-destructive/10 h-6 px-2 text-xs"
-                                   onClick={(e) => handleDelete(review.id, e)}
+                                   onClick={(e) => handleDeleteClick(review.id, e)}
                                  >
                                    <Trash2 className="h-3 w-3 mr-1" /> Delete
                                  </Button>
@@ -320,6 +337,27 @@ export default function EvaluationScoringView({ project, onBack }: EvaluationSco
         </div>
 
       </div>
+
+      <AlertDialog open={!!reviewToDelete} onOpenChange={(open) => !open && setReviewToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Review</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this review? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={confirmDelete}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }

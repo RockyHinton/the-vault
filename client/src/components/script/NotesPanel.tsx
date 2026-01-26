@@ -30,6 +30,16 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
 interface NotesPanelProps {
@@ -75,6 +85,8 @@ export default function NotesPanel({
   const [noteText, setNoteText] = useState("");
   const [noteType, setNoteType] = useState<NoteType>("Creative");
   const [noteTag, setNoteTag] = useState<NoteTag>("Dialogue");
+
+  const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
 
   const filteredAnnotations = annotations.filter(a => {
     if (filterType !== 'All' && a.type !== filterType) return false;
@@ -295,7 +307,7 @@ export default function NotesPanel({
                          className="h-6 w-6 text-muted-foreground hover:text-destructive bg-card/80 backdrop-blur-sm"
                          onClick={(e) => {
                            e.stopPropagation();
-                           if(confirm("Delete this note?")) deleteAnnotation(note.id);
+                           setNoteToDelete(note.id);
                          }}
                        >
                          <Trash2 className="h-3 w-3" />
@@ -308,6 +320,31 @@ export default function NotesPanel({
           )}
         </div>
       </ScrollArea>
+
+      <AlertDialog open={!!noteToDelete} onOpenChange={(open) => !open && setNoteToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Note</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this note? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (noteToDelete) {
+                  deleteAnnotation(noteToDelete);
+                  setNoteToDelete(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );

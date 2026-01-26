@@ -1,5 +1,15 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -16,12 +26,16 @@ interface ProducerDetailsDialogProps {
 export function ProducerDetailsDialog({ profile, isOpen, onClose }: ProducerDetailsDialogProps) {
   const { deleteProducerProfile } = useStore();
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleDelete = () => {
-    if (confirm(`Are you sure you want to delete the profile for ${profile.name}?`)) {
-      deleteProducerProfile(profile.id);
-      onClose();
-    }
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = () => {
+    deleteProducerProfile(profile.id);
+    setShowDeleteConfirm(false);
+    onClose();
   };
 
   const getIconForType = (type: string) => {
@@ -126,6 +140,26 @@ export function ProducerDetailsDialog({ profile, isOpen, onClose }: ProducerDeta
         onClose={() => setIsEditOpen(false)}
         existingProfile={profile}
       />
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Producer Profile</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the profile for {profile.name}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={confirmDelete}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

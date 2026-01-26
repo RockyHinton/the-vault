@@ -6,6 +6,16 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Briefcase, 
   FileCheck, 
@@ -84,6 +94,7 @@ const WorkstreamAccordion = ({
 
 export default function DevelopmentView({ project }: DevelopmentViewProps) {
   const { setProjectStage, updateClosingChecklist, tasks } = useStore();
+  const [showPromoteDialog, setShowPromoteDialog] = useState(false);
   
   // Accordion State
   const [openSection, setOpenSection] = useState<string | null>(null);
@@ -125,9 +136,7 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
   };
 
   const handlePromote = () => {
-    if (confirm("Move to Production? Ensure all checklist items are verified.")) {
-      setProjectStage(project.id, 'Production');
-    }
+    setShowPromoteDialog(true);
   };
 
   return (
@@ -202,6 +211,30 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
            </div>
         </div>
       </div>
+
+      <AlertDialog open={showPromoteDialog} onOpenChange={setShowPromoteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Greenlight Production</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to move this project to Production? Ensure all checklist items are verified. This action will update the project stage.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-green-600 hover:bg-green-700"
+              onClick={() => {
+                setProjectStage(project.id, 'Production');
+                setShowPromoteDialog(false);
+              }}
+            >
+              Confirm Greenlight
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
