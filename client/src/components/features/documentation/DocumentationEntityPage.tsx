@@ -336,9 +336,9 @@ export default function DocumentationEntityPage({ project, docTypeKey }: Documen
   // -- Metrics --
   
   const totalEntities = entities.length;
-  // Confirmed: entity has at least ONE document with status "Approved" or "Signed"
+  // Confirmed: entity has > 0 documents AND ALL documents are "Approved" or "Signed"
   const confirmedCount = entities.filter(e => 
-    e.documents.some(d => ['Approved', 'Signed'].includes(d.status))
+    e.documents.length > 0 && e.documents.every(d => ['Approved', 'Signed'].includes(d.status))
   ).length;
   const pendingCount = totalEntities - confirmedCount;
   
@@ -465,8 +465,9 @@ export default function DocumentationEntityPage({ project, docTypeKey }: Documen
           </Card>
         ) : (
           entities.map(entity => {
-            const confirmedDocs = entity.documents.filter(d => ['Approved', 'Signed'].includes(d.status)).length;
-            const isEntityConfirmed = confirmedDocs > 0;
+            // Strict approval logic: Has documents AND all are approved/signed
+            const isEntityConfirmed = entity.documents.length > 0 && 
+                                      entity.documents.every(d => ['Approved', 'Signed'].includes(d.status));
 
             return (
               <Card key={entity.id} className="overflow-hidden transition-all duration-200">
