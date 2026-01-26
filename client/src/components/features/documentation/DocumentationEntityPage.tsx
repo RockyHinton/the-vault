@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Project, useStore, DocEntity, DocFile, DocumentationState } from "@/lib/store";
+import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,10 +56,11 @@ interface PageConfig {
   fields: {
     key: string;
     label: string;
-    type: 'text' | 'number' | 'date' | 'select' | 'textarea';
+    type: 'text' | 'number' | 'date' | 'select' | 'textarea' | 'formatted_number';
     required?: boolean;
     options?: string[]; // for select
     placeholder?: string;
+    defaultValue?: string;
   }[];
   entityTitleTemplate: (meta: any) => string;
   secondaryLineTemplate: (meta: any) => string;
@@ -100,13 +102,14 @@ const DOC_PAGE_CONFIG: Record<string, PageConfig> = {
     fields: [
       { key: 'name', label: 'Investor name / entity', type: 'text', required: true },
       { key: 'type', label: 'Investor type', type: 'select', required: true, options: ['Individual', 'Company', 'Fund', 'Other'] },
-      { key: 'amount', label: 'Amount committed', type: 'number', required: true },
+      { key: 'currency', label: 'Currency', type: 'select', required: true, options: ['GBP', 'USD', 'EUR'], defaultValue: 'GBP' },
+      { key: 'amount', label: 'Amount committed', type: 'formatted_number', required: true },
       { key: 'status', label: 'Status', type: 'select', required: true, options: ['Targeted', 'Soft committed', 'Closed'] },
       { key: 'email', label: 'Contact email', type: 'text' },
       { key: 'notes', label: 'Notes', type: 'textarea' }
     ],
     entityTitleTemplate: (m) => m.name,
-    secondaryLineTemplate: (m) => `£${Number(m.amount).toLocaleString()} · ${m.status}`,
+    secondaryLineTemplate: (m) => `${m.currency || 'GBP'} ${Number(m.amount).toLocaleString()} · ${m.status}`,
     docTypeOptions: ['Subscription Agreement', 'Term Sheet', 'Side Letter', 'Proof of Funds', 'KYC / ID', 'Amendment', 'Other']
   },
   co_production: {
@@ -387,7 +390,14 @@ export default function DocumentationEntityPage({ project, docTypeKey }: Documen
       <div className="flex justify-end">
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => {
+              // Initialize defaults
+              const defaults: Record<string, any> = {};
+              config.fields.forEach(f => {
+                if (f.defaultValue) defaults[f.key] = f.defaultValue;
+              });
+              setNewEntityData(defaults);
+            }}>
               <Plus className="mr-2 h-4 w-4" />
               {config.addButtonLabel}
             </Button>
@@ -426,6 +436,13 @@ export default function DocumentationEntityPage({ project, docTypeKey }: Documen
                         ))}
                       </SelectContent>
                     </Select>
+                  ) : field.type === 'formatted_number' ? (
+                    <FormattedNumberInput
+                      value={newEntityData[field.key] || 0}
+                      onChange={(val) => setNewEntityData({...newEntityData, [field.key]: val})}
+                      placeholder={field.placeholder}
+                      className="h-9"
+                    />
                   ) : (
                     <Input
                       id={field.key}
