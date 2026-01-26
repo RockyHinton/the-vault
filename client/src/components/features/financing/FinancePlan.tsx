@@ -102,6 +102,7 @@ export default function FinancePlan({ project }: FinancePlanProps) {
   // UI State for interactions
   const [confirmApproveId, setConfirmApproveId] = useState<string | null>(null);
   const [sourceToDelete, setSourceToDelete] = useState<string | null>(null);
+  const [docToDelete, setDocToDelete] = useState<{ sourceId: string; docId: string } | null>(null);
   const [uploadSourceId, setUploadSourceId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -181,12 +182,38 @@ export default function FinancePlan({ project }: FinancePlanProps) {
     const updatedSources = sources.map(s => {
       if (s.id === id) {
         const updatedSource = { ...s, ...updates };
-        // If status changed to Approved, set isApproved
-        if (updates.status === 'Approved') {
-          updatedSource.isApproved = true;
-        } else if (updates.status) {
-          updatedSource.isApproved = false;
+        
+        // Recalculate status based on documents ONLY if documents are present
+        // If no documents, we respect the manually set status (or the update)
+        // If documents exist, we derive status from documents
+        if (updatedSource.documents && updatedSource.documents.length > 0) {
+            const allApproved = updatedSource.documents.every(d => d.status === 'Approved');
+            const anyPending = updatedSource.documents.some(d => d.status === 'Pending approval');
+            
+            if (allApproved) {
+                updatedSource.status = 'Approved';
+                updatedSource.isApproved = true;
+            } else if (anyPending) {
+                updatedSource.status = 'Soft committed'; // Mapping Pending -> Soft committed as per requirement
+                updatedSource.isApproved = false;
+            } else {
+                // If just Reference or others, maybe default to Targeted or keep current?
+                // Let's assume if not all approved and not pending, it might be Targeted
+                // Or we just leave it alone if it's not one of those states
+                if (!updatedSource.status || updatedSource.status === 'Approved') {
+                     updatedSource.status = 'Targeted';
+                     updatedSource.isApproved = false;
+                }
+            }
+        } else {
+            // No documents - normal manual behavior
+            if (updates.status === 'Approved') {
+              updatedSource.isApproved = true;
+            } else if (updates.status) {
+              updatedSource.isApproved = false;
+            }
         }
+        
         return updatedSource;
       }
       return s;
@@ -250,7 +277,33 @@ export default function FinancePlan({ project }: FinancePlanProps) {
       
       const source = sources.find(s => s.id === uploadSourceId);
       if (source) {
-        updateSource(uploadSourceId, { documents: [...source.documents, newDoc] });
+        const updatedDocs = [...source.documents, newDoc];
+        
+        // Calculate new source status
+        let newSourceStatus: FinanceSourceStatus = source.status;
+        let newIsApproved = source.isApproved;
+
+        if (updatedDocs.length > 0) {
+            const allApproved = updatedDocs.every(d => d.status === 'Approved');
+            const anyPending = updatedDocs.some(d => d.status === 'Pending approval');
+            
+            if (allApproved) {
+                newSourceStatus = 'Approved';
+                newIsApproved = true;
+            } else if (anyPending) {
+                newSourceStatus = 'Soft committed';
+                newIsApproved = false;
+            } else {
+                newSourceStatus = 'Targeted';
+                newIsApproved = false;
+            }
+        }
+
+        updateSource(uploadSourceId, { 
+            documents: updatedDocs,
+            status: newSourceStatus,
+            isApproved: newIsApproved
+        });
       }
       
       // Reset
@@ -263,7 +316,32 @@ export default function FinancePlan({ project }: FinancePlanProps) {
     const source = sources.find(s => s.id === sourceId);
     if (source) {
       const updatedDocs = source.documents.map(d => d.id === docId ? { ...d, ...updates } : d);
-      updateSource(sourceId, { documents: updatedDocs });
+      
+      // Calculate new source status based on updated docs
+      let newSourceStatus: FinanceSourceStatus = source.status;
+      let newIsApproved = source.isApproved;
+
+      if (updatedDocs.length > 0) {
+        const allApproved = updatedDocs.every(d => d.status === 'Approved');
+        const anyPending = updatedDocs.some(d => d.status === 'Pending approval');
+        
+        if (allApproved) {
+            newSourceStatus = 'Approved';
+            newIsApproved = true;
+        } else if (anyPending) {
+            newSourceStatus = 'Soft committed';
+            newIsApproved = false;
+        } else {
+            newSourceStatus = 'Targeted';
+            newIsApproved = false;
+        }
+      }
+      
+      updateSource(sourceId, { 
+          documents: updatedDocs,
+          status: newSourceStatus,
+          isApproved: newIsApproved
+      });
     }
   };
 
@@ -271,7 +349,36 @@ export default function FinancePlan({ project }: FinancePlanProps) {
     const source = sources.find(s => s.id === sourceId);
     if (source) {
       const updatedDocs = source.documents.filter(d => d.id !== docId);
-      updateSource(sourceId, { documents: updatedDocs });
+      
+      // Calculate new source status based on remaining docs
+      let newSourceStatus: FinanceSourceStatus = source.status;
+      let newIsApproved = source.isApproved;
+
+      if (updatedDocs.length > 0) {
+        const allApproved = updatedDocs.every(d => d.status === 'Approved');
+        const anyPending = updatedDocs.some(d => d.status === 'Pending approval');
+        
+        if (allApproved) {
+            newSourceStatus = 'Approved';
+            newIsApproved = true;
+        } else if (anyPending) {
+            newSourceStatus = 'Soft committed';
+            newIsApproved = false;
+        } else {
+            newSourceStatus = 'Targeted';
+            newIsApproved = false;
+        }
+      } else {
+          // Fallback if all docs removed? Maybe keep current or reset to Targeted
+          newSourceStatus = 'Targeted';
+          newIsApproved = false;
+      }
+
+      updateSource(sourceId, { 
+          documents: updatedDocs,
+          status: newSourceStatus,
+          isApproved: newIsApproved
+      });
     }
   };
 
@@ -337,6 +444,31 @@ export default function FinancePlan({ project }: FinancePlanProps) {
                 if (sourceToDelete) {
                   deleteSource(sourceToDelete);
                   setSourceToDelete(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this document? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={() => {
+                if (docToDelete) {
+                  removeDocument(docToDelete.sourceId, docToDelete.docId);
+                  setDocToDelete(null);
                 }
               }}
             >
@@ -687,16 +819,16 @@ export default function FinancePlan({ project }: FinancePlanProps) {
                                       <div className="text-xs text-muted-foreground">{format(new Date(doc.uploadedAt), 'MMM d, yyyy')} • {doc.fileSize || '250 KB'}</div>
                                    </div>
                                 </div>
-                                {!source.isApproved && (
+                                <div>
                                   <Button 
                                     variant="ghost" 
                                     size="sm" 
                                     className="h-8 text-xs text-muted-foreground hover:text-destructive"
-                                    onClick={() => removeDocument(source.id, doc.id)}
+                                    onClick={() => setDocToDelete({ sourceId: source.id, docId: doc.id })}
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
-                                )}
+                                </div>
                               </div>
                               <div className="grid grid-cols-2 gap-4 pl-12">
                                 <div className="grid gap-1.5">
@@ -704,7 +836,6 @@ export default function FinancePlan({ project }: FinancePlanProps) {
                                   <Select 
                                     value={doc.docType} 
                                     onValueChange={(val: any) => updateDocument(source.id, doc.id, { docType: val })}
-                                    disabled={source.isApproved}
                                   >
                                     <SelectTrigger className="h-8 text-xs bg-background">
                                       <SelectValue />
@@ -719,7 +850,6 @@ export default function FinancePlan({ project }: FinancePlanProps) {
                                   <Select 
                                     value={doc.status} 
                                     onValueChange={(val: any) => updateDocument(source.id, doc.id, { status: val })}
-                                    disabled={source.isApproved}
                                   >
                                     <SelectTrigger className="h-8 text-xs bg-background">
                                       <SelectValue />
