@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { Project, useStore } from "@/lib/store";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,207 +16,377 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { 
-  Briefcase, 
-  FileCheck, 
-  Landmark, 
-  PenTool, 
-  CheckSquare, 
-  ChevronDown, 
-  ChevronRight,
-  AlertCircle,
-  Clock,
   CheckCircle2,
-  FileText,
-  Users,
-  CircleDollarSign,
-  Scale,
-  ListTodo
+  AlertCircle,
+  XCircle,
+  ChevronRight,
+  ArrowRight,
+  AlertTriangle,
+  Lock,
+  ExternalLink
 } from "lucide-react";
 import { TaskManager } from "@/components/features/TaskManager";
-import DocumentLibrary from "@/pages/DocumentLibrary";
 import { cn } from "@/lib/utils";
-import { Progress } from "@/components/ui/progress";
-import { formatDistanceToNow } from "date-fns";
 
 interface DevelopmentViewProps {
   project: Project;
 }
 
-// Workstream Accordion Component
-const WorkstreamAccordion = ({ 
-  title, 
-  icon: Icon, 
-  summary, 
-  isOpen, 
-  onToggle, 
-  children 
-}: { 
-  title: string; 
-  icon: any; 
-  summary: string; 
-  isOpen: boolean; 
-  onToggle: () => void; 
-  children: React.ReactNode; 
-}) => {
-  return (
-    <Card className={cn("transition-all duration-200 border-l-4", isOpen ? "border-l-primary shadow-md" : "border-l-transparent hover:border-l-primary/30")}>
-      <div 
-        className="p-4 flex items-center justify-between cursor-pointer"
-        onClick={onToggle}
-      >
-        <div className="flex items-center gap-4">
-          <div className={cn("p-2 rounded-lg", isOpen ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground")}>
-            <Icon className="h-5 w-5" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-lg">{title}</h3>
-            {!isOpen && <p className="text-sm text-muted-foreground">{summary}</p>}
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-           {!isOpen && <Badge variant="secondary" className="font-normal">Open</Badge>}
-           {isOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
-        </div>
-      </div>
-      
-      {isOpen && (
-        <>
-          <Separator />
-          <div className="p-6 bg-card/50 animate-in slide-in-from-top-2 duration-200">
-            {children}
-          </div>
-        </>
-      )}
-    </Card>
-  );
-};
-
 export default function DevelopmentView({ project }: DevelopmentViewProps) {
-  const { setProjectStage, updateClosingChecklist, tasks } = useStore();
+  const { setProjectStage, creativeProfiles } = useStore();
   const [showPromoteDialog, setShowPromoteDialog] = useState(false);
+  const [, setLocation] = useLocation();
+
+  // --- 1. DERIVED READINESS LOGIC ---
+
+  // A. FINANCE READINESS
+  const totalBudget = project.financing?.totalBudget || 0;
+  const securedFunding = project.financing?.secured || 0;
+  const fundingGap = Math.max(0, totalBudget - securedFunding);
+  const budgetLocked = project.budgetState?.budgetLockedHistory && project.budgetState.budgetLockedHistory.length > 0;
   
-  // Accordion State
-  const [openSection, setOpenSection] = useState<string | null>(null);
+  // Mock cashflow check (since we might not have deep cashflow data populated yet)
+  const hasCashflowIssues = project.financing?.cashflow?.some(m => (m.out > m.in + 1000)); // Arbitrary check for demo
+
+  let financeStatus: 'Ready' | 'At Risk' | 'Incomplete' = 'Incomplete';
+  let financeReason = "Budget not locked or funding pending.";
+
+  if (budgetLocked) {
+    if (fundingGap <= 0) {
+      if (hasCashflowIssues) {
+        financeStatus = 'At Risk';
+        financeReason = "Cashflow shortfall projected in upcoming months.";
+      } else {
+        financeStatus = 'Ready';
+        financeReason = "Budget locked and fully funded.";
+      }
+    } else {
+      financeStatus = 'At Risk';
+      financeReason = `Funding gap of $${(fundingGap / 1000000).toFixed(1)}M remains.`;
+    }
+  } else {
+    financeStatus = 'Incomplete';
+    financeReason = "Budget is not locked yet.";
+  }
+
+  // B. TALENT READINESS
+  // access profiles from store
+  const projectCreatives = creativeProfiles.filter(p => p.projectId === project.id);
+  const confirmedTalent = projectCreatives.length; // Simply count for MVP
+  const hasKeyCast = projectCreatives.some(p => p.roleType === 'Cast');
   
-  const toggleSection = (section: string) => {
-    setOpenSection(openSection === section ? null : section);
+  let talentStatus: 'Ready' | 'Partial' | 'Incomplete' = 'Incomplete';
+  let talentReason = "No talent confirmed.";
+
+  if (confirmedTalent > 2 && hasKeyCast) {
+    talentStatus = 'Ready';
+    talentReason = "Key cast and heads of department attached.";
+  } else if (confirmedTalent > 0) {
+    talentStatus = 'Partial';
+    talentReason = "Some key roles filled, others pending.";
+  } else {
+    // Check evaluation data as fallback
+    if (project.evaluation.castAttached && project.evaluation.castAttached.length > 0) {
+        talentStatus = 'Partial';
+        talentReason = "Talent attached in evaluation but not confirmed.";
+    } else {
+        talentStatus = 'Incomplete';
+        talentReason = "Talent confirmation not set up yet.";
+    }
+  }
+
+  // C. LEGAL READINESS
+  // Derived from documentationState
+  const docState = project.documentationState || {};
+  
+  // Helper to check doc status
+  const checkDocCategory = (key: string) => {
+    const section = docState[key];
+    if (!section || section.entities.length === 0) return 'Empty';
+    const pending = section.entities.filter(e => e.documents.some(d => d.status !== 'Approved')).length;
+    return pending > 0 ? 'Pending' : 'Complete';
   };
 
-  // Data Logic
-  const checklist = project.closingChecklist || {
-    financeClosed: false,
-    talentConfirmed: false,
-    legalDocsClosed: false
+  const chainOfTitleStatus = checkDocCategory('chain_of_title');
+  const investmentStatus = checkDocCategory('investment_agreements');
+  const castAgreementsStatus = checkDocCategory('cast_agreements');
+
+  let legalStatus: 'Ready' | 'In Progress' | 'Blocking' = 'Blocking';
+  let legalReason = "Key agreements missing.";
+
+  const anyPending = Object.values(docState).some(s => s.entities.some(e => e.documents.some(d => d.status !== 'Approved')));
+  const hasEntities = Object.values(docState).some(s => s.entities.length > 0);
+
+  if (!hasEntities) {
+    legalStatus = 'Blocking';
+    legalReason = "No documentation entities created.";
+  } else if (chainOfTitleStatus === 'Empty' || investmentStatus === 'Empty') {
+    legalStatus = 'Blocking';
+    legalReason = "Chain of Title or Investment Docs empty.";
+  } else if (anyPending) {
+    legalStatus = 'In Progress';
+    legalReason = "Some agreements pending approval.";
+  } else {
+    legalStatus = 'Ready';
+    legalReason = "All key documentation ready.";
+  }
+
+
+  // --- 2. BLOCKERS LOGIC ---
+  interface Blocker {
+    id: string;
+    text: string;
+    tag: 'Finance' | 'Legal' | 'Talent';
+    link: string;
+  }
+
+  const blockers: Blocker[] = [];
+
+  // Finance Blockers
+  if (!budgetLocked) {
+    blockers.push({ id: 'f1', text: "Budget is not locked yet.", tag: 'Finance', link: `/project/${project.id}/financing/budget` });
+  }
+  if (fundingGap > 0) {
+    blockers.push({ id: 'f2', text: `Funding gap of $${(fundingGap/1000000).toFixed(2)}M remains.`, tag: 'Finance', link: `/project/${project.id}/financing/plan` });
+  }
+  if (hasCashflowIssues) {
+    blockers.push({ id: 'f3', text: "Cashflow shortfall projected.", tag: 'Finance', link: `/project/${project.id}/financing/cashflow` });
+  }
+
+  // Legal Blockers
+  if (chainOfTitleStatus !== 'Complete') {
+    blockers.push({ id: 'l1', text: "Chain of Title not complete.", tag: 'Legal', link: `/project/${project.id}/legal` });
+  }
+  if (castAgreementsStatus === 'Pending') {
+    blockers.push({ id: 'l2', text: "Cast agreements pending approval.", tag: 'Legal', link: `/project/${project.id}/legal` });
+  }
+
+  // Talent Blockers
+  if (talentStatus === 'Incomplete') {
+    blockers.push({ id: 't1', text: "Key talent not confirmed.", tag: 'Talent', link: `/project/${project.id}/creatives` });
+  }
+
+
+  // --- HELPERS ---
+  const getStatusColor = (status: string) => {
+    switch (status) {
+        case 'Ready': return "text-green-500 bg-green-500/10 border-green-500/20";
+        case 'Nearly Ready':
+        case 'Partial':
+        case 'In Progress': return "text-amber-500 bg-amber-500/10 border-amber-500/20";
+        case 'At Risk':
+        case 'Incomplete':
+        case 'Blocking': return "text-destructive bg-destructive/10 border-destructive/20";
+        default: return "text-muted-foreground bg-secondary";
+    }
   };
 
-  const checklistItems = [
-    { key: 'financeClosed', label: 'Finance Closed' },
-    { key: 'talentConfirmed', label: 'Talent Confirmed' },
-    { key: 'legalDocsClosed', label: 'Legal Documentation Closed' },
-  ];
-
-  const completedCount = Object.values(checklist).filter(Boolean).length;
-  const totalCount = checklistItems.length;
-  const progress = (completedCount / totalCount) * 100;
-  
-  const isReadyForProduction = completedCount === totalCount;
-  
-  // Determine Readiness State
-  let readinessState: 'Ready' | 'Nearly Ready' | 'Blocked' = 'Blocked';
-  if (isReadyForProduction) readinessState = 'Ready';
-  else if (progress >= 60) readinessState = 'Nearly Ready';
-
-  // Task Summary
-  const projectTasks = tasks.filter(t => t.projectId === project.id && t.status !== 'Done');
-  const taskCount = projectTasks.length;
-
-  const handleCheck = (key: keyof typeof checklist) => {
-    updateClosingChecklist(project.id, { [key]: !checklist[key] });
-  };
-
-  const handlePromote = () => {
-    setShowPromoteDialog(true);
+  const getStatusIcon = (status: string) => {
+      switch (status) {
+          case 'Ready': return <CheckCircle2 className="h-4 w-4" />;
+          case 'Nearly Ready':
+          case 'Partial':
+          case 'In Progress': return <AlertTriangle className="h-4 w-4" />;
+          default: return <XCircle className="h-4 w-4" />;
+      }
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 w-full px-4 lg:px-8 py-6">
+    <div className="space-y-6 animate-in fade-in duration-500 w-full px-6 py-8 max-w-[1600px] mx-auto">
       
-      {/* 2. Greenlight Requirements (Checklist as Core Driver) */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-        <div className="md:col-span-4 lg:col-span-3 space-y-6">
-           <div>
-             <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
-               <CheckSquare className="h-5 w-5 text-primary" />
-               Greenlight Requirements
-             </h3>
-             <Card className="border-border shadow-sm">
-                <CardContent className="p-4 space-y-3">
-                  {checklistItems.map((item) => {
-                    const isChecked = checklist[item.key as keyof typeof checklist];
-                    return (
-                      <div 
-                        key={item.key} 
-                        className={cn(
-                          "flex items-center space-x-3 p-3 rounded-lg transition-colors border",
-                          isChecked 
-                            ? "bg-secondary/30 border-transparent" 
-                            : "bg-background border-border hover:border-primary/30"
-                        )}
-                      >
-                        <Checkbox 
-                          id={item.key} 
-                          checked={isChecked} 
-                          onCheckedChange={() => handleCheck(item.key as keyof typeof checklist)}
-                          className={cn(
-                             isChecked ? "border-primary text-primary" : "border-muted-foreground/50"
-                          )}
-                        />
-                        <label 
-                          htmlFor={item.key} 
-                          className={cn(
-                            "text-sm font-medium leading-none cursor-pointer flex-1",
-                            isChecked ? "text-muted-foreground line-through decoration-muted-foreground/50" : "text-foreground"
-                          )}
-                        >
-                          {item.label}
-                        </label>
-                      </div>
-                    );
-                  })}
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">Development Overview</h1>
+          <p className="text-muted-foreground mt-1">Control room for production readiness.</p>
+        </div>
+        
+        {/* Only show greenlight button if ready */}
+        <Button 
+            className={cn(
+              "font-semibold shadow-lg transition-all duration-300 gap-2",
+              blockers.length === 0
+                ? "bg-green-600 hover:bg-green-700 text-white shadow-green-500/20" 
+                : "opacity-50 cursor-not-allowed"
+            )}
+            disabled={blockers.length > 0}
+            onClick={() => setShowPromoteDialog(true)}
+        >
+            {blockers.length === 0 ? <CheckCircle2 className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+            {blockers.length === 0 ? "Greenlight Production" : `${blockers.length} Blockers Remaining`}
+        </Button>
+      </div>
 
-                  <Button 
-                    className={cn(
-                      "w-full mt-6 font-semibold shadow-lg transition-all duration-300",
-                      isReadyForProduction 
-                        ? "bg-green-600 hover:bg-green-700 text-white shadow-green-500/20" 
-                        : ""
-                    )}
-                    disabled={!isReadyForProduction}
-                    onClick={handlePromote}
-                    size="lg"
-                    variant={isReadyForProduction ? "default" : "outline"}
-                  >
-                    {isReadyForProduction ? "Greenlight Production" : "Complete Requirements"}
-                  </Button>
+      {/* ROW 1: Readiness & Blockers */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* 1) PRODUCTION READINESS (Left - 2 Cols) */}
+        <div className="lg:col-span-2 space-y-4">
+             <Card className="h-full border-border/60 shadow-sm">
+                <CardHeader className="pb-3 border-b bg-muted/20">
+                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-primary" />
+                        Production Readiness
+                    </CardTitle>
+                    <CardDescription>
+                        Quick status checks derived from the project workspace.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <div className="divide-y">
+                        {/* Finance Row */}
+                        <div 
+                            className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors cursor-pointer group"
+                            onClick={() => setLocation(`/project/${project.id}/financing`)}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className={cn("p-2 rounded-full", getStatusColor(financeStatus))}>
+                                    {getStatusIcon(financeStatus)}
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                        <h4 className="font-medium">Finance</h4>
+                                        <Badge variant="outline" className={cn("text-[10px] h-5 px-1.5 font-normal border-0", getStatusColor(financeStatus))}>
+                                            {financeStatus}
+                                        </Badge>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">{financeReason}</p>
+                                </div>
+                            </div>
+                            <Button variant="ghost" size="icon" className="text-muted-foreground group-hover:text-primary">
+                                <ChevronRight className="h-5 w-5" />
+                            </Button>
+                        </div>
+
+                         {/* Talent Row */}
+                         <div 
+                            className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors cursor-pointer group"
+                            onClick={() => setLocation(`/project/${project.id}/creatives`)}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className={cn("p-2 rounded-full", getStatusColor(talentStatus))}>
+                                    {getStatusIcon(talentStatus)}
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                        <h4 className="font-medium">Talent</h4>
+                                        <Badge variant="outline" className={cn("text-[10px] h-5 px-1.5 font-normal border-0", getStatusColor(talentStatus))}>
+                                            {talentStatus}
+                                        </Badge>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">{talentReason}</p>
+                                </div>
+                            </div>
+                            <Button variant="ghost" size="icon" className="text-muted-foreground group-hover:text-primary">
+                                <ChevronRight className="h-5 w-5" />
+                            </Button>
+                        </div>
+
+                         {/* Legal Row */}
+                         <div 
+                            className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors cursor-pointer group"
+                            onClick={() => setLocation(`/project/${project.id}/legal`)}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className={cn("p-2 rounded-full", getStatusColor(legalStatus))}>
+                                    {getStatusIcon(legalStatus)}
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                        <h4 className="font-medium">Legal Documentation</h4>
+                                        <Badge variant="outline" className={cn("text-[10px] h-5 px-1.5 font-normal border-0", getStatusColor(legalStatus))}>
+                                            {legalStatus}
+                                        </Badge>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">{legalReason}</p>
+                                </div>
+                            </div>
+                            <Button variant="ghost" size="icon" className="text-muted-foreground group-hover:text-primary">
+                                <ChevronRight className="h-5 w-5" />
+                            </Button>
+                        </div>
+                    </div>
                 </CardContent>
              </Card>
-           </div>
         </div>
 
-        {/* 3. Task Board (Right Side) */}
-        <div className="md:col-span-8 lg:col-span-9 space-y-4">
-           <div className="h-[600px]">
-             <TaskManager projectId={project.id} />
-           </div>
+        {/* 2) BLOCKERS PANEL (Right - 1 Col) */}
+        <div className="lg:col-span-1 space-y-4">
+            <Card className="h-full border-border/60 shadow-sm flex flex-col">
+                <CardHeader className="pb-3 border-b bg-muted/20">
+                    <CardTitle className="text-lg font-semibold flex items-center gap-2 text-destructive">
+                        <AlertCircle className="h-5 w-5" />
+                        What’s blocking production?
+                    </CardTitle>
+                    <CardDescription>
+                        Key blockers detected from finance, documentation, and setup.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="p-4 flex-1">
+                    {blockers.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-center p-4 text-muted-foreground">
+                            <CheckCircle2 className="h-12 w-12 text-green-500 mb-3 opacity-20" />
+                            <p className="font-medium text-foreground">No blockers detected</p>
+                            <p className="text-sm">Project appears ready to progress.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {blockers.slice(0, 5).map((blocker) => (
+                                <div 
+                                    key={blocker.id}
+                                    className="p-3 rounded-lg border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors cursor-pointer flex flex-col gap-2"
+                                    onClick={() => setLocation(blocker.link)}
+                                >
+                                    <div className="flex items-start justify-between gap-2">
+                                        <p className="text-sm font-medium text-destructive-foreground/90 leading-tight">
+                                            {blocker.text}
+                                        </p>
+                                        <ArrowRight className="h-3.5 w-3.5 text-destructive/50 shrink-0 mt-0.5" />
+                                    </div>
+                                    <Badge variant="outline" className="w-fit text-[10px] h-4 px-1.5 bg-background/50 border-destructive/20 text-destructive">
+                                        {blocker.tag}
+                                    </Badge>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
+
       </div>
 
+      {/* ROW 2: TEAM TASKS */}
+      <div className="space-y-4">
+        <div className="flex items-end justify-between px-1">
+            <div>
+                 {/* Helper text only if blockers exist */}
+                {blockers.length > 0 && (
+                     <p className="text-sm text-muted-foreground flex items-center gap-1.5 animate-in slide-in-from-left-2">
+                        <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                        Suggested next actions: Review funding gap · Upload missing agreements
+                     </p>
+                )}
+            </div>
+        </div>
+        
+        {/* Full Width Task Manager */}
+        <div className="h-[500px] shadow-sm">
+            <TaskManager projectId={project.id} />
+        </div>
+        <p className="text-xs text-muted-foreground ml-1">
+            Use notes as actions tied to blockers. Tag them so the team can track ownership.
+        </p>
+      </div>
+
+
+      {/* Promote Dialog */}
       <AlertDialog open={showPromoteDialog} onOpenChange={setShowPromoteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Greenlight Production</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to move this project to Production? Ensure all checklist items are verified. This action will update the project stage.
+              Are you sure you want to move this project to Production? This action will update the project stage.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

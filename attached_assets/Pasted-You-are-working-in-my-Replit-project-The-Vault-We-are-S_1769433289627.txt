@@ -1,0 +1,188 @@
+You are working in my Replit project “The Vault”. We are STILL IN DESIGN MODE.
+DO NOT make any backend/database/schema/API changes.
+Implement an upgraded **Development Stage Project Overview (home) page** for a project.
+
+CRITICAL SCOPE LIMIT
+ONLY modify the Development-stage project overview/home page (the page shown in the screenshot with “Greenlight Requirements” + “Team Tasks & Notes”).
+DO NOT modify other pages (Financing pages, Documentation pages, Script, Producers, Creatives).
+DO NOT change navigation, routing, layout system, themes, or shared component styles globally.
+DO NOT add libraries. DO NOT refactor unrelated code.
+
+GOAL
+Upgrade this page so it becomes a “control room” that does ONLY three things:
+1) Summarise readiness
+2) Surface blockers
+3) Provide clear next actions
+Keep it clean, grid-aligned, and visually pleasing.
+Keep the existing Team Tasks & Notes board prominent and easy to use with clear user communication.
+
+ABSOLUTE DO-NOTS
+Do NOT add charts.
+Do NOT add big totals or repeated dashboards from other pages.
+Do NOT add documentation grids or long summaries.
+This page should remain high-signal and action-oriented.
+
+--------------------------------------------------------------------
+NEW PAGE LAYOUT (GRID-BASED, CLEAN)
+
+Use a clear 2-column grid for the main content:
+
+Row 1:
+- Left (Primary): “Production Readiness” panel (replaces/overhauls the current Greenlight checklist UI)
+- Right: “What’s blocking production?” panel (new)
+
+Row 2 (full width):
+- “Team Tasks & Notes” board (keep it accessible and prominent; do NOT bury it)
+
+Row 3 (optional, compact):
+- “Recent Activity” panel (small, minimal list). If this feels too much, include it as a compact card below the tasks board or skip entirely.
+
+Spacing:
+- Keep consistent paddings/margins with existing Vault UI.
+- Align cards to the same top baseline.
+- Keep buttons consistent with existing button styles.
+
+--------------------------------------------------------------------
+1) PRODUCTION READINESS PANEL (TOP-LEFT, PRIMARY)
+
+Replace the existing “Greenlight Requirements” checklist with a derived readiness panel.
+
+Title: “Production Readiness”
+Subtitle: “Quick status checks derived from the project workspace.”
+
+Show 3 readiness rows (clickable, route to relevant sections):
+A) Finance
+B) Talent
+C) Legal Documentation
+
+Each row MUST show:
+- A status label (Ready / At risk / Incomplete etc.)
+- A small status icon / colored indicator (green/amber/red) matching Vault style (subtle)
+- A short reason line (one sentence max)
+- A right-side “View” affordance (chevron or small link)
+
+Status logic (DERIVED, READ-ONLY):
+Finance:
+- Ready if:
+  - Total Budget is locked (exists)
+  - AND secured funding >= total budget (funding gap == 0)
+  - AND cashflow has NO negative running-balance periods (if cashflow model exists)
+- At risk if:
+  - Budget locked exists AND secured funding exists BUT cashflow indicates a shortfall at any period
+- Incomplete if:
+  - No locked budget OR no approved funding sources OR no cashflow setup
+
+Talent:
+- Since we may not have structured “confirmed talent” logic yet, implement a simple derived fallback:
+  - If there is existing talent/cast tracking data in the project state, use it to determine:
+    - Confirmed / Partial / Missing
+  - If no structured data is available, show:
+    - “Partial” with reason: “Talent confirmation not set up yet.”
+IMPORTANT: Keep this non-blocking; the row still routes to “Creatives” or “Producers” (whichever is appropriate in your app).
+
+Legal Documentation:
+- Derived from Documentation state:
+  - Complete if all documentation types have:
+    - entities > 0 AND pendingEntities == 0
+  - In progress if any documentation type has entities > 0 AND pendingEntities > 0
+  - Blocking if key types are empty or pending (for MVP, treat empty as blocking):
+    - Chain of Title empty OR
+    - Investment Agreements empty OR
+    - Cast Agreements has pending entities
+  If documentation state is missing, show “Incomplete”.
+
+Reason line examples (must be computed):
+- Finance: “Cashflow shortfall projected in May.”
+- Finance: “Funding gap remains.”
+- Legal: “3 cast entities pending approval.”
+- Legal: “Chain of Title has no entities yet.”
+
+Click routing:
+- Finance row → Financing (or Financing Overview)
+- Talent row → Creatives or Producers (choose the most relevant route in your app)
+- Legal Documentation row → Documentation overview
+
+--------------------------------------------------------------------
+2) WHAT’S BLOCKING PRODUCTION PANEL (TOP-RIGHT)
+
+Title: “What’s blocking production?”
+Subtitle: “Key blockers detected from finance, documentation, and setup.”
+
+This panel is READ-ONLY and auto-generated.
+
+It should display a short list (max 5 items), highest priority first.
+Each blocker item shows:
+- Short text
+- Optional small tag (Finance / Legal / Talent)
+- Optional “Go to” link or click-to-navigate
+
+Blocker detection (MVP rules):
+Finance blockers (if data exists):
+- If funding gap > 0 → “Funding gap of £X remains.”
+- If cashflow has negative period(s) → “Cashflow shortfall projected in [period].”
+- If no locked budget → “Budget is not locked yet.”
+
+Legal blockers:
+- If Chain of Title empty or pending → “Chain of Title not complete.”
+- If Cast Agreements pending entities > 0 → “Cast agreements pending approval.”
+- If Investment Agreements empty/pending and funding sources exist → “Investment agreements not complete.”
+
+Talent blockers:
+- If you can detect missing talent confirmations → “Key talent not confirmed.”
+- If not detectable, omit talent blockers (don’t invent data).
+
+If there are NO blockers:
+- Show a clean success state: “No blockers detected. Project appears ready to progress.”
+
+Each blocker item should be clickable and route to the relevant section (Finance/Documentation/etc.).
+
+--------------------------------------------------------------------
+3) TEAM TASKS & NOTES BOARD (ROW 2, FULL WIDTH)
+
+Keep your existing Team Tasks & Notes board, but improve framing and clarity:
+- Keep “Add Note” button prominent (top-right) as it is.
+- Keep tags/filters (Finance, Talent, Legal, Production, General).
+- Add a small helper text under the title:
+  “Use notes as actions tied to blockers. Tag them so the team can track ownership.”
+
+Optional enhancement (ONLY if it’s trivial and doesn’t require backend changes):
+- If blockers exist, show a small “Suggested” hint row above the board:
+  e.g., “Suggested next actions: Review funding gap · Upload missing agreements”
+Do not auto-create tasks; just show suggestions.
+
+IMPORTANT: Do not move the board into a small column. It must remain easy to use.
+
+--------------------------------------------------------------------
+4) RECENT ACTIVITY (OPTIONAL, SMALL)
+
+If you already have any local “activity” log patterns in design mode:
+- Show a compact list of last 5 items:
+  - “Budget locked”
+  - “Funding source approved”
+  - “Cast entity added”
+If there’s no existing activity mechanism:
+- Implement a simple front-end-only activity list that records ONLY actions taken on this page (e.g., notes added). Keep it minimal.
+If that’s too much, SKIP this panel entirely.
+
+--------------------------------------------------------------------
+UI / VISUAL DESIGN REQUIREMENTS
+- Grid aligned, clean, consistent with Vault UI.
+- Status indicators should be subtle: small dots/badges/icons.
+- Use existing component styles (cards, badges, buttons).
+- Make the “Production Readiness” rows feel obviously clickable (hover state + chevron).
+- Avoid clutter. Max 3 readiness rows and max 5 blockers.
+
+ACCEPTANCE TESTS (MANUAL)
+After implementing, list files changed and confirm:
+1) The page is laid out in a neat grid: Readiness (left) + Blockers (right) on top; Tasks board full width below.
+2) Readiness panel shows Finance/Talent/Legal rows with derived status + reason.
+3) Clicking each readiness row routes to the correct section.
+4) Blockers panel shows derived blockers and routes to relevant sections.
+5) Tasks & Notes board remains prominent and usable, with clear helper text.
+6) No charts or duplicated detailed dashboards were added.
+7) No backend changes; only this page changed.
+
+REMEMBER:
+This page is a decision/control room, not a dashboard.
+Sub-pages = depth. Overview = decisions.
+Keep it calm, clear, and fast to scan.
