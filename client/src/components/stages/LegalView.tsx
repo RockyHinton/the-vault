@@ -205,7 +205,7 @@ export default function LegalView({ project, currentSubcategory, subcategoryId }
             <Link key={item.key} href={`/project/${project.id}/legal/${item.route}`}>
               <Card className={cn(
                 "h-full cursor-pointer hover:border-primary/50 hover:shadow-md transition-all group relative overflow-hidden",
-                item.status === 'Completed' ? "border-green-200 bg-green-50/30 dark:border-green-900/50 dark:bg-green-900/10" : "",
+                item.status === 'Completed' ? "border-green-600 border-2" : "",
                 item.status === 'Empty' ? "opacity-80 bg-muted/20 hover:opacity-100 hover:bg-card" : ""
               )}>
                 <CardContent className="p-5 flex flex-col h-full">
