@@ -552,11 +552,6 @@ export default function BudgetTool({ project }: BudgetToolProps) {
                           disabled={isReadOnly}
                           className="font-medium text-lg border-transparent hover:border-input focus:border-primary bg-transparent px-0 h-auto"
                         />
-                        <Textarea 
-                          placeholder={isReadOnly ? "No notes" : "Add department notes..."}
-                          className="mt-2 min-h-[60px] resize-none bg-background/50"
-                          disabled={isReadOnly}
-                        />
                       </div>
                       <div className="text-right">
                         <span className="text-sm text-muted-foreground uppercase tracking-wider block mb-1">Total</span>
