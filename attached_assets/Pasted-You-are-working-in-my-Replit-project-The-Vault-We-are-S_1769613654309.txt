@@ -1,0 +1,96 @@
+You are working in my Replit project “The Vault”. We are STILL IN DESIGN MODE.
+DO NOT make any backend/database/schema/API changes.
+This task is UI-only: update the profile creation/edit modals for Producers, Creatives (including Directors and Cast), and HODs.
+
+CRITICAL SCOPE LIMIT
+ONLY modify:
+- Producer Profile modal
+- Creative Profile modal
+- HOD profile modal (if separate; otherwise the same creative modal used for HODs)
+Do NOT modify list pages, dashboards, documentation, financing, routing, nav, or global theme.
+Do NOT add libraries. Do NOT refactor unrelated code.
+
+GOAL
+Add a new section to each relevant profile modal:
+- A collapsible (accordion) section at the bottom called “Project Engagement”
+- Collapsed by default
+- Neatly styled to match the current dark theme and spacing patterns
+- Design-mode state only (store in existing front-end state / local state patterns)
+
+NEW “PROJECT ENGAGEMENT” SECTION (COLLAPSIBLE)
+Title: “Project Engagement”
+Helper text (small, optional): “Track project-specific hiring status and key dates.”
+
+Fields inside (NOT shown when collapsed):
+1) Status (dropdown) — required in UI but allow empty in design mode
+   Options (use exactly):
+   - Not approached
+   - In discussion
+   - Offered
+   - Confirmed
+   - Contracted
+   - Dropped / Replaced
+
+2) Role (dropdown OR text input depending on existing modal)
+   - If the profile already has a “Role” field at the top, do NOT duplicate it.
+     Instead show this field as “Role on this project (optional)” with:
+     - default value = existing role (read-only display or prefilled)
+     - allow override (optional)
+   - If there is NO existing role field, add “Role on this project” as a normal input.
+
+3) Start date (date input)
+   Label: “Start date”
+   Placeholder: “Select date”
+
+4) Contract status (dropdown)
+   Options (use exactly):
+   - Not sent
+   - Sent
+   - Signed
+   - Pending amendments
+
+5) Notes (textarea)
+   Label: “Engagement notes”
+   Placeholder: “Short context (deal terms, constraints, start conditions)…”
+
+DEFAULTS (FOR NEW PROFILES)
+- Section is collapsed by default
+- Status: empty or “In discussion” (choose empty if you want zero assumptions; otherwise default to “In discussion”)
+- Contract status: empty
+- Start date: empty
+- Notes: empty
+
+BEHAVIOR
+- The section can be expanded/collapsed with a chevron.
+- When collapsed, show a compact summary line under the section title if any values exist, e.g.:
+  “Confirmed · Start: 12 Mar 2026 · Contract: Sent”
+  If no values exist, show: “Not set”
+
+STATE (DESIGN MODE ONLY)
+- Store the engagement fields in the existing front-end profile object/state used by these modals.
+- Do NOT create new backend models.
+- Ensure saving the profile includes these new fields in the front-end state so the values persist in the UI (within the current design-mode storage approach).
+
+UI / STYLE REQUIREMENTS
+- Match existing modal layout and spacing (same input styles, label styles, borders).
+- Keep the section visually separated with a subtle divider line or card inset.
+- Do NOT make the modal taller than necessary; keep section collapsed by default to avoid clutter.
+- Use the existing primary/secondary button styles (Save/Cancel unchanged).
+
+IMPLEMENTATION STEPS (DO THIS FIRST)
+1) Locate the components/files for Producer, Creative, and HOD profile modals.
+2) Identify the shared input components and existing role field behavior.
+3) Add the collapsible “Project Engagement” section consistently across these modals.
+4) Verify the new data is included when saving in design-mode state.
+
+ACCEPTANCE TESTS (MANUAL)
+Confirm after implementation:
+1) Producer, Director, Cast and HOD modals all include a collapsed-by-default “Project Engagement” section at the bottom.
+2) Expanding shows the fields: Status, (Role if needed), Start date, Contract status, Notes.
+3) No duplicate “Role” field appears if the modal already has Role at the top; it becomes “Role on this project (optional)” or shows a read-only prefill with override.
+4) Collapsed state shows a summary line when values exist.
+5) Saving a profile retains these engagement values in the UI (design mode state).
+6) No backend/schema changes and no unrelated pages affected.
+
+REMEMBER:
+UI only, design mode only, minimal scope, consistent styling.

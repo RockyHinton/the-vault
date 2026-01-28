@@ -7,8 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Trash2, X, ChevronDown, ChevronRight, Briefcase } from "lucide-react";
 import { useStore, ProducerProfile } from "@/lib/store";
+import { cn } from "@/lib/utils";
+import { Separator } from "@/components/ui/separator";
 
 const contactSchema = z.object({
   type: z.string().min(1, "Type is required"),
@@ -20,6 +23,14 @@ const linkSchema = z.object({
   url: z.string().url("Must be a valid URL"),
 });
 
+const engagementSchema = z.object({
+  status: z.enum(['Not approached', 'In discussion', 'Offered', 'Confirmed', 'Contracted', 'Dropped / Replaced', '']),
+  roleOnProject: z.string().optional(),
+  startDate: z.string().optional(),
+  contractStatus: z.enum(['Not sent', 'Sent', 'Signed', 'Pending amendments', '']),
+  notes: z.string().optional(),
+});
+
 const producerSchema = z.object({
   name: z.string().min(1, "Name is required"),
   company: z.string().min(1, "Company is required"),
@@ -27,6 +38,7 @@ const producerSchema = z.object({
   notes: z.string().optional(),
   contactDetails: z.array(contactSchema),
   links: z.array(linkSchema),
+  engagement: engagementSchema.optional(),
 });
 
 type ProducerFormValues = z.infer<typeof producerSchema>;
@@ -40,6 +52,7 @@ interface ProducerDialogProps {
 
 export function ProducerDialog({ projectId, isOpen, onClose, existingProfile }: ProducerDialogProps) {
   const { addProducerProfile, updateProducerProfile } = useStore();
+  const [isEngagementOpen, setIsEngagementOpen] = useState(false);
   
   const defaultValues: ProducerFormValues = existingProfile ? {
     name: existingProfile.name,
@@ -48,6 +61,13 @@ export function ProducerDialog({ projectId, isOpen, onClose, existingProfile }: 
     notes: existingProfile.notes,
     contactDetails: existingProfile.contactDetails.map(c => ({ type: c.type, value: c.value })),
     links: existingProfile.links.map(l => ({ label: l.label, url: l.url })),
+    engagement: existingProfile.engagement || {
+      status: 'In discussion',
+      roleOnProject: existingProfile.role, // Prefill with existing role
+      startDate: '',
+      contractStatus: '',
+      notes: ''
+    }
   } : {
     name: "",
     company: "",
@@ -55,9 +75,16 @@ export function ProducerDialog({ projectId, isOpen, onClose, existingProfile }: 
     notes: "",
     contactDetails: [{ type: "Email", value: "" }],
     links: [],
+    engagement: {
+      status: 'In discussion',
+      roleOnProject: '',
+      startDate: '',
+      contractStatus: '',
+      notes: ''
+    }
   };
 
-  const { register, control, handleSubmit, formState: { errors }, reset } = useForm<ProducerFormValues>({
+  const { register, control, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<ProducerFormValues>({
     resolver: zodResolver(producerSchema),
     defaultValues
   });
@@ -78,6 +105,7 @@ export function ProducerDialog({ projectId, isOpen, onClose, existingProfile }: 
       notes: data.notes || "",
       contactDetails: data.contactDetails.map((c, i) => ({ ...c, id: existingProfile?.contactDetails[i]?.id || `cd-${Date.now()}-${i}` })),
       links: data.links.map((l, i) => ({ ...l, id: existingProfile?.links[i]?.id || `l-${Date.now()}-${i}` })),
+      engagement: data.engagement
     };
 
     if (existingProfile) {
@@ -96,8 +124,22 @@ export function ProducerDialog({ projectId, isOpen, onClose, existingProfile }: 
   useState(() => {
     if (isOpen) {
       reset(defaultValues);
+      setIsEngagementOpen(false); // Reset collapse state
     }
   });
+
+  const engagementValues = watch("engagement");
+
+  // Helper to generate summary string
+  const getEngagementSummary = () => {
+    if (!engagementValues) return "Not set";
+    const parts = [];
+    if (engagementValues.status && engagementValues.status !== 'Not approached') parts.push(engagementValues.status);
+    if (engagementValues.startDate) parts.push(`Start: ${engagementValues.startDate}`);
+    if (engagementValues.contractStatus && engagementValues.contractStatus !== 'Not sent') parts.push(`Contract: ${engagementValues.contractStatus}`);
+    
+    return parts.length > 0 ? parts.join(" · ") : "Not set";
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -180,6 +222,94 @@ export function ProducerDialog({ projectId, isOpen, onClose, existingProfile }: 
           <div className="space-y-2">
             <Label htmlFor="notes">Notes</Label>
             <Textarea id="notes" {...register("notes")} placeholder="Additional details..." className="min-h-[100px]" />
+          </div>
+
+          {/* Project Engagement Section */}
+          <div className="border border-border/60 rounded-lg overflow-hidden bg-card/50">
+            <div 
+              className="p-4 flex items-center justify-between cursor-pointer hover:bg-secondary/50 transition-colors"
+              onClick={() => setIsEngagementOpen(!isEngagementOpen)}
+            >
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-sm">Project Engagement</h3>
+                </div>
+                {!isEngagementOpen && (
+                  <p className="text-xs text-muted-foreground">{getEngagementSummary()}</p>
+                )}
+              </div>
+              {isEngagementOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+            </div>
+
+            {isEngagementOpen && (
+              <div className="p-4 pt-0 space-y-4 animate-in slide-in-from-top-2">
+                <Separator className="mb-4" />
+                <p className="text-xs text-muted-foreground mb-4">Track project-specific hiring status and key dates.</p>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="eng-status">Status</Label>
+                    <Select 
+                      onValueChange={(val) => setValue("engagement.status", val as any)} 
+                      defaultValue={engagementValues?.status}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Not approached">Not approached</SelectItem>
+                        <SelectItem value="In discussion">In discussion</SelectItem>
+                        <SelectItem value="Offered">Offered</SelectItem>
+                        <SelectItem value="Confirmed">Confirmed</SelectItem>
+                        <SelectItem value="Contracted">Contracted</SelectItem>
+                        <SelectItem value="Dropped / Replaced">Dropped / Replaced</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="eng-role">Role on this project (optional)</Label>
+                    <Input id="eng-role" {...register("engagement.roleOnProject")} placeholder={watch("role") || "Same as main role"} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                    <Label htmlFor="eng-start">Start date</Label>
+                    <Input id="eng-start" type="date" {...register("engagement.startDate")} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="eng-contract">Contract status</Label>
+                     <Select 
+                      onValueChange={(val) => setValue("engagement.contractStatus", val as any)} 
+                      defaultValue={engagementValues?.contractStatus}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Not sent">Not sent</SelectItem>
+                        <SelectItem value="Sent">Sent</SelectItem>
+                        <SelectItem value="Signed">Signed</SelectItem>
+                        <SelectItem value="Pending amendments">Pending amendments</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="eng-notes">Engagement notes</Label>
+                  <Textarea 
+                    id="eng-notes" 
+                    {...register("engagement.notes")} 
+                    placeholder="Short context (deal terms, constraints, start conditions)..." 
+                    className="h-20"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter>

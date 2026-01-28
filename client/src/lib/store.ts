@@ -358,6 +358,14 @@ export interface LinkDetail {
   url: string;
 }
 
+export interface ProjectEngagement {
+  status: 'Not approached' | 'In discussion' | 'Offered' | 'Confirmed' | 'Contracted' | 'Dropped / Replaced' | '';
+  roleOnProject?: string;
+  startDate?: string;
+  contractStatus: 'Not sent' | 'Sent' | 'Signed' | 'Pending amendments' | '';
+  notes?: string;
+}
+
 export interface ProducerProfile {
   id: string;
   projectId: string;
@@ -367,9 +375,8 @@ export interface ProducerProfile {
   contactDetails: ContactDetail[];
   links: LinkDetail[];
   notes: string;
+  engagement?: ProjectEngagement;
 }
-
-// --- Creative Profile Types ---
 
 export type CreativeRoleType = 'Director' | 'Cast' | 'Head of Department';
 
@@ -383,6 +390,7 @@ export interface CreativeProfile {
   contactDetails: ContactDetail[];
   links: LinkDetail[];
   notes: string;
+  engagement?: ProjectEngagement;
 }
 
 // --- Admin / Security Types ---
