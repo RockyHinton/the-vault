@@ -22,6 +22,10 @@ import { ProducerProfile, ProfileDocument, ProfileDocumentType, ProfileDocumentS
 import { ProducerDialog } from "./ProducerDialog";
 import { cn } from "@/lib/utils";
 
+const isBlobUrl = (url?: string) => {
+  return !!url && url.startsWith("blob:");
+};
+
 interface ProducerDetailsDialogProps {
   profile: ProducerProfile;
   isOpen: boolean;
@@ -35,10 +39,14 @@ export function ProducerDetailsDialog({ profile, isOpen, onClose }: ProducerDeta
   const [isEngagementOpen, setIsEngagementOpen] = useState(false);
   const [isDocsOpen, setIsDocsOpen] = useState(false);
   const [isAddDocOpen, setIsAddDocOpen] = useState(false);
+  const [deleteDocConfirmOpen, setDeleteDocConfirmOpen] = useState(false);
+  const [docIdPendingDelete, setDocIdPendingDelete] = useState<string | null>(null);
 
   const [newDocFileName, setNewDocFileName] = useState("");
   const [newDocType, setNewDocType] = useState<ProfileDocumentType>("Agreement");
   const [newDocStatus, setNewDocStatus] = useState<ProfileDocumentStatus>("Draft");
+  const [newDocFileUrl, setNewDocFileUrl] = useState<string>("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const handleDelete = () => {
     setShowDeleteConfirm(true);
@@ -76,8 +84,11 @@ export function ProducerDetailsDialog({ profile, isOpen, onClose }: ProducerDeta
   };
 
   const handleAddDocument = () => {
-    const fileName = newDocFileName.trim();
+    const fileName = (selectedFile?.name || newDocFileName).trim();
     if (!fileName) return;
+
+    const objectUrl = selectedFile ? URL.createObjectURL(selectedFile) : undefined;
+    const fileUrl = newDocFileUrl.trim() || objectUrl;
 
     const nextDoc: ProfileDocument = {
       id: `pd-${Date.now()}`,
@@ -85,6 +96,7 @@ export function ProducerDetailsDialog({ profile, isOpen, onClose }: ProducerDeta
       docType: newDocType,
       status: newDocStatus,
       uploadedAt: new Date().toISOString(),
+      fileUrl,
     };
 
     updateProducerProfile(profile.id, {
@@ -94,15 +106,30 @@ export function ProducerDetailsDialog({ profile, isOpen, onClose }: ProducerDeta
     setNewDocFileName("");
     setNewDocType("Agreement");
     setNewDocStatus("Draft");
+    setNewDocFileUrl("");
+    setSelectedFile(null);
     setIsAddDocOpen(false);
     setIsDocsOpen(true);
   };
 
-  const handleDeleteDocument = (docId: string) => {
-    updateProducerProfile(profile.id, {
-      profileDocuments: docs.filter(d => d.id !== docId),
-    });
+  const requestDeleteDocument = (docId: string) => {
+    setDocIdPendingDelete(docId);
+    setDeleteDocConfirmOpen(true);
   };
+
+  const confirmDeleteDocument = () => {
+    if (!docIdPendingDelete) return;
+    updateProducerProfile(profile.id, {
+      profileDocuments: docs.filter(d => d.id !== docIdPendingDelete),
+    });
+    setDeleteDocConfirmOpen(false);
+    setDocIdPendingDelete(null);
+  };
+
+  const docPendingDelete = useMemo(() => {
+    if (!docIdPendingDelete) return null;
+    return docs.find(d => d.id === docIdPendingDelete) || null;
+  }, [docIdPendingDelete, docs]);
 
   const handleUpdateDocMeta = (docId: string, patch: Partial<ProfileDocument>) => {
     updateProducerProfile(profile.id, {
@@ -279,14 +306,28 @@ export function ProducerDetailsDialog({ profile, isOpen, onClose }: ProducerDeta
                         <div key={doc.id} className="rounded-lg border border-border/60 bg-background/30 p-3">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                              <div className="font-medium text-sm truncate">{doc.fileName}</div>
+                              <div className="font-medium text-sm truncate" data-testid={`text-doc-filename-${doc.id}`}>{doc.fileName}</div>
                               <div className="text-xs text-muted-foreground mt-1">Uploaded {new Date(doc.uploadedAt).toLocaleString()}</div>
+                              {doc.fileUrl ? (
+                                <a
+                                  href={doc.fileUrl}
+                                  download
+                                  target={isBlobUrl(doc.fileUrl) ? undefined : "_blank"}
+                                  rel={isBlobUrl(doc.fileUrl) ? undefined : "noopener noreferrer"}
+                                  className="mt-1 inline-flex text-xs text-primary hover:underline"
+                                  data-testid={`link-doc-download-${doc.id}`}
+                                >
+                                  Download
+                                </a>
+                              ) : (
+                                <div className="mt-1 text-xs text-muted-foreground" data-testid={`text-doc-nofile-${doc.id}`}>No file attached</div>
+                              )}
                             </div>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleDeleteDocument(doc.id)}
+                              onClick={() => requestDeleteDocument(doc.id)}
                               data-testid={`button-delete-doc-${doc.id}`}
                             >
                               <X className="h-4 w-4" />
@@ -391,8 +432,29 @@ export function ProducerDetailsDialog({ profile, isOpen, onClose }: ProducerDeta
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={isAddDocOpen} onOpenChange={setIsAddDocOpen}>
+      <AlertDialog open={deleteDocConfirmOpen} onOpenChange={setDeleteDocConfirmOpen}>
         <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{docPendingDelete?.fileName || 'this document'}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteDocument}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-doc"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isAddDocOpen} onOpenChange={setIsAddDocOpen}>
+        <AlertDialogContent data-testid="dialog-add-profile-document" className="sm:max-w-[520px]">
           <AlertDialogHeader>
             <AlertDialogTitle>Upload document</AlertDialogTitle>
             <AlertDialogDescription>
@@ -402,13 +464,43 @@ export function ProducerDetailsDialog({ profile, isOpen, onClose }: ProducerDeta
 
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="doc-file-name">File name</Label>
+              <Label htmlFor="doc-file">File</Label>
+              <Input
+                id="doc-file"
+                type="file"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setSelectedFile(file);
+                  if (file) {
+                    setNewDocFileName(file.name);
+                  }
+                }}
+                data-testid="input-doc-file"
+              />
+              <p className="text-xs text-muted-foreground">
+                This is a real device file picker. In design mode we store a temporary link; later this will upload to storage.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="doc-file-name">File name (optional override)</Label>
               <Input
                 id="doc-file-name"
                 value={newDocFileName}
                 onChange={(e) => setNewDocFileName(e.target.value)}
-                placeholder="e.g. Deal_Memo_v2.pdf"
+                placeholder={selectedFile?.name || "e.g. Deal_Memo_v2.pdf"}
                 data-testid="input-doc-file-name"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="doc-file-url">File URL (future storage path)</Label>
+              <Input
+                id="doc-file-url"
+                value={newDocFileUrl}
+                onChange={(e) => setNewDocFileUrl(e.target.value)}
+                placeholder="https://... (leave blank for now)"
+                data-testid="input-doc-file-url"
               />
             </div>
 
@@ -452,7 +544,7 @@ export function ProducerDetailsDialog({ profile, isOpen, onClose }: ProducerDeta
             <AlertDialogCancel data-testid="button-cancel-add-doc">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleAddDocument}
-              className={cn(!newDocFileName.trim() ? "pointer-events-none opacity-50" : "")}
+              className={cn(!(selectedFile || newDocFileName.trim()) ? "pointer-events-none opacity-50" : "")}
               data-testid="button-save-add-doc"
             >
               Save

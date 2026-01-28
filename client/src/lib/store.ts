@@ -367,6 +367,7 @@ export interface ProfileDocument {
   docType: ProfileDocumentType;
   status: ProfileDocumentStatus;
   uploadedAt: string;
+  fileUrl?: string;
 }
 
 export interface ProjectEngagement {
