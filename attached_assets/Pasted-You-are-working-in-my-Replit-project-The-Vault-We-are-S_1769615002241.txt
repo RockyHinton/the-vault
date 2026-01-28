@@ -1,0 +1,141 @@
+You are working in my Replit project “The Vault”. We are STILL IN DESIGN MODE.
+DO NOT make any backend/database/schema/API changes.
+This task ONLY updates the “View Profile” modal (the popup you see after clicking an existing profile) for Producers, Creatives, and HOD profiles (Directors, Actors, HODs).
+
+CRITICAL SCOPE LIMIT
+ONLY modify:
+- The existing “View Profile” modal component(s) (the read-only profile popup shown in the screenshot)
+- Add read-only sections for Project Engagement and Documents inside this modal
+- Light styling/layout fixes within this modal
+DO NOT modify:
+- The profile create/edit modal forms (except wiring through if needed)
+- Any list pages, documentation pages, financing pages, navigation, routes, or global theme
+DO NOT add libraries.
+Keep changes minimal and local.
+
+GOALS (WHAT TO IMPLEMENT)
+1) Fix the modal header layout so:
+   - The role/type pill (e.g., “Cast”) does NOT overlap with the close “X”
+   - The “X” is aligned to top-right with safe padding
+   - The title and star/favourite area align cleanly
+   - Overall header looks intentional and balanced
+
+2) Make “Delete Profile” more subtle:
+   - Remove the big red, overly prominent button treatment
+   - Replace with a smaller “Danger” text button/link style
+   - Place it bottom-left in the footer, but visually de-emphasized
+   - Add a simple confirm step (design-mode only) e.g. confirm dialog/modal:
+     “Delete this profile? This can’t be undone.” with Cancel/Delete
+
+3) Add a read-only “Project Engagement” collapsible section (collapsed by default)
+   - Same UI style as the collapsible section used in the create/edit modal
+   - Shows summary when collapsed (e.g. “Confirmed · Start: 12 Mar 2026 · Contract: Sent” or “Not set”)
+   - When expanded shows fields read-only:
+     - Status
+     - Role on this project (only if your model supports override; otherwise display the profile role)
+     - Start date
+     - Contract status
+     - Engagement notes
+   - This section must be READ-ONLY in View mode.
+   - When user clicks “Edit Profile”, they should be taken to the existing editable modal where these values can be edited.
+
+4) Add a read-only “Documents” collapsible section (collapsed by default)
+   - Place directly below Project Engagement (or vice versa) with consistent spacing
+   - Collapsed summary: “Documents: X” (or “No documents”)
+   - When expanded:
+     A) “Upload Document” button (works in design mode; no backend)
+     B) A list/table of uploaded documents for this profile
+        Each row:
+        - File name
+        - Document type (dropdown or label)
+        - Status (dropdown or label)
+        - Uploaded date/time
+        - Delete icon (optional)
+   - Define document statuses (same as elsewhere):
+     - Draft
+     - Pending
+     - Signed
+     - Approved
+   - Define a simple docType dropdown for profile documents (use these defaults):
+     - Agreement
+     - Deal Memo
+     - ID / KYC
+     - NDA
+     - Release
+     - Contract Amendment
+     - Other
+   - NOTE: In View mode, the document list is visible and upload is allowed (since it’s part of ongoing record keeping), BUT editing existing document metadata should be limited:
+     - Either keep docType/status editable (simple) OR make them read-only until Edit Profile.
+     Choose the option that best matches your current patterns—prefer consistency.
+   - Store documents in the existing front-end profile state object (design mode only). Do NOT add backend.
+
+READ-ONLY VS EDIT BEHAVIOR (IMPORTANT)
+- The “View Profile” modal is the READ-ONLY viewer.
+- It has buttons:
+  - Close
+  - Edit Profile (primary)
+  - Delete Profile (subtle danger)
+- Clicking “Edit Profile” should open the existing edit modal with the profile’s current data pre-filled (including Project Engagement fields).
+- The Project Engagement section in the viewer is read-only.
+- The Documents section:
+  - Must allow adding documents in viewer mode (preferred), because users will often attach documents without needing to edit the profile.
+  - If allowing uploads in view mode is hard due to existing patterns, allow uploads only in edit mode, but still show the list in view mode.
+
+LAYOUT SPEC (MAKE IT LOOK GOOD)
+Header:
+- Left: Profile name + optional star icon row below (do not let it float awkwardly)
+- Right: Role pill aligned left of the X OR on the next line, but must not overlap
+- X close button top-right with padding and no overlap
+
+Body:
+- Maintain existing “REP” and “CONTACT” blocks but align spacing consistently
+- Add two collapsible sections below contact:
+  1) Project Engagement (collapsed by default)
+  2) Documents (collapsed by default)
+- Each collapsible should match your existing accordion style (chevron, divider, subtle background)
+- Ensure consistent margins, headings, typography.
+
+Footer:
+- Left: “Delete Profile” as subtle danger text button with icon (smaller)
+- Right: Close (secondary) and Edit Profile (primary) buttons aligned, consistent spacing
+
+DATA / STATE (DESIGN MODE ONLY)
+- Ensure the viewer reads the new engagement fields that were added during profile creation:
+  engagement:
+    - status
+    - roleOverride (optional)
+    - startDate
+    - contractStatus
+    - notes
+- Add a profileDocuments array in the profile object if it doesn’t already exist:
+  profileDocuments: {
+    id, fileName, docType, status, uploadedAt
+  }[]
+- When uploading, simulate file handling using the existing upload component if available.
+  If not available, implement a simple “Add document” modal in design mode:
+  - File name (text)
+  - Doc type dropdown
+  - Status dropdown
+  - Save
+This is acceptable in design mode.
+
+CONFIRMATION FOR DELETE
+- On delete click, show confirm dialog/modal:
+  - Title: “Delete profile?”
+  - Text: “This will remove the profile from the project.”
+  - Buttons: Cancel / Delete
+- Only proceed if confirmed.
+
+ACCEPTANCE TESTS (MANUAL)
+After implementing, list files changed and confirm:
+1) Role pill and X button no longer overlap; header looks clean.
+2) Delete Profile is subtle and not visually dominant; requires confirmation.
+3) Project Engagement collapsible exists, collapsed by default, shows summary, expands to read-only fields.
+4) Documents collapsible exists, collapsed by default, shows doc count, expands to upload + list.
+5) Edit Profile opens the existing editable modal with engagement fields prefilled and editable.
+6) No backend changes; design mode only.
+
+REMEMBER
+Minimal scope. Highest chance of success.
+Only change the View Profile modal and necessary local state wiring.
+Keep styling consistent with The Vault theme.

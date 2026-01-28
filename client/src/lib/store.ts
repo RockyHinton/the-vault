@@ -358,6 +358,17 @@ export interface LinkDetail {
   url: string;
 }
 
+export type ProfileDocumentStatus = 'Draft' | 'Pending' | 'Signed' | 'Approved';
+export type ProfileDocumentType = 'Agreement' | 'Deal Memo' | 'ID / KYC' | 'NDA' | 'Release' | 'Contract Amendment' | 'Other';
+
+export interface ProfileDocument {
+  id: string;
+  fileName: string;
+  docType: ProfileDocumentType;
+  status: ProfileDocumentStatus;
+  uploadedAt: string;
+}
+
 export interface ProjectEngagement {
   status: 'Not approached' | 'In discussion' | 'Offered' | 'Confirmed' | 'Contracted' | 'Dropped / Replaced' | '';
   roleOnProject?: string;
@@ -376,6 +387,7 @@ export interface ProducerProfile {
   links: LinkDetail[];
   notes: string;
   engagement?: ProjectEngagement;
+  profileDocuments?: ProfileDocument[];
 }
 
 export type CreativeRoleType = 'Director' | 'Cast' | 'Head of Department';
@@ -391,6 +403,7 @@ export interface CreativeProfile {
   links: LinkDetail[];
   notes: string;
   engagement?: ProjectEngagement;
+  profileDocuments?: ProfileDocument[];
 }
 
 // --- Admin / Security Types ---

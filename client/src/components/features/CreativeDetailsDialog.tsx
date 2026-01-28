@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -13,9 +13,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Mail, Phone, Globe, ExternalLink, Trash2, Edit, User, Clapperboard, Star, HardHat } from "lucide-react";
-import { CreativeProfile, useStore } from "@/lib/store";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Mail, Phone, Globe, ExternalLink, Trash2, Edit, User, Clapperboard, Star, HardHat, Briefcase, ChevronDown, ChevronRight, FileText, Plus, X } from "lucide-react";
+import { CreativeProfile, ProfileDocument, ProfileDocumentType, ProfileDocumentStatus, useStore } from "@/lib/store";
 import { CreativeDialog } from "./CreativeDialog";
+import { cn } from "@/lib/utils";
 
 interface CreativeDetailsDialogProps {
   profile: CreativeProfile;
@@ -24,9 +28,16 @@ interface CreativeDetailsDialogProps {
 }
 
 export function CreativeDetailsDialog({ profile, isOpen, onClose }: CreativeDetailsDialogProps) {
-  const { deleteCreativeProfile } = useStore();
+  const { deleteCreativeProfile, updateCreativeProfile } = useStore();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isEngagementOpen, setIsEngagementOpen] = useState(false);
+  const [isDocsOpen, setIsDocsOpen] = useState(false);
+  const [isAddDocOpen, setIsAddDocOpen] = useState(false);
+
+  const [newDocFileName, setNewDocFileName] = useState("");
+  const [newDocType, setNewDocType] = useState<ProfileDocumentType>("Agreement");
+  const [newDocStatus, setNewDocStatus] = useState<ProfileDocumentStatus>("Draft");
 
   const handleDelete = () => {
     setShowDeleteConfirm(true);
@@ -45,6 +56,59 @@ export function CreativeDetailsDialog({ profile, isOpen, onClose }: CreativeDeta
     return <User className="h-4 w-4" />;
   };
 
+  const docs = profile.profileDocuments || [];
+
+  const engagementSummary = useMemo(() => {
+    const e = profile.engagement;
+    if (!e) return "Not set";
+
+    const parts: string[] = [];
+    if (e.status) parts.push(e.status);
+    if (e.startDate) parts.push(`Start: ${e.startDate}`);
+    if (e.contractStatus) parts.push(`Contract: ${e.contractStatus}`);
+
+    return parts.length ? parts.join(" · ") : "Not set";
+  }, [profile.engagement]);
+
+  const docsSummary = useMemo(() => {
+    return docs.length > 0 ? `Documents: ${docs.length}` : "No documents";
+  }, [docs.length]);
+
+  const handleAddDocument = () => {
+    const fileName = newDocFileName.trim();
+    if (!fileName) return;
+
+    const nextDoc: ProfileDocument = {
+      id: `pd-${Date.now()}`,
+      fileName,
+      docType: newDocType,
+      status: newDocStatus,
+      uploadedAt: new Date().toISOString(),
+    };
+
+    updateCreativeProfile(profile.id, {
+      profileDocuments: [...docs, nextDoc],
+    });
+
+    setNewDocFileName("");
+    setNewDocType("Agreement");
+    setNewDocStatus("Draft");
+    setIsAddDocOpen(false);
+    setIsDocsOpen(true);
+  };
+
+  const handleDeleteDocument = (docId: string) => {
+    updateCreativeProfile(profile.id, {
+      profileDocuments: docs.filter(d => d.id !== docId),
+    });
+  };
+
+  const handleUpdateDocMeta = (docId: string, patch: Partial<ProfileDocument>) => {
+    updateCreativeProfile(profile.id, {
+      profileDocuments: docs.map(d => (d.id === docId ? { ...d, ...patch } : d)),
+    });
+  };
+
   const getRoleIcon = (roleType: string) => {
     switch(roleType) {
       case 'Director': return <Clapperboard className="h-4 w-4 mr-1.5" />;
@@ -59,20 +123,30 @@ export function CreativeDetailsDialog({ profile, isOpen, onClose }: CreativeDeta
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <DialogTitle className="text-2xl">{profile.name}</DialogTitle>
-                <div className="flex items-center text-muted-foreground">
-                  {getRoleIcon(profile.roleType)}
-                  <span className="font-medium">{profile.specificRole}</span>
+            <div className="relative pr-10">
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <DialogTitle className="text-2xl pr-2">{profile.name}</DialogTitle>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
+                    <div className="flex items-center">
+                      {getRoleIcon(profile.roleType)}
+                      <span className="font-medium truncate">{profile.specificRole}</span>
+                    </div>
+                    <Badge
+                      variant={
+                        profile.roleType === 'Director'
+                          ? 'default'
+                          : profile.roleType === 'Cast'
+                            ? 'secondary'
+                            : 'outline'
+                      }
+                      className="text-xs font-normal"
+                    >
+                      {profile.roleType}
+                    </Badge>
+                  </div>
                 </div>
               </div>
-              <Badge variant={
-                profile.roleType === 'Director' ? 'default' : 
-                profile.roleType === 'Cast' ? 'secondary' : 'outline'
-              } className="text-sm font-normal">
-                {profile.roleType}
-              </Badge>
             </div>
           </DialogHeader>
 
@@ -136,16 +210,185 @@ export function CreativeDetailsDialog({ profile, isOpen, onClose }: CreativeDeta
                 </div>
               </div>
             )}
+
+            {/* Project Engagement (read-only) */}
+            <div className="border border-border/60 rounded-lg overflow-hidden bg-card/50">
+              <div
+                className="p-4 flex items-center justify-between cursor-pointer hover:bg-secondary/50 transition-colors"
+                onClick={() => setIsEngagementOpen(v => !v)}
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="h-4 w-4 text-primary" />
+                    <h3 className="font-semibold text-sm">Project Engagement</h3>
+                  </div>
+                  {!isEngagementOpen && (
+                    <p className="text-xs text-muted-foreground">{engagementSummary}</p>
+                  )}
+                </div>
+                {isEngagementOpen ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                )}
+              </div>
+
+              {isEngagementOpen && (
+                <div className="p-4 pt-0 space-y-4 animate-in slide-in-from-top-2">
+                  <Separator className="mb-4" />
+                  <p className="text-xs text-muted-foreground">Track project-specific hiring status and key dates.</p>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-medium text-muted-foreground">Status</div>
+                      <div className="text-sm">{profile.engagement?.status || "Not set"}</div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-medium text-muted-foreground">Role on this project</div>
+                      <div className="text-sm">{profile.engagement?.roleOnProject || profile.specificRole || "Not set"}</div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-medium text-muted-foreground">Start date</div>
+                      <div className="text-sm">{profile.engagement?.startDate || "Not set"}</div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-medium text-muted-foreground">Contract status</div>
+                      <div className="text-sm">{profile.engagement?.contractStatus || "Not set"}</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-medium text-muted-foreground">Engagement notes</div>
+                    <div className="text-sm whitespace-pre-wrap rounded-md border border-border/50 bg-secondary/10 p-3">{profile.engagement?.notes || "Not set"}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Documents */}
+            <div className="border border-border/60 rounded-lg overflow-hidden bg-card/50">
+              <div
+                className="p-4 flex items-center justify-between cursor-pointer hover:bg-secondary/50 transition-colors"
+                onClick={() => setIsDocsOpen(v => !v)}
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    <h3 className="font-semibold text-sm">Documents</h3>
+                  </div>
+                  {!isDocsOpen && (
+                    <p className="text-xs text-muted-foreground">{docsSummary}</p>
+                  )}
+                </div>
+                {isDocsOpen ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                )}
+              </div>
+
+              {isDocsOpen && (
+                <div className="p-4 pt-0 space-y-4 animate-in slide-in-from-top-2">
+                  <Separator className="mb-4" />
+
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-muted-foreground">Attach documents to this profile (design mode).</p>
+                    <Button size="sm" variant="secondary" onClick={() => setIsAddDocOpen(true)} data-testid="button-upload-document">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Upload Document
+                    </Button>
+                  </div>
+
+                  {docs.length === 0 ? (
+                    <div className="text-sm text-muted-foreground border border-dashed border-border rounded-md p-4 bg-background/30">
+                      No documents yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {docs.map((doc) => (
+                        <div key={doc.id} className="rounded-lg border border-border/60 bg-background/30 p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="font-medium text-sm truncate">{doc.fileName}</div>
+                              <div className="text-xs text-muted-foreground mt-1">Uploaded {new Date(doc.uploadedAt).toLocaleString()}</div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => handleDeleteDocument(doc.id)}
+                              data-testid={`button-delete-doc-${doc.id}`}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <div className="text-xs font-medium text-muted-foreground">Document type</div>
+                              <Select
+                                value={doc.docType}
+                                onValueChange={(val) => handleUpdateDocMeta(doc.id, { docType: val as ProfileDocumentType })}
+                              >
+                                <SelectTrigger className="h-9">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Agreement">Agreement</SelectItem>
+                                  <SelectItem value="Deal Memo">Deal Memo</SelectItem>
+                                  <SelectItem value="ID / KYC">ID / KYC</SelectItem>
+                                  <SelectItem value="NDA">NDA</SelectItem>
+                                  <SelectItem value="Release">Release</SelectItem>
+                                  <SelectItem value="Contract Amendment">Contract Amendment</SelectItem>
+                                  <SelectItem value="Other">Other</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <div className="text-xs font-medium text-muted-foreground">Status</div>
+                              <Select
+                                value={doc.status}
+                                onValueChange={(val) => handleUpdateDocMeta(doc.id, { status: val as ProfileDocumentStatus })}
+                              >
+                                <SelectTrigger className="h-9">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Draft">Draft</SelectItem>
+                                  <SelectItem value="Pending">Pending</SelectItem>
+                                  <SelectItem value="Signed">Signed</SelectItem>
+                                  <SelectItem value="Approved">Approved</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <DialogFooter className="flex gap-2 sm:justify-between sm:gap-0">
-            <Button variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={handleDelete}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="px-2 text-destructive/80 hover:text-destructive hover:bg-destructive/10"
+              onClick={handleDelete}
+              data-testid="button-delete-profile"
+            >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete Profile
             </Button>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={onClose}>Close</Button>
-              <Button onClick={() => setIsEditOpen(true)}>
+              <Button variant="outline" onClick={onClose} data-testid="button-close-profile">Close</Button>
+              <Button onClick={() => setIsEditOpen(true)} data-testid="button-edit-profile">
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Profile
               </Button>
@@ -164,18 +407,88 @@ export function CreativeDetailsDialog({ profile, isOpen, onClose }: CreativeDeta
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Creative Profile</AlertDialogTitle>
+            <AlertDialogTitle>Delete profile?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the profile for {profile.name}? This action cannot be undone.
+              This will remove the profile from the project.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90"
               onClick={confirmDelete}
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isAddDocOpen} onOpenChange={setIsAddDocOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Upload document</AlertDialogTitle>
+            <AlertDialogDescription>
+              Add a document to this profile (design mode only).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="doc-file-name">File name</Label>
+              <Input
+                id="doc-file-name"
+                value={newDocFileName}
+                onChange={(e) => setNewDocFileName(e.target.value)}
+                placeholder="e.g. Deal_Memo_v2.pdf"
+                data-testid="input-doc-file-name"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Document type</Label>
+                <Select value={newDocType} onValueChange={(val) => setNewDocType(val as ProfileDocumentType)}>
+                  <SelectTrigger data-testid="select-doc-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Agreement">Agreement</SelectItem>
+                    <SelectItem value="Deal Memo">Deal Memo</SelectItem>
+                    <SelectItem value="ID / KYC">ID / KYC</SelectItem>
+                    <SelectItem value="NDA">NDA</SelectItem>
+                    <SelectItem value="Release">Release</SelectItem>
+                    <SelectItem value="Contract Amendment">Contract Amendment</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={newDocStatus} onValueChange={(val) => setNewDocStatus(val as ProfileDocumentStatus)}>
+                  <SelectTrigger data-testid="select-doc-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Draft">Draft</SelectItem>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Signed">Signed</SelectItem>
+                    <SelectItem value="Approved">Approved</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-add-doc">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleAddDocument}
+              className={cn(!newDocFileName.trim() ? "pointer-events-none opacity-50" : "")}
+              data-testid="button-save-add-doc"
+            >
+              Save
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
