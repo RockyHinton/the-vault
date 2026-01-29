@@ -59,6 +59,16 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
 
+  rightsItems?: Array<{
+    id: string;
+    rightsType: string;
+    status: string;
+    rightsHolder: string;
+    expiryDate: string | null;
+    notes: string;
+    documents: Array<{ id: string; name: string; url?: string; createdAt: string }>;
+  }>;
+
   rights?: {
     type: 'Original' | 'Book' | 'Article' | 'Life Rights' | 'Remake' | 'Other';
     holder: string;
@@ -70,7 +80,7 @@ export interface Project {
     expiryDate: string;
     notes: string;
   };
-  
+
   // Evaluation Data
   evaluation: EvaluationData;
 
