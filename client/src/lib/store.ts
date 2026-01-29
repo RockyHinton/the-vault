@@ -58,6 +58,18 @@ export interface Project {
   genre: string;
   createdAt: string;
   updatedAt: string;
+
+  rights?: {
+    type: 'Original' | 'Book' | 'Article' | 'Life Rights' | 'Remake' | 'Other';
+    holder: string;
+    statusByStage: {
+      Evaluation?: 'Identified' | 'Contacted' | 'Under Review' | 'Option Pending' | 'Optioned' | 'Not Available';
+      Development?: 'Optioned' | 'Extended' | 'Purchase Pending' | 'Purchased' | 'Rights Issue';
+      Production?: 'Cleared' | 'Chain Complete' | 'Missing Doc' | 'Expired' | 'Legal Hold';
+    };
+    expiryDate: string;
+    notes: string;
+  };
   
   // Evaluation Data
   evaluation: EvaluationData;
@@ -655,8 +667,8 @@ const MOCK_CATEGORIES: Category[] = [
   { id: 'c1', projectId: 'p1', name: 'Script', slug: 'script', icon: 'FileText' },
   { id: 'c2', projectId: 'p1', name: 'Producers', slug: 'producers', icon: 'Users' },
   { id: 'c8', projectId: 'p1', name: 'Creatives', slug: 'creatives', icon: 'User' }, // Renamed from Actors & Directors
+  { id: 'c11', projectId: 'p1', name: 'Underlying Rights', slug: 'underlying-rights', icon: 'FileText' },
   { id: 'c3', projectId: 'p1', name: 'Financing', slug: 'financing', icon: 'CircleDollarSign' },
-  { id: 'c11', projectId: 'p1', name: 'Underlying Rights', slug: 'underlying-rights', icon: 'FileText' }, // New Category
   { id: 'c9', projectId: 'p1', name: 'Documentation', slug: 'legal', icon: 'Scale' }, // Renamed from Legal & Contracts
   { id: 'c6', projectId: 'p1', name: 'Distribution', slug: 'distribution', icon: 'Globe' },
   { id: 'c10', projectId: 'p1', name: 'Schedules', slug: 'schedules', icon: 'Calendar' }, // New (Prod+)
@@ -1102,8 +1114,8 @@ export const useStore = create<AppState>()(
     visibleSlugs.add('producers');
     visibleSlugs.add('creatives');
 
-    // Only show 'Underlying Rights' in Evaluation stage
-    if (stage === 'Evaluation') {
+    // Underlying Rights is relevant across stages
+    if (stage === 'Evaluation' || stage === 'Development' || stage === 'Production') {
       visibleSlugs.add('underlying-rights');
     }
 
