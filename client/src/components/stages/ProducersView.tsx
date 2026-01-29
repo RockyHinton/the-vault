@@ -125,7 +125,7 @@ export default function ProducersView({ project }: ProducersViewProps) {
                 data-testid="label-status-filter"
                 className="text-xs font-medium text-muted-foreground"
               >
-                Filter by
+                Profile status
               </span>
               <div className="h-7 w-px bg-border/70" />
             </div>
