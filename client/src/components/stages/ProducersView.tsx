@@ -16,17 +16,19 @@ interface ProducersViewProps {
 
 const STATUS_OPTIONS = [
   "Not set",
-  "Not approached",
-  "In discussion",
+  "Identified",
+  "Contacted",
+  "Interested",
   "Offered",
   "Confirmed",
   "Contracted",
-  "Dropped / Replaced",
+  "Attached",
+  "Unavailable / Passed",
 ] as const;
 
 type StatusFilter = "All" | (typeof STATUS_OPTIONS)[number];
 
-type AttentionReason = "Contract pending" | "Missing docs";
+type AttentionReason = "Contract pending" | "Missing docs" | "Needs approval";
 
 const getVisibleStatus = (profile: any) => {
   const s = profile?.engagement?.status;
@@ -39,7 +41,7 @@ const getAttentionReasons = (profile: any): AttentionReason[] => {
   const status = profile?.engagement?.status || "";
   const contractStatus = profile?.engagement?.contractStatus || "";
 
-  if ((status === "Offered" || status === "Confirmed" || status === "Contracted") && contractStatus && contractStatus !== "Signed") {
+  if ((status === "Offered" || status === "Confirmed" || status === "Contracted" || status === "Attached") && contractStatus && contractStatus !== "Signed") {
     reasons.push("Contract pending");
   }
 
@@ -49,13 +51,18 @@ const getAttentionReasons = (profile: any): AttentionReason[] => {
     reasons.push("Missing docs");
   }
 
+  const needsApproval = status !== "Contracted" && status !== "Attached" && status !== "Unavailable / Passed";
+  if (needsApproval) {
+    reasons.push("Needs approval");
+  }
+
   return reasons;
 };
 
 const getStatusBadgeVariant = (status: string) => {
-  if (status === "Contracted") return "default" as const;
-  if (status === "Dropped / Replaced") return "destructive" as const;
-  if (status === "Offered" || status === "Confirmed") return "secondary" as const;
+  if (status === "Contracted" || status === "Attached") return "default" as const;
+  if (status === "Unavailable / Passed") return "destructive" as const;
+  if (status === "Offered" || status === "Confirmed" || status === "Interested") return "secondary" as const;
   return "outline" as const;
 };
 

@@ -72,20 +72,23 @@ export function ProducerDetailsDialog({ profile, isOpen, onClose }: ProducerDeta
     const status = profile.engagement?.status || "";
     const contractStatus = profile.engagement?.contractStatus || "";
 
-    if ((status === "Offered" || status === "Confirmed" || status === "Contracted") && contractStatus && contractStatus !== "Signed") {
+    if ((status === "Offered" || status === "Confirmed" || status === "Contracted" || status === "Attached") && contractStatus && contractStatus !== "Signed") {
       reasons.push("Contract pending");
     }
 
     const hasApprovedOrSigned = docs.some((d) => d.status === "Approved" || d.status === "Signed");
     if (!hasApprovedOrSigned) reasons.push("Missing docs");
 
+    const needsApproval = status !== "Contracted" && status !== "Attached" && status !== "Unavailable / Passed";
+    if (needsApproval) reasons.push("Needs approval");
+
     return reasons;
   }, [docs, profile.engagement?.contractStatus, profile.engagement?.status]);
 
   const statusBadgeVariant = useMemo(() => {
-    if (visibleStatus === "Contracted") return "default" as const;
-    if (visibleStatus === "Dropped / Replaced") return "destructive" as const;
-    if (visibleStatus === "Offered" || visibleStatus === "Confirmed") return "secondary" as const;
+    if (visibleStatus === "Contracted" || visibleStatus === "Attached") return "default" as const;
+    if (visibleStatus === "Unavailable / Passed") return "destructive" as const;
+    if (visibleStatus === "Offered" || visibleStatus === "Confirmed" || visibleStatus === "Interested") return "secondary" as const;
     return "outline" as const;
   }, [visibleStatus]);
 

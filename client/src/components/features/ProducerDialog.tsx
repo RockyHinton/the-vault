@@ -24,7 +24,7 @@ const linkSchema = z.object({
 });
 
 const engagementSchema = z.object({
-  status: z.enum(['Not approached', 'In discussion', 'Offered', 'Confirmed', 'Contracted', 'Dropped / Replaced', '']),
+  status: z.enum(['Identified', 'Contacted', 'Interested', 'Offered', 'Confirmed', 'Contracted', 'Attached', 'Unavailable / Passed', '']),
   roleOnProject: z.string().optional(),
   startDate: z.string().optional(),
   contractStatus: z.enum(['Not sent', 'Sent', 'Signed', 'Pending amendments', '']),
@@ -62,7 +62,7 @@ export function ProducerDialog({ projectId, isOpen, onClose, existingProfile }: 
     contactDetails: existingProfile.contactDetails.map(c => ({ type: c.type, value: c.value })),
     links: existingProfile.links.map(l => ({ label: l.label, url: l.url })),
     engagement: existingProfile.engagement || {
-      status: 'In discussion',
+      status: 'Identified',
       roleOnProject: existingProfile.role, // Prefill with existing role
       startDate: '',
       contractStatus: '',
@@ -76,7 +76,7 @@ export function ProducerDialog({ projectId, isOpen, onClose, existingProfile }: 
     contactDetails: [{ type: "Email", value: "" }],
     links: [],
     engagement: {
-      status: 'In discussion',
+      status: 'Identified',
       roleOnProject: '',
       startDate: '',
       contractStatus: '',
@@ -258,12 +258,14 @@ export function ProducerDialog({ projectId, isOpen, onClose, existingProfile }: 
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Not approached">Not approached</SelectItem>
-                        <SelectItem value="In discussion">In discussion</SelectItem>
+                        <SelectItem value="Identified">Identified</SelectItem>
+                        <SelectItem value="Contacted">Contacted</SelectItem>
+                        <SelectItem value="Interested">Interested</SelectItem>
                         <SelectItem value="Offered">Offered</SelectItem>
                         <SelectItem value="Confirmed">Confirmed</SelectItem>
                         <SelectItem value="Contracted">Contracted</SelectItem>
-                        <SelectItem value="Dropped / Replaced">Dropped / Replaced</SelectItem>
+                        <SelectItem value="Attached">Attached</SelectItem>
+                        <SelectItem value="Unavailable / Passed">Unavailable / Passed</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
