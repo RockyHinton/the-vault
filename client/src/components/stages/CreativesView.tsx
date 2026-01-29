@@ -157,6 +157,16 @@ export default function CreativesView({ project }: CreativesViewProps) {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+            <div className="flex items-center gap-2">
+              <span
+                data-testid="label-status-filter"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                Filter by
+              </span>
+              <div className="h-7 w-px bg-border/70" />
+            </div>
+
             <div className="w-full sm:w-56">
               <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
                 <SelectTrigger data-testid="select-status-filter" className="bg-background/50">

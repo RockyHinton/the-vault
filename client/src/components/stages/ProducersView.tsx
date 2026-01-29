@@ -120,6 +120,16 @@ export default function ProducersView({ project }: ProducersViewProps) {
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span
+                data-testid="label-status-filter"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                Filter by
+              </span>
+              <div className="h-7 w-px bg-border/70" />
+            </div>
+
             <div className="w-48">
               <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
                 <SelectTrigger data-testid="select-status-filter" className="bg-background/50">
