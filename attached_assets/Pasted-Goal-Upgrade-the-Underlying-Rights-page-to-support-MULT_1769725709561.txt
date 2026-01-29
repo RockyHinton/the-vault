@@ -1,0 +1,88 @@
+Goal
+Upgrade the “Underlying Rights” page to support MULTIPLE “Rights Items” (e.g., Book rights + Life rights), while staying MVP and space-efficient. Default experience should still feel simple when there is only 1 item.
+
+Constraints
+- Do NOT redesign the entire page or change global styling.
+- Reuse existing components (Card, Select, Input, Textarea, Button) and existing upload UI.
+- No backend work required for MVP. Persist in the same place the current rights fields are stored (project state/store). If there is no persistence, keep in component state but structure it for later persistence.
+- Avoid large vertical forms repeated multiple times; must remain compact.
+
+Data model
+Replace single rights object with:
+project.rightsItems: Array<{
+  id: string,
+  rightsType: string,
+  status: string,
+  rightsHolder: string,
+  expiryDate: string | null,
+  notes: string,
+  documents: Array<{ id, name, url?, createdAt }>
+}>
+If the app currently uses project.rights (single), migrate it on load:
+- If project.rightsItems is missing but project.rights exists, create rightsItems=[{...project.rights, id: “ri-1”, documents: existingDocuments||[]}] and then use rightsItems going forward.
+
+UI / Layout (space-efficient)
+1) Top header stays the same (title + stage helper text + Upload button).
+2) Replace the current “Rights Overview” card with a compact “Rights Items” container:
+   - Left side: a vertical list of items (mini cards or list rows)
+     Each row shows:
+       • Rights Type (bold)
+       • Status badge
+       • Rights Holder (truncated)
+       • Expiry date (if set)
+     Row actions:
+       • Select / Edit (click row)
+       • Delete (trash icon) — only if more than 1 item (confirm modal)
+   - Right side: an “Item Details” panel showing the same form fields you currently have:
+       Rights Type (select)
+       Status (select)
+       Rights Holder (input)
+       Expiry Date (date)
+       Notes (textarea)
+     This panel edits the currently selected item.
+
+3) Add a clear “+ Add Rights Item” button above the list:
+   - Creates a new item with sensible defaults:
+     rightsType: “Original” (or blank)
+     status: stage-default first option
+     rightsHolder: “”
+     expiryDate: null
+     notes: “”
+     documents: []
+   - Auto-select the new item and focus Rights Holder input.
+
+4) Documents / Chain of Title (MVP)
+Keep the existing “Chain of Title / Documents” card on the right as-is, BUT make it context-aware:
+- Add a small label at the top: “Documents for: [Selected Rights Type]”
+- Uploads and the empty state should apply to the selected item’s documents array.
+- If no item is selected (shouldn’t happen), default to first item.
+
+Stage-specific behavior
+- Keep the stage-specific status dropdown options you already implemented.
+- The header badge should reflect either:
+  A) the selected item status, OR
+  B) an aggregate status:
+     - “At Risk” if any item is Expired/Legal Hold/Missing Doc
+     - else “In Progress” if any item is Pending
+     - else “Cleared” if all are Cleared/Chain Complete/Purchased
+Pick the simplest that matches current design (aggregate preferred if easy).
+
+UX Details
+- When only 1 rights item exists, the list column should collapse to a slim header row (still show “1 item” + Add button) so the page doesn’t feel busy.
+- Confirm before deleting an item (and warn that its documents will also be removed).
+- Keep spacing tight and consistent with the existing page.
+
+Acceptance criteria
+- User can add multiple rights items.
+- User can switch between items and edit each independently.
+- Upload/list documents are tied to the selected rights item.
+- Existing single-item data is migrated automatically without breaking old projects.
+- Provide a summary: files changed + where the data model was updated.
+
+Before coding
+- Identify the exact file(s) that define the Underlying Rights page and the project data/store.
+- Briefly state the plan.
+
+After coding
+- List every file changed and show the diff.
+- Confirm the UI works for 1 item and 3+ items without becoming overly tall or cluttered.
