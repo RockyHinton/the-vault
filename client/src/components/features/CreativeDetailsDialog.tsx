@@ -180,7 +180,7 @@ export function CreativeDetailsDialog({ profile, isOpen, onClose }: CreativeDeta
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <div className="relative pr-10">
               <div className="flex items-start gap-3">
@@ -192,23 +192,29 @@ export function CreativeDetailsDialog({ profile, isOpen, onClose }: CreativeDeta
                       <span className="font-medium truncate">{profile.specificRole}</span>
                     </div>
 
-                    {attentionReasons.length > 0 && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div
-                              data-testid="status-attention-creative-header"
-                              className="h-6 w-6 rounded-md border border-destructive/30 bg-destructive/10 text-destructive flex items-center justify-center"
-                            >
-                              <AlertCircle className="h-3.5 w-3.5" />
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            Needs attention: {attentionReasons.join(" · ")}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            data-testid="status-approval-creative-header"
+                            className={
+                              "h-6 w-6 rounded-md border flex items-center justify-center " +
+                              (visibleStatus === "Contracted" || visibleStatus === "Attached"
+                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700"
+                                : visibleStatus === "Offered" || visibleStatus === "Confirmed"
+                                  ? "border-amber-500/30 bg-amber-500/10 text-amber-700"
+                                  : "border-rose-500/30 bg-rose-500/10 text-rose-700")
+                            }
+                          >
+                            <AlertCircle className="h-3.5 w-3.5" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {visibleStatus}
+                          {attentionReasons.length ? ` · ${attentionReasons.join(" · ")}` : ""}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
 
                     <Badge
                       data-testid="badge-creative-status"
@@ -236,7 +242,7 @@ export function CreativeDetailsDialog({ profile, isOpen, onClose }: CreativeDeta
             </div>
           </DialogHeader>
 
-          <div className="space-y-6 py-2">
+          <div className="space-y-8 py-4">
             {/* Agent Info */}
             {profile.agent && (
               <div className="p-3 bg-secondary/10 rounded-md border border-border/50 flex items-center gap-2">
