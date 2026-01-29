@@ -12,12 +12,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mail, Phone, Globe, ExternalLink, Trash2, Edit, Building2, User, Briefcase, ChevronDown, ChevronRight, FileText, Plus, X } from "lucide-react";
+import { Mail, Phone, Globe, ExternalLink, Trash2, Edit, Building2, User, Briefcase, ChevronDown, ChevronRight, FileText, Plus, X, AlertCircle } from "lucide-react";
 import { ProducerProfile, ProfileDocument, ProfileDocumentType, ProfileDocumentStatus, useStore } from "@/lib/store";
 import { ProducerDialog } from "./ProducerDialog";
 import { cn } from "@/lib/utils";
@@ -59,6 +60,34 @@ export function ProducerDetailsDialog({ profile, isOpen, onClose }: ProducerDeta
   };
 
   const docs = profile.profileDocuments || [];
+
+  const visibleStatus = useMemo(() => {
+    const s = profile.engagement?.status;
+    if (!s) return "Not set";
+    return s;
+  }, [profile.engagement?.status]);
+
+  const attentionReasons = useMemo(() => {
+    const reasons: string[] = [];
+    const status = profile.engagement?.status || "";
+    const contractStatus = profile.engagement?.contractStatus || "";
+
+    if ((status === "Offered" || status === "Confirmed" || status === "Contracted") && contractStatus && contractStatus !== "Signed") {
+      reasons.push("Contract pending");
+    }
+
+    const hasApprovedOrSigned = docs.some((d) => d.status === "Approved" || d.status === "Signed");
+    if (!hasApprovedOrSigned) reasons.push("Missing docs");
+
+    return reasons;
+  }, [docs, profile.engagement?.contractStatus, profile.engagement?.status]);
+
+  const statusBadgeVariant = useMemo(() => {
+    if (visibleStatus === "Contracted") return "default" as const;
+    if (visibleStatus === "Dropped / Replaced") return "destructive" as const;
+    if (visibleStatus === "Offered" || visibleStatus === "Confirmed") return "secondary" as const;
+    return "outline" as const;
+  }, [visibleStatus]);
 
   const engagementSummary = useMemo(() => {
     const e = profile.engagement;
@@ -146,11 +175,38 @@ export function ProducerDetailsDialog({ profile, isOpen, onClose }: ProducerDeta
               <div className="flex items-start gap-3">
                 <div className="min-w-0 flex-1">
                   <DialogTitle className="text-2xl pr-2">{profile.name}</DialogTitle>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
                     <div className="flex items-center">
                       <Building2 className="h-4 w-4 mr-1.5" />
                       <span className="font-medium truncate">{profile.company}</span>
                     </div>
+
+                    {attentionReasons.length > 0 && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div
+                              data-testid="status-attention-producer-header"
+                              className="h-6 w-6 rounded-md border border-destructive/30 bg-destructive/10 text-destructive flex items-center justify-center"
+                            >
+                              <AlertCircle className="h-3.5 w-3.5" />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Needs attention: {attentionReasons.join(" · ")}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+
+                    <Badge
+                      data-testid="badge-producer-status"
+                      variant={statusBadgeVariant}
+                      className="text-xs font-normal bg-background/50"
+                    >
+                      {visibleStatus}
+                    </Badge>
+
                     <Badge variant="secondary" className="text-xs font-normal">
                       {profile.role}
                     </Badge>

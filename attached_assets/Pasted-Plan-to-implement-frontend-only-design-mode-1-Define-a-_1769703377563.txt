@@ -1,0 +1,44 @@
+Plan to implement (frontend-only, design mode)
+1) Define a derived “visible status” for the profile (no new stored field)
+Create a simple mapping function used in both Producers + Creatives:
+
+If engagement.status exists → that’s the primary status badge (e.g., Contacted / In discussion / Offered / Contracted / Dropped).
+If it doesn’t exist → show Not set (or “Not approached” if that’s your default).
+2) Add an “Attention” / “Needs action” indicator (light notification system)
+Add a second, subtle indicator on cards and in the view modal header based on rules like:
+
+Contract status: if engagement status implies commitment (e.g., Offered/Contracted) but contractStatus isn’t “Signed” → flag “Contract pending”
+Documents missing: if required doc types aren’t present or not approved/signed (based on your current document metadata) → flag “Missing docs”
+Stale outreach (optional): if status is Contacted/In discussion and no recent update date exists, you can flag “Follow up” later (only if you track a timestamp)
+This should look like:
+
+A small dot/badge: “Needs attention”
+Hover/tooltip or short text: “Contract not signed” / “Missing Deal Memo”
+3) Surface status badges without forcing extra clicks
+On profile cards (list pages):
+
+Add a compact badge for engagement status (e.g., “In discussion”)
+If “Needs attention” is true, add a second badge or dot
+In profile view modal header:
+
+Show the same status badge near role/company
+Ensure it doesn’t collide with the close X by placing it in the header content row, not absolute-positioned near the corner
+4) Add filter bar at the top of Producers and Creatives pages
+Add:
+
+Status filter dropdown: All + each engagement status (including Not set)
+Search input: name/company/role already exists in Producers; Creatives already has search — keep it and align styling
+(Creatives already has Category tabs: Director/Cast/HOD) → status filter should stack alongside that, not replace it
+Filtering logic:
+
+Filter by selected status (derived from engagement)
+AND filter by search query
+(Creatives also AND roleType filter)
+5) Optional but high-value: quick counts
+Show small counts like:
+
+All (23) · Contacted (6) · Offered (2) · Contracted (4) · Needs attention (5)
+This makes the pipeline feel “alive” without adding complexity.
+6) Make sure the UI language matches producer mental models
+Label it “Status” (not “Engagement status” on the list pages)
+Keep “Project Engagement” as the detailed section inside the modal, but don’t make it the only place the user learns the status.
