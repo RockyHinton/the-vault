@@ -258,9 +258,9 @@ export default function ProducersView({ project }: ProducersViewProps) {
           <p className="text-muted-foreground mb-6 max-w-md text-center">
             Start building your team by adding producer profiles. You can track contact details, roles, and more.
           </p>
-          <Button onClick={() => setIsAddDialogOpen(true)}>
+          <Button onClick={() => setIsAddDialogOpen(true)} data-testid="button-add-first-producer">
             <Plus className="mr-2 h-4 w-4" />
-            Add First Profile
+            Add First Producer
           </Button>
         </div>
       )}

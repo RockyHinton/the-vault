@@ -309,9 +309,15 @@ export default function CreativesView({ project }: CreativesViewProps) {
           <p className="text-muted-foreground mb-6 max-w-md text-center">
             {searchQuery || roleFilter !== 'All' ? "Try adjusting your filters or search." : "Start building your creative team by adding profiles."}
           </p>
-          <Button onClick={() => setIsAddDialogOpen(true)}>
+          <Button onClick={() => setIsAddDialogOpen(true)} data-testid="button-add-first-creative">
             <Plus className="mr-2 h-4 w-4" />
-            Add First Creative
+            {roleFilter === "Director"
+              ? "Add First Director"
+              : roleFilter === "Cast"
+                ? "Add First Cast Member"
+                : roleFilter === "Head of Department"
+                  ? "Add First Head of Department"
+                  : "Add First Creative"}
           </Button>
         </div>
       )}
