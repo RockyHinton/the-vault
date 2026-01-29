@@ -1,0 +1,66 @@
+Goal
+Add an “Underlying Rights” page to ALL project stages (Evaluation, Development, Production) with the same core structure but stage-specific copy + status expectations. Keep it MVP: no complex workflows, no permissions, no database migrations unless absolutely required.
+
+Scope / Constraints (must follow)
+- Do NOT refactor unrelated routes/components.
+- Reuse the existing Evaluation “Underlying Rights” page layout and components wherever possible.
+- Keep the data model minimal. If a shared store already exists (project JSON / state / simple data file), reuse it. If not, use a lightweight local state with placeholder data and TODO comments for later persistence.
+- No new backend upload system. Keep existing file upload UI as-is (or same component) and only ensure it renders in all stages.
+- Must maintain existing navigation + styling.
+
+What to build
+1) Navigation / Page placement
+Add “Underlying Rights” to the left sidebar for:
+- Development stage (place it near Script and Creatives, before Financing)
+- Production stage (place it near Documents/Legal area; if no Legal group exists, place it after Financing and before any wrap/delivery items)
+Keep the order consistent and sensible for producers:
+- Evaluation: Script → Producers → Creatives → Financing → Underlying Rights (already exists; keep as is)
+- Development: Script → Producers → Creatives → Underlying Rights → Financing
+- Production: Script → Producers → Creatives → Financing → Underlying Rights (or create a small “Legal” group and put it there)
+
+2) Routing
+Create stage routes that mirror the existing Evaluation route pattern:
+- /projects/:projectId/development/underlying-rights
+- /projects/:projectId/production/underlying-rights
+(or match the app’s routing conventions exactly—use the same route naming style currently used for Evaluation).
+
+3) Page behavior (MVP)
+Each stage page should show the same UI sections:
+A) Rights Overview (MVP fields, editable)
+- Rights Type (dropdown: Original / Book / Article / Life Rights / Remake / Other)
+- Rights Holder (text)
+- Status (dropdown)
+- Expiry Date (date)
+- Notes (textarea)
+B) Chain of Title / Documents (MVP)
+- Reuse the existing upload area and list view if present
+- Basic list of uploaded documents (filename + uploaded date)
+- No tagging system yet
+
+4) Stage-specific statuses + copy (simple)
+Use the same component but pass stage-specific config:
+- Evaluation statuses: Identified / Contacted / Under Review / Option Pending / Optioned / Not Available
+  Helper text: “Track rights early to avoid developing material you can’t control.”
+- Development statuses: Optioned / Extended / Purchase Pending / Purchased / Rights Issue
+  Helper text: “Rights should be secured or under active option during development.”
+- Production statuses: Cleared / Chain Complete / Missing Doc / Expired / Legal Hold
+  Helper text: “Production requires cleared rights and complete chain of title for finance & E&O.”
+
+5) Data handling (minimal)
+- Store rights info per project per stage (or shared across stages if easier).
+- If there is already a project data object, add a single key:
+  project.rights = { type, holder, status, expiryDate, notes, documents[] }
+and reuse it for all stages (prefer shared, not duplicated).
+- If persistence exists, wire it in; if not, keep it in memory but structure it so persistence can be added later.
+
+Acceptance criteria
+- “Underlying Rights” appears in Development and Production sidebars in the specified order.
+- Clicking it loads a page with the same layout as Evaluation’s Underlying Rights page.
+- Stage-specific status dropdown + helper text changes depending on stage.
+- No breaking changes to existing evaluation pages, financing pages, or navigation.
+- Provide a short summary of:
+  - files changed
+  - routes added
+  - any new shared components/config created
+
+Do not mark complete unless the new pages are accessible and render correctly for Development and Production projects.
