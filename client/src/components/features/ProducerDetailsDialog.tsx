@@ -79,7 +79,7 @@ export function ProducerDetailsDialog({ profile, isOpen, onClose }: ProducerDeta
     const hasApprovedOrSigned = docs.some((d) => d.status === "Approved" || d.status === "Signed");
     if (!hasApprovedOrSigned) reasons.push("Missing docs");
 
-    const needsApproval = status !== "Contracted" && status !== "Attached" && status !== "Unavailable / Passed";
+    const needsApproval = !!status && status !== "Contracted" && status !== "Attached" && status !== "Unavailable / Passed";
     if (needsApproval) reasons.push("Needs approval");
 
     return reasons;

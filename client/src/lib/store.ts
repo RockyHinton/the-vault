@@ -371,7 +371,7 @@ export interface ProfileDocument {
 }
 
 export interface ProjectEngagement {
-  status: 'Not approached' | 'In discussion' | 'Offered' | 'Confirmed' | 'Contracted' | 'Dropped / Replaced' | '';
+  status: 'Identified' | 'Contacted' | 'Interested' | 'Offered' | 'Confirmed' | 'Contracted' | 'Attached' | 'Unavailable / Passed' | '';
   roleOnProject?: string;
   startDate?: string;
   contractStatus: 'Not sent' | 'Sent' | 'Signed' | 'Pending amendments' | '';
@@ -806,7 +806,13 @@ const MOCK_PRODUCER_PROFILES: ProducerProfile[] = [
       { id: 'l1', label: 'IMDb', url: 'https://imdb.com' },
       { id: 'l2', label: 'LinkedIn', url: 'https://linkedin.com' }
     ],
-    notes: 'Primary point of contact for all creative decisions.'
+    notes: 'Primary point of contact for all creative decisions.',
+    engagement: {
+      status: 'Interested',
+      roleOnProject: 'Lead Producer',
+      contractStatus: 'Not sent',
+      notes: ''
+    }
   }
 ];
 
@@ -824,7 +830,13 @@ const MOCK_CREATIVE_PROFILES: CreativeProfile[] = [
     links: [
       { id: 'l3', label: 'IMDb', url: 'https://imdb.com' }
     ],
-    notes: 'Visionary director with a strong visual style.'
+    notes: 'Visionary director with a strong visual style.',
+    engagement: {
+      status: 'Contacted',
+      roleOnProject: 'Director',
+      contractStatus: 'Not sent',
+      notes: ''
+    }
   },
   {
     id: 'cp2',
@@ -834,7 +846,13 @@ const MOCK_CREATIVE_PROFILES: CreativeProfile[] = [
     specificRole: 'Detective Kaito',
     contactDetails: [],
     links: [],
-    notes: 'Attached for lead role.'
+    notes: 'Attached for lead role.',
+    engagement: {
+      status: 'Attached',
+      roleOnProject: 'Detective Kaito',
+      contractStatus: 'Signed',
+      notes: ''
+    }
   }
 ];
 

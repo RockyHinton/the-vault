@@ -51,7 +51,7 @@ const getAttentionReasons = (profile: any): AttentionReason[] => {
     reasons.push("Missing docs");
   }
 
-  const needsApproval = status !== "Contracted" && status !== "Attached" && status !== "Unavailable / Passed";
+  const needsApproval = !!status && status !== "Contracted" && status !== "Attached" && status !== "Unavailable / Passed";
   if (needsApproval) {
     reasons.push("Needs approval");
   }
@@ -176,23 +176,29 @@ export default function ProducersView({ project }: ProducersViewProps) {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {attention.length > 0 && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div
-                                data-testid={`status-attention-producer-${profile.id}`}
-                                className="h-8 w-8 rounded-md border border-destructive/30 bg-destructive/10 text-destructive flex items-center justify-center"
-                              >
-                                <AlertCircle className="h-4 w-4" />
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              Needs attention: {attention.join(" · ")}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div
+                              data-testid={`status-approval-producer-${profile.id}`}
+                              className={
+                                "h-8 w-8 rounded-md border flex items-center justify-center " +
+                                (status === "Contracted" || status === "Attached"
+                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700"
+                                  : status === "Offered" || status === "Confirmed"
+                                    ? "border-amber-500/30 bg-amber-500/10 text-amber-700"
+                                    : "border-rose-500/30 bg-rose-500/10 text-rose-700")
+                              }
+                            >
+                              <AlertCircle className="h-4 w-4" />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {status}
+                            {attention.length ? ` · ${attention.join(" · ")}` : ""}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
 
                       <Badge
                         data-testid={`badge-status-producer-${profile.id}`}

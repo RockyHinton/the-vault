@@ -134,10 +134,10 @@ export function ProducerDialog({ projectId, isOpen, onClose, existingProfile }: 
   const getEngagementSummary = () => {
     if (!engagementValues) return "Not set";
     const parts = [];
-    if (engagementValues.status && engagementValues.status !== 'Not approached') parts.push(engagementValues.status);
+    if (engagementValues.status) parts.push(engagementValues.status);
     if (engagementValues.startDate) parts.push(`Start: ${engagementValues.startDate}`);
     if (engagementValues.contractStatus && engagementValues.contractStatus !== 'Not sent') parts.push(`Contract: ${engagementValues.contractStatus}`);
-    
+
     return parts.length > 0 ? parts.join(" · ") : "Not set";
   };
 
