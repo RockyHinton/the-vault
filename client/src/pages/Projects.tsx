@@ -390,7 +390,7 @@ export default function ProjectsPage() {
                             
                             <div className="flex items-center gap-3">
                               {/* Refined Text-Based Stage Label */}
-                              <span className="text-sm font-medium text-white/70 tracking-wide capitalize drop-shadow-md group-hover:text-white/90 transition-colors duration-300">
+                              <span className="text-xs font-semibold text-white/60 tracking-[0.1em] uppercase drop-shadow-md group-hover:text-white/80 transition-colors duration-300">
                                 {project.stage}
                               </span>
                               
