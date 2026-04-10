@@ -41,8 +41,8 @@ export default function AuthPage() {
       </div>
 
       {/* Top Left Logo (Fixed position relative to viewport) */}
-      <div className="absolute top-6 left-7 z-20">
-        <img src={logoImage} alt="3six9 Studios" className="w-[90px] md:w-[120px] h-auto object-contain opacity-90" />
+      <div className="absolute top-7 left-8 z-20">
+        <img src={logoImage} alt="3six9 Studios" className="w-[100px] md:w-[140px] h-auto object-contain opacity-90" />
       </div>
 
       {/* Main Content Layout */}
