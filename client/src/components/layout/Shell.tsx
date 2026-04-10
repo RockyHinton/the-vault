@@ -47,7 +47,7 @@ export function Shell({ children, sidebar }: ShellProps) {
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-4 border-b border-border bg-card">
-        <div className="flex items-center gap-2 font-display font-bold text-2xl tracking-tight text-white">
+        <div className="flex items-center gap-2 font-display font-bold text-lg tracking-tight text-white whitespace-nowrap">
           <img src={logoImg} alt="3six9 Logo" className="h-[60px] w-auto object-contain opacity-95 translate-y-[-1px]" style={{ filter: "brightness(1.08) contrast(1.08) drop-shadow(0 0 6px rgba(255,255,255,0.08))" }} />
           <span>{APP_CONFIG.clientName}</span>
         </div>
@@ -60,7 +60,7 @@ export function Shell({ children, sidebar }: ShellProps) {
           <SheetContent side="left" className="p-0 w-72 bg-sidebar border-r border-sidebar-border">
              <div className="h-full flex flex-col">
               <div className="p-6 border-b border-sidebar-border">
-                <div className="flex items-center gap-2 font-display font-bold text-2xl tracking-tight text-white">
+                <div className="flex items-center gap-2 font-display font-bold text-lg tracking-tight text-white whitespace-nowrap">
                   <img src={logoImg} alt="3six9 Logo" className="h-[60px] w-auto object-contain opacity-95 translate-y-[-1px]" style={{ filter: "brightness(1.08) contrast(1.08) drop-shadow(0 0 6px rgba(255,255,255,0.08))" }} />
                   <span>{APP_CONFIG.clientName}</span>
                 </div>
@@ -77,7 +77,7 @@ export function Shell({ children, sidebar }: ShellProps) {
       <aside className="hidden md:flex flex-col w-64 bg-sidebar border-r border-sidebar-border h-screen sticky top-0 shrink-0 z-30">
         <div className="p-6 border-b border-sidebar-border">
           <Link href="/projects">
-            <div className="flex items-center gap-2 font-display font-bold text-2xl tracking-tight text-white cursor-pointer hover:opacity-80 transition-opacity">
+            <div className="flex items-center gap-2 font-display font-bold text-lg tracking-tight text-white whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity">
               <img src={logoImg} alt="3six9 Logo" className="h-[60px] w-auto object-contain opacity-95 translate-y-[-1px]" style={{ filter: "brightness(1.08) contrast(1.08) drop-shadow(0 0 6px rgba(255,255,255,0.08))" }} />
               <span>{APP_CONFIG.clientName}</span>
             </div>
