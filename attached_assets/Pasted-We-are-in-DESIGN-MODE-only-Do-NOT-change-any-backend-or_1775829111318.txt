@@ -1,0 +1,87 @@
+We are in DESIGN MODE only. Do NOT change any backend or authentication logic.
+
+Goal:
+Update the login page layout and styling to properly use the new cinematic background image and create a premium, studio-quality composition.
+
+1. BACKGROUND IMAGE
+- Replace the existing background with the provided image
+- The image must be full-screen, covering the entire viewport
+- Use: background-size: cover; background-position: center right;
+- IMPORTANT: Do NOT apply a heavy dark overlay that kills the image
+- If needed, apply ONLY a very subtle left-side gradient (black → transparent) to support readability, but keep the image clearly visible
+
+2. LAYOUT STRUCTURE
+Create a clean two-zone layout:
+
+LEFT SIDE (branding zone):
+- Keep this area mostly empty to respect the image composition
+- Place the 3six9 Studios logo in the TOP LEFT corner of the screen
+  - Use fixed positioning or absolute within a full-page container
+  - Add proper padding (top: ~32px, left: ~32px)
+  - Do NOT let it overlap awkwardly with edges
+  - Do NOT center it
+  - It must feel anchored and intentional
+
+RIGHT SIDE (login zone):
+- Move the entire login form to the RIGHT side of the screen
+- Vertically center the login form within the viewport
+- Align it slightly inset from the right edge (e.g. margin-right: 5–8%)
+- Ensure it does NOT cover the main subject of the image excessively
+
+3. LOGIN FORM CONTAINER
+- Keep the glass / translucent panel style
+- Use:
+  - dark translucent background (not fully opaque)
+  - subtle backdrop blur
+  - soft border (low opacity)
+  - gentle shadow for separation
+- Maintain clean padding and spacing
+- Do NOT make the panel too bright or too heavy
+
+4. “THE VAULT” TITLE (CRITICAL)
+- Place “The Vault” ABOVE the login form (right side)
+- This must NOT look like default bold text
+
+Apply these typography rules:
+- Use lighter font weight (not heavy bold)
+- Increase letter spacing (tracking) slightly
+- Increase size so it feels like a cinematic title, not a label
+- Add vertical spacing between title and form
+- Keep it clean, minimal, and editorial
+
+The title should feel:
+- premium
+- cinematic
+- intentional
+- NOT like a standard UI heading
+
+5. HIERARCHY
+- Logo (top-left) = subtle brand anchor
+- “The Vault” (right side) = primary visual text
+- Login form = functional focus
+
+6. SPACING & ALIGNMENT
+- Ensure consistent margins between:
+  - title → form
+  - form → screen edges
+- Avoid cramped layout
+- Everything should feel balanced and intentional
+
+7. WHAT TO AVOID
+- Do NOT center everything
+- Do NOT darken the image too much
+- Do NOT use default bold heading styles
+- Do NOT let the logo float randomly
+- Do NOT let the form overlap the strongest part of the image awkwardly
+
+8. SUCCESS CRITERIA
+The result should:
+- Feel like a premium film studio login portal
+- Respect the composition of the background image
+- Have clear visual hierarchy
+- Look intentionally designed, not AI-generated
+
+At the end, briefly confirm:
+- where the logo is positioned
+- how the title styling was improved
+- how the layout respects the image composition
