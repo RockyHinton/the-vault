@@ -42,7 +42,7 @@ export default function AuthPage() {
 
       {/* Top Left Logo (Fixed position relative to viewport) */}
       <div className="absolute top-10 left-10 md:top-14 md:left-14 z-20">
-        <img src={logoImage} alt="3six9 Studios" className="h-16 md:h-20 w-auto object-contain drop-shadow-lg" />
+        <img src={logoImage} alt="3six9 Studios" className="h-24 md:h-32 lg:h-40 w-auto object-contain drop-shadow-lg" />
       </div>
 
       {/* Main Content Layout */}
@@ -111,7 +111,7 @@ export default function AuthPage() {
                       Authenticating...
                     </>
                   ) : (
-                    "Enter Portal"
+                    "Enter The Vault"
                   )}
                 </Button>
               </form>
