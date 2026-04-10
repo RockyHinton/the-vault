@@ -64,6 +64,13 @@ import { Label } from "@/components/ui/label";
 
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
+import project1 from "@/assets/project-1.jpg";
+import project2 from "@/assets/project-2.jpg";
+import project3 from "@/assets/project-3.jpg";
+import project4 from "@/assets/project-4.jpg";
+
+const placeholderImages = [project1, project2, project3, project4];
+
 const stageColors: Record<ProjectStage, string> = {
   Evaluation: "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20",
   Development: "bg-purple-500/10 text-purple-500 hover:bg-purple-500/20",
@@ -176,7 +183,7 @@ export default function ProjectsPage() {
                 <TabsTrigger 
                   key={stage}
                   value={stage} 
-                  className="px-0 py-2 rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none text-white/50 hover:text-white/80 data-[state=active]:text-white font-medium text-sm md:text-base tracking-wide border-b-2 border-transparent data-[state=active]:border-primary transition-all duration-300 uppercase"
+                  className="px-0 py-2 rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none text-white/50 hover:text-white/80 data-[state=active]:text-white font-medium text-sm md:text-base tracking-wide border-b-2 border-transparent data-[state=active]:border-primary transition-all duration-300 capitalize"
                 >
                   {stage === 'All' ? 'All Active' : stage}
                 </TabsTrigger>
@@ -277,9 +284,11 @@ export default function ProjectsPage() {
                 }
 
                 // If project has an image property we use it, else we use a placeholder gradient
-                // Currently project doesn't have an image, so we rely on the placeholder styling
                 const hasImage = (project as any).coverImage || (project as any).posterUrl;
-                const imageUrl = hasImage ? ((project as any).coverImage || (project as any).posterUrl) : undefined;
+                const projectImage = hasImage ? ((project as any).coverImage || (project as any).posterUrl) : undefined;
+                
+                // Fallback to placeholder image based on index if no project image exists
+                const imageUrl = projectImage || placeholderImages[index % placeholderImages.length];
 
                 return (
                   <motion.div
@@ -390,7 +399,7 @@ export default function ProjectsPage() {
                             
                             <div className="flex items-center gap-3">
                               {/* Refined Text-Based Stage Label */}
-                              <span className="text-xs font-semibold text-white/60 tracking-[0.1em] uppercase drop-shadow-md group-hover:text-white/80 transition-colors duration-300">
+                              <span className="text-xs font-semibold text-white/60 tracking-[0.1em] capitalize drop-shadow-md group-hover:text-white/80 transition-colors duration-300">
                                 {project.stage}
                               </span>
                               
