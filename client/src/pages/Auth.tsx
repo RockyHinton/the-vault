@@ -41,15 +41,15 @@ export default function AuthPage() {
       </div>
 
       {/* Top Left Logo (Fixed position relative to viewport) */}
-      <div className="absolute top-8 left-8 md:top-10 md:left-10 z-20">
-        <img src={logoImage} alt="3six9 Studios" className="h-10 md:h-12 w-auto object-contain drop-shadow-lg" />
+      <div className="absolute top-10 left-10 md:top-14 md:left-14 z-20">
+        <img src={logoImage} alt="3six9 Studios" className="h-16 md:h-20 w-auto object-contain drop-shadow-lg" />
       </div>
 
       {/* Main Content Layout */}
-      <div className="w-full flex justify-end items-center relative z-10 pr-6 md:pr-12 lg:pr-[8%]">
+      <div className="w-full flex justify-start items-center relative z-10 pl-6 md:pl-12 lg:pl-[12%]">
         
-        {/* Right Side: Login Zone */}
-        <div className="w-full max-w-[440px] flex flex-col animate-in fade-in slide-in-from-right-8 duration-1000 ease-out mt-16 md:mt-0">
+        {/* Left Side: Login Zone */}
+        <div className="w-full max-w-[440px] flex flex-col animate-in fade-in slide-in-from-left-8 duration-1000 ease-out mt-32 md:mt-16">
           
           {/* Title Section (Above form) */}
           <div className="mb-8 pl-2">
