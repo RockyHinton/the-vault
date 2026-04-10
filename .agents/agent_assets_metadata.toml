@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "Gt-nzuSLmdKZkc_hnFrTi"
+uri = "file://client/src/assets/cinematic-bg.jpg"
+type = "image"
+title = "dark moody abstract cinematic lighting subtle film grain background premium"

@@ -1,0 +1,123 @@
+We are in DESIGN MODE only. Do NOT make backend/database/auth changes.
+
+Goal:
+Redesign ONLY the login page of The Vault so it feels like a premium, cinematic, studio-branded entry page for 3six9 Studios, while keeping the existing dark/neon product system intact and modular for future white-label clients.
+
+IMPORTANT:
+- Keep the current dark luxury tone of the app
+- Do NOT redesign the whole app
+- Do NOT change functionality
+- Do NOT touch other pages
+- This is a visual/front-end-only upgrade of the login screen
+
+CORE DESIGN DIRECTION
+This page should feel like entering a high-end film production operating system.
+It should feel:
+- premium
+- cinematic
+- restrained
+- studio-specific
+- not generic AI SaaS
+
+LAYOUT
+Create a 2-zone composition:
+
+1) Brand / Identity zone
+- Place this on the left side or center-left of the page
+- Include the 3six9 Studios logo subtly
+- The 3six9 logo should be present but not dominant
+- The main product title should still be:
+  “The Vault”
+- Under it include a short premium subtitle such as:
+  “Production management for modern film studios.”
+  or a similar refined line if spacing requires it
+
+2) Login form zone
+- Keep the login form as the functional focus
+- Position it to the right side or right-of-center
+- Do NOT leave it floating awkwardly in the middle with no composition
+
+BACKGROUND
+Replace the current generic dark gradient-only feel with a cinematic background treatment:
+- Use either:
+  A) a moody film still style background
+  OR
+  B) abstract cinematic lighting if image handling is easier
+- Apply a strong dark overlay so readability stays high
+- Add subtle vignette
+- Add subtle film grain / texture effect
+- Keep the background tasteful, not busy
+- It should feel like a premium studio environment, not a stock login screen
+
+LOGO / BRANDING RULES
+- Use the uploaded 3six9 Studios logo
+- Keep it smaller than “The Vault”
+- Place it above or near the title area, not as the main hero
+- It should feel integrated, not pasted on
+- Do NOT place a large logo inside the login form card
+
+LOGIN PANEL STYLE
+Redesign the login form container into a premium “glass panel” / modern translucent card:
+- dark translucent fill
+- backdrop blur if supported
+- soft 1px border with low-opacity highlight
+- subtle shadow / glow behind the card
+- refined corner radius
+- feels like glass or polished dark acrylic, not a flat box
+
+FORM REFINEMENTS
+Keep the existing fields and behavior, but improve styling:
+- Inputs should feel more premium and integrated into the glass panel
+- Slightly better spacing between labels, inputs, and button
+- Keep focus states elegant and subtle
+- Keep the neon accent button style, but slightly more refined and premium if needed
+- Do not make the button overly bright or childish
+
+TYPOGRAPHY
+Upgrade hierarchy without changing the whole app font system:
+- “The Vault” should feel editorial, high-end, and more prominent
+- Supporting copy should be quieter and softer
+- 3six9 branding should feel understated
+- Use spacing, size, and weight to create hierarchy rather than adding more content
+
+VISUAL MOOD
+Think:
+- premium internal studio portal
+- cinematic
+- dark luxury
+- restrained
+- not flashy
+- not tech cliché
+- not fintech
+
+MOTION (only if easy and subtle)
+If simple to add, include very subtle motion:
+- slow background drift or light movement
+- slight fade/raise-in for the form card
+- no flashy animation
+If motion complicates implementation, skip it
+
+MODULARITY
+Structure branding so it can be swapped later for other studios:
+- logo should be easy to replace
+- background treatment should be easily swappable
+- keep the core layout reusable
+
+DO NOT
+- do not touch backend/auth logic
+- do not redesign other pages
+- do not use loud branding
+- do not make the 3six9 logo larger than The Vault
+- do not create a generic centered template card with no cinematic composition
+
+SUCCESS CRITERIA
+The updated login page should:
+- clearly feel like 3six9’s branded version of The Vault
+- still feel like part of the same dark/neon system as the rest of the app
+- feel premium and cinematic rather than generic AI-built
+- preserve clean usability and readability
+
+At the end, briefly summarize:
+- what visual changes were made
+- where the 3six9 logo was placed
+- how the page was kept modular for future rebranding
