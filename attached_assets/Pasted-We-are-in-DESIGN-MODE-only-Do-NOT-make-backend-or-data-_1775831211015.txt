@@ -1,0 +1,132 @@
+We are in DESIGN MODE only. Do NOT make backend or data model changes.
+
+Goal:
+Redesign ONLY the project cards on the main Projects page so they feel premium, cinematic, and studio-grade instead of generic SaaS cards.
+
+IMPORTANT:
+- Keep the current card size exactly as it is now
+- Keep the existing project grid layout
+- Keep the existing three-dot menu and ALL of its current functionality exactly the same
+- Do NOT remove or break archive/delete actions
+- You may reposition the three-dot icon for better design, but its behavior must remain unchanged
+
+SCOPE
+Only update:
+- Project card visual design
+- Hover effects
+- Minimal related styling on the Projects page if needed to support the new cards
+
+Do NOT:
+- redesign the whole page
+- change filters/search functionality
+- change routing
+- change project data
+- change card size
+- add new features
+
+NEW PROJECT CARD DIRECTION
+Convert each project card from a SaaS-style information card into a cinematic image-based project tile.
+
+CARD CONTENT (ONLY THESE VISIBLE ITEMS)
+Each project card should show only:
+1) Project title
+2) Project stage
+3) Existing three-dot menu
+
+Remove visible clutter from the card:
+- remove est. budget
+- remove score
+- remove descriptive text
+- remove updated date
+- remove extra metadata from the visible card face
+
+IMAGE-BASED CARD DESIGN
+- Use a full-card project image/poster/still as the background of each card
+- Keep the image cropped cleanly to the card size
+- Add a dark gradient overlay in the text area so title and stage are clearly readable
+- The overlay should feel premium and subtle, not heavy-handed
+
+TEXT PLACEMENT
+- Place the title toward the lower-left area of the card
+- Place the stage directly underneath the title
+- Both title and stage must sit inside the readable gradient area
+- Title should be the strongest visual element on the card
+- Stage can be:
+  - clean text
+  OR
+  - a subtle pill / label
+Choose whichever looks more premium and readable in this design system
+
+READABILITY
+This is critical:
+- text must remain highly legible over any image
+- use either:
+  - bottom gradient fade
+  - soft blur/glass strip behind text
+  - or a combination of both
+- do NOT rely on white text directly on the image without protection
+
+THREE-DOT MENU
+- Preserve the existing menu behavior exactly
+- Keep the icon accessible and clearly visible
+- It can move to a more elegant location if needed (likely top-right)
+- Do NOT restyle it so aggressively that it becomes hard to find
+- Functional behavior must remain unchanged
+
+HOVER EFFECTS
+Add clean premium hover states:
+1) Image zooms in slightly (very subtle, e.g. scale 1.03–1.05)
+2) Title becomes slightly brighter / more prominent
+3) Stage becomes slightly clearer
+4) Optionally reveal or animate a small arrow near the title to suggest entering the project
+   - keep this subtle and elegant
+   - do not make it playful or flashy
+
+Hover should feel:
+- calm
+- cinematic
+- premium
+- intentional
+
+Do NOT:
+- use exaggerated movement
+- use cheap glowing effects
+- make it feel like a gaming UI
+
+NEW PROJECT CARD
+Also update the “New Project Evaluation” card so it visually fits better with the premium system:
+- keep same size
+- make it cleaner and more intentional
+- it should still clearly read as an add/create card
+- do not make it look like a broken placeholder
+- keep it visually compatible with the new image-based cards
+
+IMAGE HANDLING
+If project images already exist in state/data, use them.
+If no project image exists:
+- use a tasteful fallback dark placeholder with subtle gradient/texture
+- still apply the same title/stage overlay structure
+- do not leave cards looking empty or broken
+
+STYLE GOAL
+The cards should feel like a studio slate of productions, not a database grid.
+Think:
+- cinematic
+- editorial
+- premium
+- minimal
+- readable
+
+SUCCESS CRITERIA
+- Card size stays unchanged
+- Only title + stage + three-dot menu are visible on cards
+- Cards are image-based and feel premium
+- Text is highly readable due to overlay treatment
+- Hover effects feel smooth and elegant
+- Three-dot menu still works exactly as before
+- The page feels less like SaaS and more like a film production slate
+
+At the end, briefly confirm:
+- how the text readability was handled
+- what hover effects were added
+- that the three-dot menu functionality was preserved exactly

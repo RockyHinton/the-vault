@@ -272,18 +272,18 @@ export default function ProjectsPage() {
               {filteredProjects.map((project, index) => {
                 const StageIcon = stageIcons[project.stage];
                 
-                // Determine card border/accent for Archived projects
-                let cardStyle = "group h-full flex flex-col hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 cursor-pointer overflow-hidden border-secondary";
-                
+                // Keep the archived visual indicator but adapt it for the cinematic card
+                let borderAccent = "border-white/10";
                 if (project.stage === 'Archived' && project.archiveDetails) {
-                   if (project.archiveDetails.revisit === 'Yes') {
-                     cardStyle += " border-l-4 border-l-green-500/50";
-                   } else if (project.archiveDetails.revisit === 'Maybe') {
-                     cardStyle += " border-l-4 border-l-blue-500/30"; // Neutral/Soft accent
-                   } else {
-                     cardStyle += " border-l-4 border-l-muted"; // Muted for No
-                   }
+                   if (project.archiveDetails.revisit === 'Yes') borderAccent = "border-green-500/50";
+                   else if (project.archiveDetails.revisit === 'Maybe') borderAccent = "border-blue-500/30";
+                   else borderAccent = "border-muted/50";
                 }
+
+                // If project has an image property we use it, else we use a placeholder gradient
+                // Currently project doesn't have an image, so we rely on the placeholder styling
+                const hasImage = (project as any).coverImage || (project as any).posterUrl;
+                const imageUrl = hasImage ? ((project as any).coverImage || (project as any).posterUrl) : undefined;
 
                 return (
                   <motion.div
@@ -291,24 +291,41 @@ export default function ProjectsPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
+                    className="h-full"
                   >
                     <Link href={`/project/${project.id}`} onClick={() => setCurrentProject(project.id)}>
-                      <Card className={cardStyle}>
-                        <div className="h-1.5 w-full bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <CardHeader className="pb-3">
-                          <div className="flex justify-between items-start gap-2">
-                            <Badge variant="secondary" className={stageColors[project.stage]}>
-                              <StageIcon className="h-3 w-3 mr-1" />
-                              {project.stage}
-                            </Badge>
+                      <Card className={`group relative h-full min-h-[280px] flex flex-col cursor-pointer overflow-hidden rounded-xl border ${borderAccent} bg-black/40 shadow-xl transition-all duration-500 hover:shadow-2xl hover:shadow-black/50 hover:border-white/20`}>
+                        
+                        {/* Background Image / Placeholder */}
+                        <div className="absolute inset-0 z-0 overflow-hidden bg-gradient-to-br from-secondary/30 to-background/80">
+                          {/* Noise Texture */}
+                          <div className="absolute inset-0 opacity-[0.04] mix-blend-overlay pointer-events-none" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }} />
+                          
+                          {/* Abstract Gradient for placeholder */}
+                          {!imageUrl && (
+                            <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 via-transparent to-purple-500/5 opacity-50 group-hover:opacity-70 transition-opacity duration-700" />
+                          )}
 
+                          {/* Actual Image (scaled on hover) */}
+                          <div 
+                            className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 ease-out group-hover:scale-105"
+                            style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : {}}
+                          />
+
+                          {/* Dark Gradient Overlay for text readability (bottom up) */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent opacity-80 group-hover:opacity-95 transition-opacity duration-500" />
+                        </div>
+
+                        {/* Top Action Bar (Three-dot Menu & Star) */}
+                        <div className="absolute top-0 inset-x-0 p-4 flex justify-end z-20">
+                          <div className="flex items-center gap-3">
                             {project.archiveDetails?.starred && (
-                                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 animate-in zoom-in duration-300" />
+                                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 drop-shadow-md animate-in zoom-in duration-300" />
                             )}
                             
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 text-muted-foreground hover:text-foreground">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 bg-black/20 hover:bg-black/40 backdrop-blur-md border border-white/5 text-white/70 hover:text-white rounded-full transition-all">
                                   <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -366,87 +383,57 @@ export default function ProjectsPage() {
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
-                          <CardTitle className="text-xl font-bold mt-2 group-hover:text-primary transition-colors">
-                            {project.title}
-                          </CardTitle>
-                          <div className="text-sm font-medium text-muted-foreground">{project.genre}</div>
-                        </CardHeader>
-                        <CardContent className="flex-1 pb-4">
-                          <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
-                            {project.logline}
-                          </p>
-                          
-                          {/* Key Stats based on Stage */}
-                          <div className="mt-4 pt-4 border-t border-border/30 flex gap-4 text-xs font-mono text-muted-foreground">
-                             {project.stage === 'Evaluation' && (
-                               <div>
-                                 <span className="block text-foreground/50 text-[10px] uppercase">Est. Budget</span>
-                                 <span className="text-foreground">{project.evaluation.plannedBudget || 'TBD'}</span>
-                               </div>
-                             )}
-                             {project.stage === 'Evaluation' && (
-                               <div>
-                                 <span className="block text-foreground/50 text-[10px] uppercase">Score</span>
-                                 <span className="text-foreground">{project.evaluation.scores?.creative || '-'} / 10</span>
-                               </div>
-                             )}
+                        </div>
 
-                             {/* Archived Stats */}
-                             {project.stage === 'Archived' && project.archiveDetails && (
-                               <>
-                                 <div>
-                                   <span className="block text-foreground/50 text-[10px] uppercase">Reason</span>
-                                   <span className="text-foreground font-medium truncate max-w-[120px] block" title={project.archiveDetails.reason}>
-                                     {project.archiveDetails.reason}
-                                   </span>
-                                 </div>
-                                 
-                                 <div>
-                                   <span className="block text-foreground/50 text-[10px] uppercase">Revisit?</span>
-                                   <Badge variant="outline" className={`h-5 text-[10px] px-1 font-normal bg-secondary/30 ${
-                                     project.archiveDetails.revisit === 'Yes' ? 'text-green-500 border-green-500/20' : 
-                                     project.archiveDetails.revisit === 'Maybe' ? 'text-blue-500 border-blue-500/20' : 
-                                     'text-muted-foreground'
-                                   }`}>
-                                     {project.archiveDetails.revisit}
-                                   </Badge>
-                                 </div>
-                               </>
-                             )}
+                        {/* Content Area - Bottom Left */}
+                        <div className="absolute bottom-0 inset-x-0 p-6 z-10 flex flex-col justify-end">
+                          <div className="transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500 ease-out">
+                            <CardTitle className="text-2xl md:text-3xl font-display font-light text-white/90 group-hover:text-white mb-3 drop-shadow-lg transition-colors tracking-wide">
+                              {project.title}
+                            </CardTitle>
+                            
+                            <div className="flex items-center gap-3">
+                              {/* Minimal Stage Pill */}
+                              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/10 backdrop-blur-md border border-white/10">
+                                <StageIcon className="h-3 w-3 text-white/70" />
+                                <span className="text-xs font-medium text-white/80 tracking-wide uppercase">
+                                  {project.stage}
+                                </span>
+                              </div>
+                              
+                              {/* Animated Arrow on Hover */}
+                              <ArrowRight className="h-4 w-4 text-white/0 group-hover:text-white/60 -translate-x-4 group-hover:translate-x-0 transition-all duration-500 ease-out" />
+                            </div>
                           </div>
+                        </div>
 
-                        </CardContent>
-                        <CardFooter className="pt-0 text-xs text-muted-foreground flex items-center justify-between border-t border-border/50 p-4 bg-secondary/20">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            Updated {format(new Date(project.updatedAt), 'MMM d')}
-                          </div>
-                          <div className="flex items-center gap-1 font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-300">
-                            Open Workspace
-                            <FolderOpen className="h-3 w-3" />
-                          </div>
-                        </CardFooter>
                       </Card>
                     </Link>
                   </motion.div>
                 );
               })}
 
-              {/* New Project Placeholder - Only show on All or Evaluation */}
+              {/* New Project Evaluation Placeholder */}
               {(activeTab === 'All' || activeTab === 'Evaluation') && (
                 <motion.div
                    initial={{ opacity: 0, y: 20 }}
                    animate={{ opacity: 1, y: 0 }}
                    transition={{ duration: 0.3, delay: filteredProjects.length * 0.1 }}
+                   className="h-full"
                 >
                   <button 
-                    className="w-full h-full min-h-[280px] rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-secondary/10 transition-all flex flex-col items-center justify-center gap-4 text-muted-foreground hover:text-primary group"
+                    className="group relative w-full h-full min-h-[280px] rounded-xl border border-white/10 bg-secondary/5 hover:bg-secondary/10 shadow-lg overflow-hidden transition-all duration-500 flex flex-col items-center justify-center gap-4 cursor-pointer"
                     onClick={() => setIsNewProjectDialogOpen(true)}
                   >
-                    <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                      <Plus className="h-6 w-6" />
+                    {/* Noise Texture */}
+                    <div className="absolute inset-0 opacity-[0.02] mix-blend-overlay pointer-events-none" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }} />
+                    
+                    <div className="h-14 w-14 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 flex items-center justify-center group-hover:scale-110 group-hover:bg-white/10 transition-all duration-500 z-10 shadow-xl">
+                      <Plus className="h-6 w-6 text-white/70 group-hover:text-white transition-colors" />
                     </div>
-                    <span className="font-medium">New Project Evaluation</span>
+                    <span className="font-display font-light text-lg text-white/60 group-hover:text-white/90 tracking-wide z-10 transition-colors">
+                      New Project
+                    </span>
                   </button>
                 </motion.div>
               )}
