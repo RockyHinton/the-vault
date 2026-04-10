@@ -1,0 +1,151 @@
+We are in DESIGN MODE only. Do NOT make backend, routing, or data model changes.
+
+Goal:
+Refine the Projects page so it feels more premium, cinematic, and less generic SaaS by making targeted visual upgrades only.
+
+IMPORTANT:
+- Keep the current overall layout and card sizing
+- Keep the existing project card redesign direction
+- Keep the three-dot menu and its behavior exactly as it is
+- Do NOT redesign other pages
+- Do NOT change project functionality
+
+SCOPE
+Only update the Projects page with these targeted changes:
+1) Remove stage icons
+2) Make the filter bar cleaner and more premium
+3) Make stage labels on cards more text-based and less “pill / SaaS”
+4) Increase spacing between cards slightly
+5) Add stock / placeholder project images so the card concept can be seen properly
+
+--------------------------------------------------------------------
+1. REMOVE STAGE ICONS
+Remove stage icons from:
+- the filter bar
+- the project card stage labels
+
+Do NOT replace them with new icons.
+Use text-only stage labels:
+- Evaluation
+- Development
+- Production
+- Archived
+
+Reason:
+Icons currently make the page feel more SaaS and less premium / editorial.
+
+--------------------------------------------------------------------
+2. UPGRADE FILTER BAR
+Refine the stage filter bar so it feels cleaner and more premium.
+
+Current issue:
+- it feels like a generic segmented control / utility UI
+
+New direction:
+- make the filter bar more editorial and understated
+- reduce the boxed / pill-heavy SaaS feeling
+- keep it easy to scan and use
+
+Implementation guidance:
+- Use text-first tabs with more breathing room
+- Active state should be clear but elegant:
+  - slightly brighter text
+  - subtle underline, glow, or border accent
+- Inactive states should be more muted
+- Remove icon clutter completely
+- Keep the current stage options and functionality exactly the same
+
+Do NOT:
+- make the filter bar flashy
+- make it too minimal to be unclear
+- use large pills or generic toggle styling
+
+--------------------------------------------------------------------
+3. REFINE STAGE LABELS ON PROJECT CARDS
+Current issue:
+- stage labels still feel too much like SaaS pills
+
+Update project card stage display so it feels more premium:
+- remove icons from stage labels
+- reduce pill heaviness
+- lean more toward refined text treatment
+- keep stage clearly readable over the card image
+
+Preferred direction:
+- subtle text label
+OR
+- very soft/stylish stage chip with minimal background
+The result should feel:
+- cinematic
+- understated
+- high-end
+- not dashboard-y
+
+Keep stage placement visually aligned with the title overlay structure.
+
+--------------------------------------------------------------------
+4. INCREASE CARD SPACING SLIGHTLY
+Increase the spacing between project cards very slightly so the page breathes more.
+
+Important:
+- Do NOT change card size
+- Do NOT radically change the grid
+- Just add a little more space horizontally and/or vertically so the page feels less cramped and more gallery-like
+
+This should be subtle.
+
+--------------------------------------------------------------------
+5. ADD STOCK / PLACEHOLDER PROJECT IMAGES
+Add tasteful stock / placeholder images to the project cards so the premium card design can be seen properly.
+
+Requirements for images:
+- cinematic
+- moody
+- film/studio appropriate
+- visually strong but not overly busy
+- suitable for a production company interface
+- different enough per card so the slate feels real
+
+If existing image support is already in place:
+- assign placeholder images to the current projects
+
+If no image support is present:
+- add front-end-only placeholder images/fallback image URLs for these cards in design mode
+
+Do NOT use:
+- cheesy corporate stock
+- random bright generic business imagery
+- images that clash with the dark premium system
+
+The images must work well with the card text overlay and gradient readability treatment already implemented.
+
+--------------------------------------------------------------------
+6. KEEP THESE THINGS INTACT
+Do NOT change:
+- project card size
+- card hover logic except where needed to support the new visuals
+- three-dot menu functionality
+- search functionality
+- New Project button functionality
+- page structure beyond the targeted refinements above
+
+--------------------------------------------------------------------
+SUCCESS CRITERIA
+After the update, the Projects page should feel:
+- more editorial
+- more cinematic
+- more like a production slate
+- less like a generic SaaS dashboard
+
+Specifically:
+- no stage icons remain
+- filter bar feels more premium and text-based
+- card stage labels feel cleaner and less like standard pills
+- card spacing breathes slightly more
+- project cards use strong placeholder images that make the page feel alive
+
+At the end, briefly confirm:
+- how the filter bar was refined
+- how the stage labels were simplified
+- what kind of placeholder images were added
+- that three-dot menu behavior was preserved exactly

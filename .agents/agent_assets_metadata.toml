@@ -6,3 +6,27 @@ id = "Gt-nzuSLmdKZkc_hnFrTi"
 uri = "file://client/src/assets/cinematic-bg.jpg"
 type = "image"
 title = "dark moody abstract cinematic lighting subtle film grain background premium"
+
+[[outputs]]
+id = "3cyDoxYzf5F7417BGhqp4"
+uri = "file://client/src/assets/project-1.jpg"
+type = "image"
+title = "cinematic moody dark film set dramatic lighting"
+
+[[outputs]]
+id = "0JHhtiFK3S1dOi41NCSuR"
+uri = "file://client/src/assets/project-2.jpg"
+type = "image"
+title = "cinematic moody dark studio camera lens close up"
+
+[[outputs]]
+id = "YD7qIBoozYHd4YxSi8Hff"
+uri = "file://client/src/assets/project-3.jpg"
+type = "image"
+title = "cinematic moody dark script writing desk vintage"
+
+[[outputs]]
+id = "luJ3kA5oCuJcavnh-fVVo"
+uri = "file://client/src/assets/project-4.jpg"
+type = "image"
+title = "cinematic moody dark clapperboard production scene"

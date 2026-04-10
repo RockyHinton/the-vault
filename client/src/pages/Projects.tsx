@@ -168,31 +168,27 @@ export default function ProjectsPage() {
           </Button>
         </div>
 
-        {/* Stage Tabs */}
+        {/* Stage Tabs - Refined to be more text-based and editorial */}
         <Tabs defaultValue="All" className="w-full" onValueChange={(val) => setActiveTab(val as any)}>
-          <div className="flex items-center justify-between overflow-x-auto pb-2">
-            <TabsList className="bg-secondary/20 p-1 border border-border">
-              <TabsTrigger value="All" className="px-4">All Active</TabsTrigger>
-              <TabsTrigger value="Evaluation" className="px-4 gap-2">
-                <Eye className="h-4 w-4" /> Evaluation
-              </TabsTrigger>
-              <TabsTrigger value="Development" className="px-4 gap-2">
-                <Briefcase className="h-4 w-4" /> Development
-              </TabsTrigger>
-              <TabsTrigger value="Production" className="px-4 gap-2">
-                <Clapperboard className="h-4 w-4" /> Production
-              </TabsTrigger>
-              <TabsTrigger value="Archived" className="px-4 gap-2">
-                <Archive className="h-4 w-4" /> Archived
-              </TabsTrigger>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+            <TabsList className="bg-transparent p-0 h-auto gap-8 justify-start overflow-x-auto w-full sm:w-auto">
+              {['All', 'Evaluation', 'Development', 'Production', 'Archived'].map((stage) => (
+                <TabsTrigger 
+                  key={stage}
+                  value={stage} 
+                  className="px-0 py-2 rounded-none bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none text-white/50 hover:text-white/80 data-[state=active]:text-white font-medium text-sm md:text-base tracking-wide border-b-2 border-transparent data-[state=active]:border-primary transition-all duration-300 uppercase"
+                >
+                  {stage === 'All' ? 'All Active' : stage}
+                </TabsTrigger>
+              ))}
             </TabsList>
 
-            <div className="flex items-center gap-2">
-               <div className="relative w-64">
-                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center w-full sm:w-auto">
+               <div className="relative w-full sm:w-64 group">
+                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40 group-focus-within:text-white transition-colors" />
                  <Input 
-                   placeholder="Search..." 
-                   className="pl-9 bg-secondary/20 border-transparent h-9"
+                   placeholder="Search slate..." 
+                   className="pl-9 bg-white/5 border-transparent h-10 focus:border-primary/50 focus:bg-white/10 transition-all text-sm backdrop-blur-sm rounded-full text-white placeholder:text-white/30"
                    value={searchQuery}
                    onChange={(e) => setSearchQuery(e.target.value)}
                  />
@@ -386,23 +382,20 @@ export default function ProjectsPage() {
                         </div>
 
                         {/* Content Area - Bottom Left */}
-                        <div className="absolute bottom-0 inset-x-0 p-6 z-10 flex flex-col justify-end">
+                        <div className="absolute bottom-0 inset-x-0 p-6 md:p-8 z-10 flex flex-col justify-end">
                           <div className="transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500 ease-out">
-                            <CardTitle className="text-2xl md:text-3xl font-display font-light text-white/90 group-hover:text-white mb-3 drop-shadow-lg transition-colors tracking-wide">
+                            <CardTitle className="text-2xl md:text-3xl font-display font-medium text-white/90 group-hover:text-white mb-2 drop-shadow-xl transition-colors tracking-wide leading-tight">
                               {project.title}
                             </CardTitle>
                             
                             <div className="flex items-center gap-3">
-                              {/* Minimal Stage Pill */}
-                              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/10 backdrop-blur-md border border-white/10">
-                                <StageIcon className="h-3 w-3 text-white/70" />
-                                <span className="text-xs font-medium text-white/80 tracking-wide uppercase">
-                                  {project.stage}
-                                </span>
-                              </div>
+                              {/* Refined Text-Based Stage Label */}
+                              <span className="text-xs font-semibold text-white/60 tracking-[0.1em] uppercase drop-shadow-md group-hover:text-white/80 transition-colors duration-300">
+                                {project.stage}
+                              </span>
                               
-                              {/* Animated Arrow on Hover */}
-                              <ArrowRight className="h-4 w-4 text-white/0 group-hover:text-white/60 -translate-x-4 group-hover:translate-x-0 transition-all duration-500 ease-out" />
+                              {/* Animated Entry Indicator on Hover */}
+                              <div className="h-px w-0 bg-primary/80 group-hover:w-8 transition-all duration-500 ease-out opacity-0 group-hover:opacity-100" />
                             </div>
                           </div>
                         </div>
