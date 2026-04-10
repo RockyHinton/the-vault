@@ -47,8 +47,8 @@ export function Shell({ children, sidebar }: ShellProps) {
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-4 border-b border-border bg-card">
-        <div className="flex items-center gap-6 font-display font-bold text-2xl tracking-tight text-white">
-          <img src={logoImg} alt="3six9 Logo" className="h-12 w-auto object-contain opacity-90" />
+        <div className="flex items-center gap-3.5 font-display font-bold text-2xl tracking-tight text-white">
+          <img src={logoImg} alt="3six9 Logo" className="h-[54px] w-auto object-contain opacity-95 brightness-110 translate-y-[2px]" />
           <span>{APP_CONFIG.clientName}</span>
         </div>
         <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
@@ -60,8 +60,8 @@ export function Shell({ children, sidebar }: ShellProps) {
           <SheetContent side="left" className="p-0 w-72 bg-sidebar border-r border-sidebar-border">
              <div className="h-full flex flex-col">
               <div className="p-6 border-b border-sidebar-border">
-                <div className="flex items-center gap-6 font-display font-bold text-2xl tracking-tight text-white">
-                  <img src={logoImg} alt="3six9 Logo" className="h-12 w-auto object-contain opacity-90" />
+                <div className="flex items-center gap-3.5 font-display font-bold text-2xl tracking-tight text-white">
+                  <img src={logoImg} alt="3six9 Logo" className="h-[54px] w-auto object-contain opacity-95 brightness-110 translate-y-[2px]" />
                   <span>{APP_CONFIG.clientName}</span>
                 </div>
               </div>
@@ -77,8 +77,8 @@ export function Shell({ children, sidebar }: ShellProps) {
       <aside className="hidden md:flex flex-col w-64 bg-sidebar border-r border-sidebar-border h-screen sticky top-0 shrink-0 z-30">
         <div className="p-6 border-b border-sidebar-border">
           <Link href="/projects">
-            <div className="flex items-center gap-6 font-display font-bold text-2xl tracking-tight text-white cursor-pointer hover:opacity-80 transition-opacity">
-              <img src={logoImg} alt="3six9 Logo" className="h-12 w-auto object-contain opacity-90" />
+            <div className="flex items-center gap-3.5 font-display font-bold text-2xl tracking-tight text-white cursor-pointer hover:opacity-80 transition-opacity">
+              <img src={logoImg} alt="3six9 Logo" className="h-[54px] w-auto object-contain opacity-95 brightness-110 translate-y-[2px]" />
               <span>{APP_CONFIG.clientName}</span>
             </div>
           </Link>
