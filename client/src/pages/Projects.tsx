@@ -287,8 +287,9 @@ export default function ProjectsPage() {
                 const hasImage = (project as any).coverImage || (project as any).posterUrl;
                 const projectImage = hasImage ? ((project as any).coverImage || (project as any).posterUrl) : undefined;
                 
-                // Fallback to placeholder image based on index if no project image exists
-                const imageUrl = projectImage || placeholderImages[index % placeholderImages.length];
+                // Deterministic placeholder based on project ID so images don't shift when filtering
+                const originalIndex = projects.findIndex(p => p.id === project.id);
+                const imageUrl = projectImage || placeholderImages[Math.max(0, originalIndex) % placeholderImages.length];
 
                 return (
                   <motion.div

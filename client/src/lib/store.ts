@@ -475,12 +475,12 @@ const MOCK_TASKS: Task[] = [
 const MOCK_PROJECTS: Project[] = [
   {
     id: 'p1',
-    title: 'Neon Nights',
-    stage: 'Production',
+    title: 'The Falling House',
+    stage: 'Development',
     status: 'Active',
-    logline: 'A detective uncovers a conspiracy in a city that never sleeps.',
-    synopsis: 'In 2084, New Tokyo is a neon-drenched metropolis controlled by three mega-corporations. When Detective Kaito discovers a synthetic drug that grants telepathic abilities, he becomes the target of the most powerful man in the city.',
-    genre: 'Sci-Fi / Thriller',
+    logline: 'A family discovers their ancestral home is slowly sinking into an unseen abyss.',
+    synopsis: 'When inherited property begins to exhibit strange gravitational anomalies, a family must unravel the dark history of their ancestors before the house consumes them completely.',
+    genre: 'Thriller / Drama',
     createdAt: '2023-10-15T10:00:00Z',
     updatedAt: '2023-12-10T14:30:00Z',
     evaluation: {
@@ -490,8 +490,7 @@ const MOCK_PROJECTS: Project[] = [
       financeType: 'Private',
       financeStatus: 'Committed',
       castAttached: [
-        { name: 'Hiroyuki Sanada', role: 'Detective Kaito' },
-        { name: 'Ana de Armas', role: 'Elena' }
+        { name: 'Hiroyuki Sanada', role: 'Lead' }
       ]
     },
     financing: {
@@ -506,107 +505,35 @@ const MOCK_PROJECTS: Project[] = [
       cashflow: [
         { month: 'Jan', in: 5000000, out: 2000000 },
         { month: 'Feb', in: 0, out: 4000000 },
-        { month: 'Mar', in: 10000000, out: 8000000 },
-        { month: 'Apr', in: 0, out: 6000000 },
       ],
       approvals: [
         { item: 'Top Sheet Budget v4', status: 'Approved', date: '2023-12-01' },
-        { item: 'Bond Completion', status: 'Pending' },
-        { item: 'Tax Credit Application', status: 'Approved', date: '2023-11-15' },
-      ]
-    },
-    financePlan: {
-      sources: [
-        {
-          id: 'fs1',
-          name: 'Equity - Investor A',
-          amount: 12000000,
-          type: 'Equity',
-          status: 'Approved',
-          isApproved: true,
-          notes: 'Lead investor',
-          documents: [
-            { id: 'fd1', fileName: 'Term_Sheet_InvA.pdf', docType: 'Term sheet', status: 'Approved', uploadedAt: '2023-11-01T10:00:00Z' }
-          ]
-        },
-        {
-          id: 'fs2',
-          name: 'Pre-sale - Territory B',
-          amount: 18000000,
-          type: 'Pre-sale',
-          status: 'Approved',
-          isApproved: true,
-          documents: []
-        },
-        {
-          id: 'fs3',
-          name: 'Tax Credit - UK',
-          amount: 8000000,
-          type: 'Tax Credit',
-          status: 'Approved',
-          isApproved: true,
-          documents: []
-        },
-        {
-          id: 'fs4',
-          name: 'Gap Loan',
-          amount: 5000000,
-          type: 'Gap Finance',
-          status: 'Targeted',
-          isApproved: false,
-          notes: 'Negotiating with bank',
-          documents: []
-        }
       ]
     },
     legal: {
       chainOfTitle: [
         { item: 'Option Agreement', status: 'Clean', notes: 'Executed 2022' },
-        { item: 'Writer Agreement', status: 'Clean', notes: 'WGA standard' },
-        { item: 'Life Rights', status: 'Pending', notes: 'Negotiating with family estate' },
       ],
       keyAgreements: [
         { type: 'Director Agreement', party: 'Ridley Scott Jr.', status: 'Executed', dueDate: '2023-10-01' },
-        { type: 'Cast Agreement', party: 'Hiroyuki Sanada', status: 'Negotiation', dueDate: '2023-12-28' },
-        { type: 'Location Agreement', party: 'City of Tokyo', status: 'Drafting', dueDate: '2024-01-15' },
       ],
       riskAssessment: [
         { category: 'Copyright', riskLevel: 'Low', description: 'Original screenplay, clean chain of title.' },
-        { category: 'Defamation', riskLevel: 'Medium', description: 'Script references real political figures.' },
-        { category: 'Safety', riskLevel: 'High', description: 'Stunt heavy production in urban environment.' },
-      ]
-    },
-    schedule: {
-      startDate: '2024-03-01',
-      endDate: '2024-04-15',
-      currentDay: 12,
-      totalDays: 35,
-      locations: [
-        { id: 'loc1', name: 'Neon Plaza', address: 'Shibuya Crossing, Tokyo', status: 'Secured' },
-        { id: 'loc2', name: 'Kaito Apt', address: 'Soundstage 4', status: 'Secured' },
-        { id: 'loc3', name: 'Industrial Zone', address: 'Yokohama Port', status: 'Permit Pending' },
-      ],
-      shootDays: [
-        { dayNumber: 10, date: '2024-03-14', locationId: 'loc1', scenes: ['22A', '24'], pages: 3.5, status: 'Complete', callSheetStatus: 'Published' },
-        { dayNumber: 11, date: '2024-03-15', locationId: 'loc1', scenes: ['25', '26', '28'], pages: 4.2, status: 'Complete', callSheetStatus: 'Published' },
-        { dayNumber: 12, date: '2024-03-16', locationId: 'loc2', scenes: ['4', '5', '8'], pages: 5.1, status: 'Scheduled', callSheetStatus: 'Published' }, // Today
-        { dayNumber: 13, date: '2024-03-17', locationId: 'loc2', scenes: ['9', '11'], pages: 3.0, status: 'Scheduled', callSheetStatus: 'Draft' },
-        { dayNumber: 14, date: '2024-03-18', locationId: 'loc3', scenes: ['45', '46A'], pages: 2.4, status: 'Rescheduled', callSheetStatus: 'Pending' },
       ]
     }
   },
   {
     id: 'p2',
-    title: 'The Last Harvest',
+    title: 'The Thing That Hurts',
     stage: 'Evaluation',
     status: 'Active',
-    logline: 'A farming family fights to keep their land during the Great Dust Bowl.',
-    synopsis: 'Set in 1930s Oklahoma, this historical drama follows the Joad family as they struggle against drought, debt, and the encroaching banks.',
-    genre: 'Drama / Historical',
+    logline: 'An experimental therapy forces patients to physically confront their emotional pain.',
+    synopsis: 'In a near-future clinic, trauma is extracted as physical entities. A rogue therapist must stop a malicious entity born from collective societal grief before it escapes the facility.',
+    genre: 'Sci-Fi / Horror',
     createdAt: '2023-11-01T09:00:00Z',
     updatedAt: '2023-11-20T11:15:00Z',
     evaluation: {
-      writer: 'Steinbeck AI',
+      writer: 'Sarah Jenkins',
       financeType: 'Grant',
       financeStatus: 'Speculative',
       plannedBudget: '$12M',
@@ -623,51 +550,56 @@ const MOCK_PROJECTS: Project[] = [
   },
   {
     id: 'p3',
-    title: 'Velocity',
-    stage: 'Development',
+    title: 'Linda Lisboa',
+    stage: 'Production',
     status: 'Active',
-    logline: 'A retired getaway driver is pulled back in for one last job.',
-    synopsis: 'Action-packed heist movie set in the streets of Paris.',
-    genre: 'Action',
+    logline: 'A fading fado singer discovers a new rhythm in the underground clubs of Lisbon.',
+    synopsis: 'Against the backdrop of a changing city, a traditional musician finds her voice again when she mentors a young, electronic music producer.',
+    genre: 'Drama / Music',
     createdAt: '2023-09-01T08:00:00Z',
     updatedAt: '2023-12-05T16:45:00Z',
     evaluation: {
-      writer: 'Luc Besson',
-      director: 'Unknown',
-      plannedBudget: '$25M',
+      writer: 'Maria Santos',
+      director: 'Carlos Gomez',
+      plannedBudget: '$8M',
       financeType: 'Tax Credit',
       financeStatus: 'Committed'
     },
     financing: {
-      totalBudget: 25000000,
-      secured: 15000000,
-      currency: 'USD',
+      totalBudget: 8000000,
+      secured: 8000000,
+      currency: 'EUR',
       breakdown: [
-        { category: 'Tax Credit', amount: 15000000, percentage: 60 }
+        { category: 'Tax Credit', amount: 8000000, percentage: 100 }
       ],
       cashflow: [],
       approvals: []
     },
     closingChecklist: {
       financeClosed: true,
-      talentConfirmed: false,
-      legalDocsClosed: false
+      talentConfirmed: true,
+      legalDocsClosed: true
     }
   },
   {
     id: 'p4',
-    title: 'Failed Mars Project',
+    title: 'WASP 2026',
     stage: 'Archived',
     status: 'Completed',
-    logline: 'Mars colony fails.',
-    synopsis: 'It was too expensive.',
-    genre: 'Sci-Fi',
+    logline: 'A deep-cover agent infiltrates an elite, futuristic security firm.',
+    synopsis: 'In a world where corporate espionage is fought with high-tech exosuits, an agent must decide between her mission and the team she has grown to trust.',
+    genre: 'Action / Sci-Fi',
     createdAt: '2022-01-01T00:00:00Z',
     updatedAt: '2022-06-01T00:00:00Z',
     evaluation: {
       writer: 'Alan Smithee',
       plannedBudget: '$100M',
       scores: { creative: 4.0, financial: 2.0 }
+    },
+    archiveDetails: {
+      reason: 'Financing not secured',
+      revisit: 'Maybe',
+      starred: false
     }
   }
 ];
