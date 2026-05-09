@@ -476,7 +476,7 @@ const MOCK_PROJECTS: Project[] = [
   {
     id: 'p1',
     title: 'The Falling House',
-    stage: 'Development',
+    stage: 'Evaluation',
     status: 'Active',
     logline: 'A family discovers their ancestral home is slowly sinking into an unseen abyss.',
     synopsis: 'When inherited property begins to exhibit strange gravitational anomalies, a family must unravel the dark history of their ancestors before the house consumes them completely.',
@@ -551,7 +551,7 @@ const MOCK_PROJECTS: Project[] = [
   {
     id: 'p3',
     title: 'Linda Lisboa',
-    stage: 'Production',
+    stage: 'Evaluation',
     status: 'Active',
     logline: 'A fading fado singer discovers a new rhythm in the underground clubs of Lisbon.',
     synopsis: 'Against the backdrop of a changing city, a traditional musician finds her voice again when she mentors a young, electronic music producer.',
@@ -584,8 +584,8 @@ const MOCK_PROJECTS: Project[] = [
   {
     id: 'p4',
     title: 'WASP 2026',
-    stage: 'Archived',
-    status: 'Completed',
+    stage: 'Evaluation',
+    status: 'Active',
     logline: 'A deep-cover agent infiltrates an elite, futuristic security firm.',
     synopsis: 'In a world where corporate espionage is fought with high-tech exosuits, an agent must decide between her mission and the team she has grown to trust.',
     genre: 'Action / Sci-Fi',
@@ -1314,7 +1314,7 @@ export const useStore = create<AppState>()(
 
 }),
 {
-  name: 'vault-storage-v8',
+  name: 'vault-storage-v9',
   storage: createJSONStorage(() => localStorage),
 }
 )

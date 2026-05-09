@@ -64,10 +64,10 @@ import { Label } from "@/components/ui/label";
 
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-import project1 from "@/assets/project-1.jpg";
-import project2 from "@/assets/project-2.jpg";
-import project3 from "@/assets/project-3.jpg";
-import project4 from "@/assets/project-4.jpg";
+import project1 from "@/assets/project-1-new.jpg";
+import project2 from "@/assets/project-2-new.jpg";
+import project3 from "@/assets/project-3-new.jpg";
+import project4 from "@/assets/project-4-new.jpg";
 
 const placeholderImages = [project1, project2, project3, project4];
 

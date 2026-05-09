@@ -30,3 +30,27 @@ id = "luJ3kA5oCuJcavnh-fVVo"
 uri = "file://client/src/assets/project-4.jpg"
 type = "image"
 title = "cinematic moody dark clapperboard production scene"
+
+[[outputs]]
+id = "7kaEZbNNzu8rVZmJljdM3"
+uri = "file://client/src/assets/project-1-new.jpg"
+type = "image"
+title = "cinematic thriller drama old house looking scary"
+
+[[outputs]]
+id = "pNwgotqOf4ayOBuSv4TPU"
+uri = "file://client/src/assets/project-2-new.jpg"
+type = "image"
+title = "sci-fi horror conceptual abstract therapy brain"
+
+[[outputs]]
+id = "0lD_vBMCgP_Jhuz6_E56f"
+uri = "file://client/src/assets/project-3-new.jpg"
+type = "image"
+title = "music drama singer fado lisbon club stage"
+
+[[outputs]]
+id = "1IJvqzP62uMsyxFR1ZiWx"
+uri = "file://client/src/assets/project-4-new.jpg"
+type = "image"
+title = "action sci-fi agent cyber futuristic"
