@@ -65,7 +65,7 @@ import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 import project1 from "@/assets/project-1-new.jpg";
-import project2 from "@/assets/project-2-new.jpg";
+import project2 from "@/assets/That_Hurts_1778321788610.png";
 import project3 from "@/assets/Linda_Lisboa_1778321255083.png";
 import project4 from "@/assets/WASP_2026_1778321002468.png";
 
