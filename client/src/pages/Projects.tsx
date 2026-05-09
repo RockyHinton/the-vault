@@ -67,7 +67,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import project1 from "@/assets/project-1-new.jpg";
 import project2 from "@/assets/project-2-new.jpg";
 import project3 from "@/assets/project-3-new.jpg";
-import project4 from "@/assets/project-4-new.jpg";
+import project4 from "@/assets/WASP_2026_1778321002468.png";
 
 const placeholderImages = [project1, project2, project3, project4];
 
