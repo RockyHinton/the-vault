@@ -66,7 +66,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 import project1 from "@/assets/project-1-new.jpg";
 import project2 from "@/assets/project-2-new.jpg";
-import project3 from "@/assets/project-3-new.jpg";
+import project3 from "@/assets/Linda_Lisboa_1778321255083.png";
 import project4 from "@/assets/WASP_2026_1778321002468.png";
 
 const placeholderImages = [project1, project2, project3, project4];
@@ -312,14 +312,15 @@ export default function ProjectsPage() {
                             <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 via-transparent to-purple-500/5 opacity-50 group-hover:opacity-70 transition-opacity duration-700" />
                           )}
 
-                          {/* Actual Image (scaled on hover) */}
+                          {/* Actual Image (scaled and brightened on hover) */}
                           <div 
-                            className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 ease-out group-hover:scale-105"
+                            className="absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-out group-hover:scale-105 group-hover:brightness-110"
                             style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : {}}
                           />
 
                           {/* Dark Gradient Overlay for text readability (bottom up) */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent opacity-80 group-hover:opacity-95 transition-opacity duration-500" />
+                          {/* Changed to be lighter on hover rather than darker to let the image shine */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-100 group-hover:opacity-60 transition-opacity duration-500" />
                         </div>
 
                         {/* Top Action Bar (Three-dot Menu & Star) */}
