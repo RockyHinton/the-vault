@@ -1,0 +1,135 @@
+We are in DESIGN MODE only.
+
+This is a very targeted visual refinement.
+
+ONLY update the top-left branding section in the main app navigation/sidebar:
+- the 3six9 Studios logo
+- the “The Vault” product title beside it
+- the clickable wrapper that already returns the user to the Projects/Home page
+
+DO NOT change:
+- sidebar navigation items
+- page layouts
+- routing behavior
+- logo asset
+- global typography
+- colors elsewhere
+- any backend or functionality
+
+GOAL
+Make the 3six9 Studios logo + “The Vault” title feel like one unified premium brand lockup rather than two separate elements.
+
+The result should feel:
+- polished
+- cinematic
+- high-end
+- restrained
+- visually balanced
+- clearly branded as “3six9 Studios × The Vault”
+
+1. KEEP THEM SIDE BY SIDE
+Maintain a horizontal layout:
+[3six9 logo] [The Vault]
+
+Do NOT stack them.
+
+The logo and product name should read visually as one unit.
+
+2. IMPROVE THE “THE VAULT” TYPOGRAPHY
+The current title is too bold / generic.
+
+Refine it to:
+- lighter weight: approximately 500–600
+- premium modern sans-serif feel
+- cleaner, more editorial appearance
+- slightly increased letter spacing, but very subtle
+- softer white rather than harsh pure white if appropriate
+
+If the project already includes a suitable premium font, use it.
+
+DO NOT introduce a new font dependency just for this change.
+
+If using the existing app font:
+- adjust weight
+- tracking
+- size
+- line height
+to create a more refined result.
+
+Do NOT use an overly stylised display font.
+
+3. MATCH VISUAL HEIGHT
+Align “The Vault” visually with the central film-strip portion of the 3six9 logo.
+
+The logo includes “STUDIOS” beneath the film strip, so do not simply mathematically center the title against the entire image height if that makes it look too low.
+
+The title should appear naturally centred alongside the main “3 SIX 9” film-strip area.
+
+This visual alignment is important.
+
+4. TIGHTEN THE SPACING
+Reduce the horizontal gap between the logo and “The Vault” slightly.
+
+They should feel connected but not cramped.
+
+Target feel:
+- approximately 10–14px visual gap between the logo artwork and title
+- adjust based on the logo’s transparent bounding box if necessary
+
+Do NOT allow excessive empty space between them.
+
+5. LOGO SIZE
+Keep the current logo generally at its existing scale.
+
+Only make a very small adjustment if needed for visual balance:
+- maximum approximately +5–8%
+
+Do not make it dominant.
+
+The title and logo should have balanced visual weight.
+
+6. BRAND LOCKUP CONTAINER
+Treat the logo + title as a single clickable brand lockup.
+
+Keep the existing click behavior:
+- clicking anywhere on the logo/title area returns to the Projects/Home page
+
+Improve the hit area if needed so the whole lockup is clickable.
+
+Do NOT change the destination or routing behavior.
+
+7. HOVER STATE
+Add only a very subtle premium hover reaction to the entire lockup:
+- slight increase in opacity/brightness
+OR
+- extremely subtle transition
+
+No movement, glow, scale jump, or flashy effect.
+
+Transition should feel smooth and restrained.
+
+8. SPACING INSIDE SIDEBAR
+Keep the lockup neatly centred vertically within the existing top branding area.
+
+Do not change the overall sidebar dimensions.
+
+Keep enough padding around the brand so it does not feel cramped against the top/left edges.
+
+SUCCESS CRITERIA
+After the change:
+
+- Logo and “The Vault” remain side by side
+- They feel like one unified brand lockup
+- “The Vault” no longer looks like a generic bold SaaS heading
+- The typography feels lighter, more editorial and premium
+- Visual alignment is based around the logo’s film-strip section
+- Spacing between logo and title is tighter and intentional
+- The entire lockup remains clickable and returns to the Projects page
+- No other part of the app has changed
+
+Before editing, inspect the existing branding component and its click/navigation behavior so you preserve it exactly.
+After implementation, briefly confirm:
+- final title font weight
+- approximate logo/title gap
+- whether logo size was adjusted
+- that the Projects/Home click behavior remains unchanged

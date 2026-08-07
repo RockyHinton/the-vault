@@ -47,9 +47,9 @@ export function Shell({ children, sidebar }: ShellProps) {
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-4 border-b border-border bg-card">
-        <div className="flex items-center gap-3 font-display font-bold text-xl tracking-tight text-white whitespace-nowrap">
+        <div className="flex items-center gap-2.5 whitespace-nowrap">
           <img src={logoImg} alt="3six9 Logo" className="h-[64px] w-auto object-contain opacity-95 translate-y-[-1px] -ml-1" style={{ filter: "brightness(1.08) contrast(1.08) drop-shadow(0 0 6px rgba(255,255,255,0.08))" }} />
-          <span>{APP_CONFIG.clientName}</span>
+          <span className="font-display font-semibold text-xl tracking-[0.02em] text-white/90 -translate-y-[4px]">{APP_CONFIG.clientName}</span>
         </div>
         <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
           <SheetTrigger asChild>
@@ -60,9 +60,9 @@ export function Shell({ children, sidebar }: ShellProps) {
           <SheetContent side="left" className="p-0 w-72 bg-sidebar border-r border-sidebar-border">
              <div className="h-full flex flex-col">
               <div className="p-6 border-b border-sidebar-border">
-                <div className="flex items-center gap-3 font-display font-bold text-xl tracking-tight text-white whitespace-nowrap">
+                <div className="flex items-center gap-2.5 whitespace-nowrap">
                   <img src={logoImg} alt="3six9 Logo" className="h-[64px] w-auto object-contain opacity-95 translate-y-[-1px] -ml-1" style={{ filter: "brightness(1.08) contrast(1.08) drop-shadow(0 0 6px rgba(255,255,255,0.08))" }} />
-                  <span>{APP_CONFIG.clientName}</span>
+                  <span className="font-display font-semibold text-xl tracking-[0.02em] text-white/90 -translate-y-[4px]">{APP_CONFIG.clientName}</span>
                 </div>
               </div>
               <div className="flex-1 overflow-auto py-4">
@@ -77,9 +77,9 @@ export function Shell({ children, sidebar }: ShellProps) {
       <aside className="hidden md:flex flex-col w-64 bg-sidebar border-r border-sidebar-border h-screen sticky top-0 shrink-0 z-30">
         <div className="p-6 border-b border-sidebar-border">
           <Link href="/projects">
-            <div className="flex items-center gap-3 font-display font-bold text-xl tracking-tight text-white whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity">
-              <img src={logoImg} alt="3six9 Logo" className="h-[64px] w-auto object-contain opacity-95 translate-y-[-1px] -ml-1" style={{ filter: "brightness(1.08) contrast(1.08) drop-shadow(0 0 6px rgba(255,255,255,0.08))" }} />
-              <span>{APP_CONFIG.clientName}</span>
+            <div className="group flex items-center gap-2.5 whitespace-nowrap cursor-pointer -m-2 p-2 rounded-lg transition-all duration-300">
+              <img src={logoImg} alt="3six9 Logo" className="h-[64px] w-auto object-contain opacity-95 group-hover:opacity-100 transition-opacity duration-300 translate-y-[-1px] -ml-1" style={{ filter: "brightness(1.08) contrast(1.08) drop-shadow(0 0 6px rgba(255,255,255,0.08))" }} />
+              <span className="font-display font-semibold text-xl tracking-[0.02em] text-white/90 group-hover:text-white transition-colors duration-300 -translate-y-[4px]">{APP_CONFIG.clientName}</span>
             </div>
           </Link>
         </div>
