@@ -429,6 +429,48 @@ export interface CreativeProfile {
   profileDocuments?: ProfileDocument[];
 }
 
+// --- Distribution / Territory Types ---
+
+export type TerritoryStatus = 'Available' | 'In Discussion' | 'Licensed' | 'Delivered' | 'Closed';
+
+export interface TerritoryNote {
+  id: string;
+  territoryId: string;
+  authorId: string;
+  authorName: string;
+  text: string;
+  createdAt: string;
+  editedAt?: string;
+}
+
+export interface TerritoryDocument {
+  id: string;
+  territoryId: string;
+  fileName: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  description?: string;
+}
+
+export interface TerritoryDealInfo {
+  distributor?: string;
+  contact?: string;
+  signaturePayment?: string;
+  deliveryPayment?: string;
+  generalNotes?: string;
+}
+
+export interface Territory {
+  id: string;
+  projectId: string;
+  name: string;
+  status: TerritoryStatus;
+  notes: TerritoryNote[];
+  documents: TerritoryDocument[];
+  dealInfo: TerritoryDealInfo;
+  updatedAt: string;
+}
+
 // --- Admin / Security Types ---
 
 export type AuditAction = 'LOGIN' | 'LOGOUT' | 'UPLOAD_DOC' | 'DELETE_DOC' | 'STAGE_CHANGE' | 'USER_CREATE' | 'USER_DELETE';
@@ -825,6 +867,7 @@ interface AppState {
   producerProfiles: ProducerProfile[];
   creativeProfiles: CreativeProfile[];
   currentProjectId: string | null;
+  territories: Territory[];
   
   // Admin State
   users: User[];
@@ -890,6 +933,19 @@ interface AppState {
 
   // Generic Project Update
   updateProject: (projectId: string, updates: Partial<Project>) => void;
+
+  // Territory / Distribution Actions
+  getProjectTerritories: (projectId: string) => Territory[];
+  addTerritory: (projectId: string, name: string) => void;
+  updateTerritoryStatus: (territoryId: string, status: TerritoryStatus) => void;
+  renameTerritory: (territoryId: string, name: string) => void;
+  deleteTerritory: (territoryId: string) => void;
+  addTerritoryNote: (territoryId: string, text: string) => void;
+  editTerritoryNote: (noteId: string, text: string) => void;
+  deleteTerritoryNote: (noteId: string) => void;
+  addTerritoryDocument: (territoryId: string, doc: Omit<TerritoryDocument, 'id' | 'territoryId' | 'uploadedBy' | 'uploadedAt'>) => void;
+  deleteTerritoryDocument: (documentId: string) => void;
+  updateTerritoryDealInfo: (territoryId: string, dealInfo: Partial<TerritoryDealInfo>) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -907,6 +963,7 @@ export const useStore = create<AppState>()(
   producerProfiles: MOCK_PRODUCER_PROFILES,
   creativeProfiles: MOCK_CREATIVE_PROFILES,
   currentProjectId: null,
+  territories: [],
   users: MOCK_USERS,
   auditLogs: MOCK_AUDIT_LOGS,
 
@@ -1312,9 +1369,127 @@ export const useStore = create<AppState>()(
     reviews: state.reviews.filter(r => r.id !== reviewId)
   })),
 
+  // Territory / Distribution Actions
+  getProjectTerritories: (projectId) => {
+    return get().territories.filter(t => t.projectId === projectId);
+  },
+
+  addTerritory: (projectId, name) => set((state) => ({
+    territories: [
+      ...state.territories,
+      {
+        id: `ter${Date.now()}`,
+        projectId,
+        name,
+        status: 'Available' as TerritoryStatus,
+        notes: [],
+        documents: [],
+        dealInfo: {},
+        updatedAt: new Date().toISOString(),
+      }
+    ]
+  })),
+
+  updateTerritoryStatus: (territoryId, status) => set((state) => ({
+    territories: state.territories.map(t =>
+      t.id === territoryId ? { ...t, status, updatedAt: new Date().toISOString() } : t
+    )
+  })),
+
+  renameTerritory: (territoryId, name) => set((state) => ({
+    territories: state.territories.map(t =>
+      t.id === territoryId ? { ...t, name, updatedAt: new Date().toISOString() } : t
+    )
+  })),
+
+  deleteTerritory: (territoryId) => set((state) => ({
+    territories: state.territories.filter(t => t.id !== territoryId)
+  })),
+
+  addTerritoryNote: (territoryId, text) => set((state) => {
+    const user = state.user;
+    return {
+      territories: state.territories.map(t => {
+        if (t.id !== territoryId) return t;
+        return {
+          ...t,
+          updatedAt: new Date().toISOString(),
+          notes: [
+            {
+              id: `tn${Date.now()}`,
+              territoryId,
+              authorId: user?.id || 'unknown',
+              authorName: user?.name || 'Unknown User',
+              text,
+              createdAt: new Date().toISOString(),
+            },
+            ...t.notes,
+          ]
+        };
+      })
+    };
+  }),
+
+  editTerritoryNote: (noteId, text) => set((state) => ({
+    territories: state.territories.map(t => ({
+      ...t,
+      notes: t.notes.map(n =>
+        n.id === noteId ? { ...n, text, editedAt: new Date().toISOString() } : n
+      ),
+      updatedAt: t.notes.some(n => n.id === noteId) ? new Date().toISOString() : t.updatedAt,
+    }))
+  })),
+
+  deleteTerritoryNote: (noteId) => set((state) => ({
+    territories: state.territories.map(t => ({
+      ...t,
+      notes: t.notes.filter(n => n.id !== noteId),
+      updatedAt: t.notes.some(n => n.id === noteId) ? new Date().toISOString() : t.updatedAt,
+    }))
+  })),
+
+  addTerritoryDocument: (territoryId, doc) => set((state) => {
+    const user = state.user;
+    return {
+      territories: state.territories.map(t => {
+        if (t.id !== territoryId) return t;
+        return {
+          ...t,
+          updatedAt: new Date().toISOString(),
+          documents: [
+            ...t.documents,
+            {
+              ...doc,
+              id: `td${Date.now()}`,
+              territoryId,
+              uploadedBy: user?.name || 'Unknown User',
+              uploadedAt: new Date().toISOString(),
+            }
+          ]
+        };
+      })
+    };
+  }),
+
+  deleteTerritoryDocument: (documentId) => set((state) => ({
+    territories: state.territories.map(t => ({
+      ...t,
+      documents: t.documents.filter(d => d.id !== documentId),
+      updatedAt: t.documents.some(d => d.id === documentId) ? new Date().toISOString() : t.updatedAt,
+    }))
+  })),
+
+  updateTerritoryDealInfo: (territoryId, dealInfo) => set((state) => ({
+    territories: state.territories.map(t =>
+      t.id === territoryId
+        ? { ...t, dealInfo: { ...t.dealInfo, ...dealInfo }, updatedAt: new Date().toISOString() }
+        : t
+    )
+  })),
+
 }),
 {
-  name: 'vault-storage-v9',
+  name: 'vault-storage-v10',
   storage: createJSONStorage(() => localStorage),
 }
 )

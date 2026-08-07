@@ -1,0 +1,175 @@
+Upgrade Production → Distribution into a Territory Distribution Workspace
+
+Replace the current generic document upload page with a dedicated Distribution Workspace designed for film territory management.
+
+This should follow the existing Vault design language while feeling spacious, premium and easy to navigate. Avoid dense layouts. Large cards, generous spacing and clear typography are more important than fitting lots of information on screen.
+
+Overall Layout
+
+Replace the empty document area with:
+
+Distribution Overview
+
+At the top of the page add four small summary cards:
+
+Territories
+Licensed
+In Discussion
+Available
+
+These are simple counts only.
+
+Keep the existing Upload button if required, but change its purpose so uploads happen inside individual territories instead.
+
+Territory Cards
+
+The main page should now display large territory cards in a responsive grid.
+
+Examples:
+
+United Kingdom
+United States
+France
+Germany
+Spain
+Italy
+Australia
+Japan
+
+Territories should be created manually using a New Territory button.
+
+Each card should display:
+
+Territory name
+Current status
+Number of documents
+Number of notes
+Last updated date
+
+Status options:
+
+Available
+In Discussion
+Licensed
+Delivered
+Closed
+
+Keep these clean and understated.
+
+Do not clutter the cards.
+
+The entire card should open the Territory Workspace when clicked.
+
+Include a three-dot menu for rename/delete.
+
+Territory Workspace
+
+Clicking a territory opens a dedicated workspace (same style as other Vault workspaces).
+
+The workspace should contain:
+
+Header
+
+Territory name
+
+Editable status dropdown
+
+Last updated
+
+Notes
+
+Large notes section.
+
+Allow:
+
+Add note
+Edit note
+Delete note
+
+Each note should display:
+
+author
+created date
+edited date (if applicable)
+
+Notes should use generous spacing.
+
+Documents
+
+A document manager specific to this territory.
+
+Allow:
+
+Upload document
+Download document
+Delete document
+
+Each document should display:
+
+filename
+upload date
+uploaded by
+optional description
+
+Use the existing Vault document styling.
+
+Important Deal Information
+
+Simple editable fields only.
+
+No automation.
+
+Fields:
+
+Distributor
+Contact
+Signature Payment
+Delivery Payment
+General Notes
+
+These should simply store information.
+
+No calculations.
+
+UX
+
+Maintain the existing Vault styling.
+
+Requirements:
+
+large cards
+generous whitespace
+subtle hover animations
+smooth transitions
+consistent spacing
+rounded corners matching existing design
+no cramped tables
+no SaaS-style spreadsheet layouts
+
+Hover effects should only include:
+
+slight lift
+soft shadow
+subtle border highlight
+
+Nothing flashy.
+
+Behaviour
+
+Deleting a note removes it permanently.
+
+Deleting a document removes it permanently.
+
+Deleting a territory removes all associated notes and documents after confirmation.
+
+Documents and notes belong only to their territory.
+
+Scope
+
+Only replace the Production → Distribution page.
+
+Do not modify any other Production pages.
+
+Do not add royalty tracking, payment schedules, contract automation or analytics yet.
+
+The goal of this iteration is to transform Distribution from a generic file upload page into a clean, production-ready territory management workspace that producers will naturally use during film distribution, while leaving room for future expansion into full licensing and royalty management.

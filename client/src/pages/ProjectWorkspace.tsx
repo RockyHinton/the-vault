@@ -16,6 +16,7 @@ import CreativesView from "@/components/stages/CreativesView";
 import DocumentationEntityPage from "@/components/features/documentation/DocumentationEntityPage";
 import { UploadDocumentDialog } from "@/components/features/UploadDocumentDialog";
 import UnderlyingRightsPage from "@/components/features/UnderlyingRightsPage";
+import DistributionView from "@/components/stages/DistributionView";
 import { Button } from "@/components/ui/button";
 import { 
   Folder, 
@@ -361,6 +362,11 @@ export default function ProjectWorkspace() {
     // SPECIAL CASE: Project Notes (New Dedicated Page)
     if (currentCategory?.slug === 'project-notes' || safeParams?.category === 'project-notes') {
       return <ProjectNotesView project={project} />;
+    }
+
+    // SPECIAL CASE: Distribution Territory Workspace
+    if (currentCategory?.slug === 'distribution' || safeParams?.category === 'distribution') {
+      return <DistributionView project={project} />;
     }
 
     // SPECIAL CASE: Underlying Rights (stage-aware)
