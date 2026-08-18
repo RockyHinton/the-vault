@@ -567,7 +567,7 @@ const MOCK_PROJECTS: Project[] = [
   {
     id: 'p2',
     title: 'The Thing That Hurts',
-    stage: 'Evaluation',
+    stage: 'Development',
     status: 'Active',
     logline: 'An experimental therapy forces patients to physically confront their emotional pain.',
     synopsis: 'In a near-future clinic, trauma is extracted as physical entities. A rogue therapist must stop a malicious entity born from collective societal grief before it escapes the facility.',
@@ -593,7 +593,7 @@ const MOCK_PROJECTS: Project[] = [
   {
     id: 'p3',
     title: 'Linda Lisboa',
-    stage: 'Evaluation',
+    stage: 'Production',
     status: 'Active',
     logline: 'A fading fado singer discovers a new rhythm in the underground clubs of Lisbon.',
     synopsis: 'Against the backdrop of a changing city, a traditional musician finds her voice again when she mentors a young, electronic music producer.',
@@ -1489,7 +1489,7 @@ export const useStore = create<AppState>()(
 
 }),
 {
-  name: 'vault-storage-v10',
+  name: 'vault-storage-v11',
   storage: createJSONStorage(() => localStorage),
 }
 )
