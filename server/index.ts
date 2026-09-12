@@ -108,15 +108,12 @@ async function start() {
   }
   app.use(errorHandler);
 
-  httpServer.listen(
-    { port: env.PORT, host: "0.0.0.0", reusePort: true },
-    () => {
-      log("info", "server.started", {
-        port: env.PORT,
-        environment: env.NODE_ENV,
-      });
-    },
-  );
+  httpServer.listen({ port: env.PORT, host: "0.0.0.0" }, () => {
+    log("info", "server.started", {
+      port: env.PORT,
+      environment: env.NODE_ENV,
+    });
+  });
 }
 
 if (
