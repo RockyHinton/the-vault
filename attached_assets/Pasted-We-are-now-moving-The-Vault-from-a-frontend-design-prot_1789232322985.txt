@@ -1,0 +1,815 @@
+We are now moving The Vault from a frontend/design prototype into a real production application.
+
+IMPORTANT:
+THIS IS A READ-ONLY AUDIT AND ARCHITECTURE PLANNING TASK.
+
+DO NOT:
+- edit any code
+- create database tables
+- install packages
+- refactor components
+- change UI
+- change routes
+- change functionality
+- add backend code yet
+
+Your job in this pass is to deeply understand the ENTIRE existing application and produce the safest, strongest production architecture and implementation plan.
+
+==================================================
+PRODUCT CONTEXT
+==================================================
+
+The Vault is intended to become an extensive all-in-one operating system for film production companies.
+
+It manages films across a lifecycle currently including:
+
+Evaluation
+→ Development
+→ Production
+→ Archive
+
+The existing frontend has already been designed extensively and validated with our initial client, 3six9 Studios.
+
+The frontend UX should therefore be PRESERVED as closely as possible when the backend is introduced.
+
+The Vault is NOT intended to operate as one multi-tenant SaaS application containing multiple production companies.
+
+DEPLOYMENT MODEL:
+
+We are building ONE definitive master-template version of The Vault.
+
+That master version will contain the complete product architecture, features and capabilities.
+
+When The Vault is sold to a production company:
+
+- the master application will be remixed/copied into a dedicated client instance
+- that client will have its own deployment
+- its own database
+- its own file storage
+- its own users
+- its own projects
+- its own secrets/environment configuration
+- its own branding/configuration where applicable
+
+Examples:
+
+Master Vault
+→ 3six9 Studios Vault deployment
+→ Studio B Vault deployment
+→ Studio C Vault deployment
+
+These deployments are completely separate applications/data environments.
+
+Therefore:
+
+DO NOT design multi-tenancy.
+DO NOT design tenant IDs on every database table.
+DO NOT design cross-company user accounts.
+DO NOT design organisation switching.
+DO NOT introduce multi-tenant complexity that this deployment model does not require.
+
+The goal is instead to make the master template exceptionally clean, reusable and configurable so new client deployments can be created safely and efficiently.
+
+A lightweight Studio / Company Settings configuration is appropriate for things such as:
+
+- studio name
+- studio logo
+- branding
+- contact information
+- configurable application settings
+
+But this represents the ONE company using that deployment, not a tenancy system.
+
+==================================================
+FUTURE PRODUCT SCOPE
+==================================================
+
+Future capabilities will likely include:
+
+- real user accounts within each client deployment
+- project membership
+- granular user roles and access permissions
+- script uploads and version history
+- AI-assisted screenplay coverage and commercial analysis
+- user comments and notes
+- producers / creatives / HOD profiles
+- finance management
+- budgets and approvals
+- finance plans
+- cashflow modelling
+- rights management
+- documentation and legal records
+- document approval/version workflows
+- distribution management
+- schedules
+- project notifications
+- email sending
+- background jobs
+- audit/history records
+- mobile application clients
+- sales / distribution workflows
+- post-production workflows
+- pitch materials
+- sales outreach
+- AI integrations across multiple modules
+
+This means the backend architecture must not merely support today's screens.
+
+It must form a strong, secure and extensible foundation for a much larger film-production platform.
+
+==================================================
+PRIMARY OBJECTIVE
+==================================================
+
+Audit the complete application and design a production-grade full-stack architecture that:
+
+1. Preserves the existing frontend and UX wherever possible
+2. Replaces temporary/mock/local state with proper persistence
+3. Supports development and production environments cleanly
+4. Uses strong security practices
+5. Has clear domain boundaries
+6. Supports substantial future feature growth without creating a monolithic mess
+7. Is testable and maintainable
+8. Supports file-heavy film production workflows
+9. Supports future AI integrations safely
+10. Can eventually support web and mobile clients
+11. Works extremely well as a reusable MASTER TEMPLATE for separate single-company deployments
+12. Makes new client deployments straightforward and safe
+13. Avoids unnecessary rewrites
+
+Do NOT automatically assume the current frontend architecture needs replacing.
+
+Inspect first.
+
+==================================================
+PART 1 — COMPLETE APPLICATION INVENTORY
+==================================================
+
+Inspect the entire repository.
+
+Produce an inventory of:
+
+- application framework(s)
+- language(s)
+- build tooling
+- routing
+- global state management
+- local state
+- contexts/providers
+- component architecture
+- utility layers
+- mock data
+- browser/local storage use
+- dependencies
+- current authentication implementation or assumptions
+- tests
+- deployment configuration
+- environment handling
+
+Then map every user-facing area.
+
+For every page/workspace identify:
+
+- route
+- project stage availability
+- data displayed
+- data created
+- data edited
+- data deleted
+- relationships to other modules
+- local/mock state currently used
+- uploads/downloads
+- approval/status workflows
+- version-history behaviour
+- notes/comments
+- destructive actions
+- derived calculations
+
+Do this for ALL current areas, including but not limited to:
+
+- Projects / slate
+- Evaluation
+- Development
+- Production
+- Archive
+- Scripts
+- Producers
+- Creatives
+- Financing
+- Budget
+- Finance Plan
+- Cash Flow
+- Underlying Rights
+- Documentation
+- Distribution
+- Schedules
+- project overview/control-room pages
+- profile documents
+- project notes
+- settings/admin
+- any other page discovered in the repository
+
+Do not rely on assumptions.
+
+Trace the actual implementation.
+
+==================================================
+PART 2 — DATA DOMAIN MAP
+==================================================
+
+From the application audit, identify the real business domains.
+
+Potential examples include:
+
+StudioSettings
+User
+Project
+ProjectMembership
+ProjectStage
+Script
+ScriptVersion
+Note
+Comment
+ProducerProfile
+CreativeProfile
+Engagement
+Document
+DocumentVersion
+Budget
+BudgetVersion
+BudgetDepartment
+FinanceSource
+Cashflow
+UnderlyingRight
+DocumentationEntity
+DistributionTerritory
+Schedule
+ActivityEvent
+AuditEvent
+
+These are examples only.
+
+Derive the proper model from the existing application.
+
+Identify:
+
+- core entities
+- child entities
+- many-to-many relationships
+- ownership rules
+- lifecycle relationships
+- versioned records
+- approval records
+- files
+- derived values
+
+Do NOT design the schema merely by copying frontend component shapes.
+
+Design the underlying domain properly.
+
+IMPORTANT:
+There is ONE studio/company per deployment.
+
+Do not add tenant/organisation IDs everywhere.
+
+==================================================
+PART 3 — TARGET ARCHITECTURE
+==================================================
+
+Recommend a production architecture appropriate to the CURRENT stack wherever possible.
+
+Prefer evolutionary architecture over rewriting the application.
+
+Explain the proposed:
+
+Frontend
+Backend/API
+Database
+File/object storage
+Authentication
+User/project membership
+Future permissions
+Service/domain layer
+Validation layer
+Background jobs
+Email service
+Notifications
+AI integration layer
+Logging
+Audit trail
+Observability
+Testing
+Deployment
+Studio configuration / branding
+
+Explain WHY each major architectural choice fits The Vault.
+
+Avoid unnecessary microservices.
+
+Prefer a well-structured modular application unless the actual requirements justify something more complex.
+
+The architecture should be highly reusable as the master template for future dedicated client deployments.
+
+==================================================
+PART 4 — DATABASE STRATEGY
+==================================================
+
+Design a preliminary relational schema.
+
+We need at minimum:
+
+- development database
+- production database
+- safe migrations
+- seed/demo data
+- transactional integrity
+- timestamps
+- stable identifiers
+- indexes
+- foreign keys
+- soft deletion where appropriate
+- immutable history where appropriate
+
+Pay particular attention to:
+
+- users
+- project membership
+- scripts and script versions
+- budget versions
+- approvals
+- project stages
+- documents
+- notes and authorship
+- audit records
+- distribution records
+- schedules
+
+There is ONE production company per database/deployment.
+
+Do not implement multi-tenant row isolation.
+
+Provide the schema/domain design at a high level in this report.
+
+Do NOT create migrations yet.
+
+==================================================
+PART 5 — FILE STORAGE
+==================================================
+
+Audit every place files/documents can currently be uploaded.
+
+Create a complete upload-point inventory.
+
+Design a central file architecture rather than unrelated upload implementations.
+
+Consider:
+
+- scripts
+- contracts
+- rights documents
+- financing documents
+- profile documents
+- distribution documents
+- schedule documents
+- images/project artwork
+- future pitch materials
+- future post-production assets
+
+Recommend:
+
+- object storage strategy
+- metadata database records
+- access control
+- upload/download flow
+- deletion
+- versioning
+- MIME/type validation
+- size limits
+- malware/security considerations
+- private/signed URLs where appropriate
+- backups/retention
+
+Files belonging to film productions may be commercially confidential.
+
+Security matters.
+
+==================================================
+PART 6 — USERS, PROJECT MEMBERSHIP & FUTURE PERMISSIONS
+==================================================
+
+Each deployment will have users belonging to that production company.
+
+Users may eventually be assigned to specific projects and given different levels of access.
+
+Do NOT build or finalise the detailed permissions system yet.
+
+However, ensure the architecture cleanly supports:
+
+User
+→ Project Membership
+→ Future permissions
+
+Possible future module-level permissions may include:
+
+No Access
+View
+Comment
+Edit
+Manage
+
+For areas such as:
+
+- Script
+- Producers
+- Creatives
+- Financing
+- Underlying Rights
+- Documentation
+- Distribution
+- Schedules
+- Project Settings
+
+We do not need to finalise this UX now.
+
+Identify any architectural decisions that MUST be made now so this can later be added cleanly.
+
+Security must eventually be enforced server-side, never solely by hiding frontend UI.
+
+==================================================
+PART 7 — MASTER TEMPLATE / CLIENT DEPLOYMENT STRATEGY
+==================================================
+
+Because The Vault will be sold using a dedicated-instance model, specifically assess how the codebase should support this cleanly.
+
+Design a strategy where:
+
+MASTER CODEBASE
+→ client-specific configuration
+→ dedicated deployment
+
+Client-specific elements may include:
+
+- studio name
+- logo
+- brand colors
+- background imagery
+- email sender configuration
+- domain
+- environment secrets
+- storage configuration
+- database
+- enabled optional settings/features in future
+
+Avoid client-specific logic being scattered throughout application components.
+
+Recommend a clean configuration/theme approach.
+
+We want to avoid this future anti-pattern:
+
+if client === "3six9" ...
+if client === "StudioB" ...
+
+Client customisation should be configuration-driven wherever practical.
+
+Also recommend how the master template should be version-controlled so improvements can be safely propagated into future deployments.
+
+Do NOT introduce a shared multi-company backend.
+
+==================================================
+PART 8 — SECURITY REVIEW
+==================================================
+
+Treat this as a professional production application containing confidential:
+
+- scripts
+- contracts
+- financing data
+- personal information
+- cast information
+- legal records
+- distribution information
+
+Audit/recommend protections for:
+
+- authentication
+- sessions/tokens
+- password handling if applicable
+- authorization
+- project access
+- input validation
+- SQL injection
+- XSS
+- CSRF where relevant
+- rate limiting
+- upload validation
+- private files
+- secrets management
+- environment variables
+- error information leakage
+- destructive actions
+- audit trails
+- dependency risks
+- production HTTPS/cookies
+- backups
+
+Because each company has its own deployment/database, cross-company tenancy attacks are not a design concern.
+
+However, user-to-user and project-level authorization within a deployment remains important.
+
+Identify current security risks where applicable.
+
+==================================================
+PART 9 — AUDIT / ACTIVITY HISTORY
+==================================================
+
+The Vault will need accountability.
+
+Design a sensible audit approach capable of recording events such as:
+
+- user uploaded document
+- user deleted document
+- budget submitted
+- budget approved
+- finance source changed
+- cast status changed
+- script version uploaded
+- note created/deleted
+- project moved stage
+- territory updated
+- schedule changed
+
+Do not overengineer this.
+
+Explain what should be immutable audit history versus normal editable business records.
+
+==================================================
+PART 10 — FUTURE AI ARCHITECTURE
+==================================================
+
+The application will gain AI features.
+
+An immediate example is:
+
+Upload screenplay
+→ run structured AI coverage
+→ store analysis against exact script version
+→ retain historical coverage runs
+
+Future AI may include:
+
+- script analysis
+- rewrite comparison
+- rights-risk extraction
+- contract/document summarisation
+- project summaries
+- finance analysis
+- production planning
+- distribution/sales research
+- pitch material generation
+- post-production assistance
+
+Design an AI abstraction that avoids putting provider/model-specific logic throughout UI components.
+
+Consider:
+
+- asynchronous jobs
+- prompt/version management
+- input provenance
+- output persistence
+- AI run history
+- model/provider metadata
+- failures/retries
+- usage/cost tracking
+- human review
+- never overwriting human notes automatically
+
+Do not implement AI yet.
+
+==================================================
+PART 11 — EMAIL, NOTIFICATIONS & BACKGROUND WORK
+==================================================
+
+Future functionality will include:
+
+- transactional emails
+- user invitations
+- project notifications
+- reminders
+- background AI jobs
+- scheduled workflows
+- potentially outreach/sales emails later
+
+Recommend how these should fit the architecture without coupling them to page components.
+
+No implementation yet.
+
+==================================================
+PART 12 — MOBILE/API READINESS
+==================================================
+
+The Vault may later have a mobile application used during productions.
+
+Do not build a mobile app now.
+
+Evaluate how the backend should be designed so a future mobile client can consume the same secure business functionality without rewriting application logic.
+
+The web frontend should not contain business logic that future mobile clients would need to duplicate.
+
+==================================================
+PART 13 — CODEBASE QUALITY AUDIT
+==================================================
+
+This is NOT permission for a rewrite.
+
+Identify:
+
+- duplicated components
+- duplicated business logic
+- oversized files
+- weak domain boundaries
+- inconsistent data models
+- dead code
+- risky dependencies
+- places where UI and business logic are too tightly coupled
+- inconsistent validation
+- fragile state handling
+- testing gaps
+
+For every proposed refactor classify it:
+
+CRITICAL BEFORE BACKEND
+SHOULD DO DURING MIGRATION
+SAFE TO DEFER
+
+Do not propose refactors merely for stylistic preference.
+
+Our priority is reliability and maintainability, not rewriting functioning code unnecessarily.
+
+==================================================
+PART 14 — TESTING STRATEGY
+==================================================
+
+Design a realistic strategy covering:
+
+- unit tests
+- business/domain tests
+- API/integration tests
+- database tests
+- future permission tests
+- file upload tests
+- critical end-to-end user workflows
+
+Identify the highest-risk existing workflows that must be protected during migration.
+
+==================================================
+PART 15 — ENVIRONMENTS & DEPLOYMENT
+==================================================
+
+Design clean separation between at least:
+
+DEVELOPMENT
+PRODUCTION
+
+Recommend whether STAGING is justified.
+
+For EACH client deployment, environments must remain isolated.
+
+Cover:
+
+- database separation
+- environment variables
+- secrets
+- migrations
+- deployment process
+- seed data
+- backups
+- rollback
+- monitoring
+- logs
+- health checks
+
+The goal is that development work can never accidentally corrupt real production data.
+
+Also explain how this deployment model should work when:
+
+Master Vault
+→ copied/remixed for a new client
+→ configured
+→ deployed independently
+
+==================================================
+PART 16 — IMPLEMENTATION ROADMAP
+==================================================
+
+Produce a staged backend migration plan.
+
+DO NOT propose one giant rewrite.
+
+Prefer a dependency-driven progression such as:
+
+Foundation
+Database / infrastructure
+Authentication / users
+Projects
+Files
+People/profiles
+Scripts/notes
+Finance
+Rights
+Documentation
+Distribution
+Schedules
+Audit/activity
+Production hardening
+
+But derive the actual sequence from the codebase.
+
+For EVERY phase include:
+
+- objective
+- files/modules likely affected
+- database entities introduced
+- API/services introduced
+- frontend state being replaced
+- tests required
+- migration risk
+- completion criteria
+
+The application should remain runnable throughout migration.
+
+==================================================
+PART 17 — PRODUCTION FOUNDATION QUALITY
+==================================================
+
+Treat this migration as the opportunity to establish the engineering standards The Vault will use going forward.
+
+Recommend sensible conventions for:
+
+- folder/module structure
+- domain boundaries
+- naming
+- validation
+- errors
+- API contracts
+- database access
+- transactions
+- testing
+- file handling
+- logging
+- environment configuration
+- background tasks
+- service abstractions
+
+Do not overengineer.
+
+The goal is a codebase that future developers and AI coding agents can extend safely and predictably.
+
+==================================================
+FINAL REPORT FORMAT
+==================================================
+
+Return a structured report containing:
+
+1. Executive summary
+2. Current technical architecture
+3. Complete feature/page inventory
+4. State and persistence inventory
+5. Complete file-upload inventory
+6. Current technical-debt findings
+7. Proposed domain model
+8. Proposed production architecture
+9. Preliminary database model
+10. File/storage architecture
+11. User/project-membership/future-permissions architecture
+12. Master-template and client-deployment strategy
+13. Security plan
+14. Audit/history plan
+15. AI architecture
+16. Email/notification/background-job architecture
+17. Mobile/API readiness
+18. Testing strategy
+19. Dev/staging/prod strategy
+20. Refactor recommendations ranked by urgency
+21. Step-by-step implementation roadmap
+22. Major risks / unanswered questions
+23. Explicit recommendation for the FIRST implementation phase
+
+==================================================
+IMPORTANT FINAL RULE
+==================================================
+
+DO NOT MODIFY THE REPOSITORY IN THIS PASS.
+
+This is a comprehensive read-only audit.
+
+We will review and approve the architecture before any backend, database, infrastructure or refactoring implementation begins.
+
+The ultimate objective is:
+
+Take the strong existing Vault frontend
+→ preserve its validated UX
+→ build a production-grade full-stack foundation underneath it
+→ begin real 3six9 usage
+→ continue developing features based on real production-company feedback
+→ eventually lock the mature application as the definitive Vault master template
+→ use that master to create separate dedicated deployments for future production-company clients.
