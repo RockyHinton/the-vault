@@ -1,0 +1,426 @@
+Continue the existing READ-ONLY Production Architecture Audit for The Vault.
+
+IMPORTANT:
+DO NOT modify the repository yet.
+DO NOT install packages.
+DO NOT create migrations.
+DO NOT implement authentication.
+DO NOT refactor code.
+
+The previous audit is strong and should NOT be repeated.
+
+However, the first response was truncated after Section 15 and the continuation resumed at Section 21.
+
+Therefore Sections 16–20 of the requested report are missing.
+
+We now need a focused completion pass so that Phase 1 can be implemented safely.
+
+==================================================
+OBJECTIVE
+==================================================
+
+Do TWO things only:
+
+1. Complete the missing audit Sections 16–20.
+2. Produce an implementation-ready specification for Phase 1 — Production Foundation & Authentication.
+
+Do not re-audit the entire application unless you need to inspect a specific existing file in order to make one of these decisions.
+
+Preserve all architectural conclusions already reached unless inspection reveals a concrete reason they should change.
+
+==================================================
+SECTION 16 — EMAIL, NOTIFICATIONS & BACKGROUND JOBS
+==================================================
+
+Complete the missing section covering the future architecture for:
+
+- transactional email
+- invitations
+- password/account emails if required
+- project notifications
+- reminders
+- scheduled workflows
+- background AI work
+- future sales/outreach email
+
+Clarify:
+
+- what belongs in synchronous HTTP requests
+- what belongs in background jobs
+- how the transactional outbox should work
+- whether a database-backed job system is sufficient initially
+- what abstractions should exist now versus later
+- how email providers should remain replaceable
+- how job failures/retries/idempotency should work
+
+Do NOT implement this infrastructure yet unless something minimal is strictly required for Phase 1 account setup.
+
+==================================================
+SECTION 17 — MOBILE / API READINESS
+==================================================
+
+Complete the missing section covering how the backend should remain reusable by:
+
+- the current React web app
+- a future mobile application
+- potentially other trusted clients
+
+Clarify:
+
+- where business logic should live
+- API design conventions
+- authentication implications for web vs future mobile
+- pagination/filtering conventions
+- versioning
+- shared validation/contracts
+- which frontend calculations must eventually move server-side
+
+Do not design or build the mobile app.
+
+==================================================
+SECTION 18 — TESTING STRATEGY
+==================================================
+
+This section is particularly important because there are currently no automated tests.
+
+Design the testing strategy we should establish BEFORE and DURING Phase 1.
+
+Specify:
+
+- test framework(s) appropriate to the current repository
+- unit tests
+- service/domain tests
+- API/integration tests
+- database tests
+- authentication/session tests
+- migration tests
+- frontend smoke/regression tests
+- eventual end-to-end tests
+
+Define:
+
+- which tests must exist before Phase 1 is considered complete
+- how a disposable test database should work
+- how test data should be isolated
+- how tests should run locally and in deployment/CI checks
+- which existing frontend workflows need baseline protection immediately
+
+Avoid excessive testing infrastructure.
+Recommend the minimum strong professional setup.
+
+==================================================
+SECTION 19 — DEVELOPMENT / STAGING / PRODUCTION ENVIRONMENTS
+==================================================
+
+Complete the missing environment and deployment section.
+
+The Vault uses a dedicated deployment per client.
+
+For the master/current 3six9 build, define clearly:
+
+DEVELOPMENT
+TEST
+STAGING (decide whether it should exist now)
+PRODUCTION
+
+For each relevant environment specify:
+
+- database
+- file storage
+- environment variables
+- secrets
+- seed/demo data
+- migrations
+- logs
+- email behavior
+- AI behavior later
+- backup expectations
+- how accidental production access from development is prevented
+
+Make an explicit recommendation:
+
+Should we introduce staging from the start of the backend migration, or wait until later?
+
+We want a professional setup without unnecessary operational complexity.
+
+==================================================
+SECTION 20 — REFACTOR RECOMMENDATIONS, RANKED
+==================================================
+
+The earlier audit identified codebase weaknesses.
+
+Now provide the missing explicit ranked refactor plan.
+
+For every recommended refactor classify it:
+
+A. MUST DO BEFORE PHASE 1 IMPLEMENTATION
+B. DO AS PART OF THE RELEVANT MIGRATION PHASE
+C. SAFE TO DEFER
+
+Be conservative.
+
+We do NOT want a cleanup rewrite before backend work.
+
+Pay particular attention to:
+
+- ProjectWorkspace responsibilities
+- Zustand/localStorage boundaries
+- Producer/Creative duplication
+- Project mutation patterns
+- finance calculations
+- rights/document overlaps
+- shared API contracts
+- existing server/storage files
+- current auth simulation
+
+Explain why anything classified A genuinely blocks Phase 1.
+
+==================================================
+THEN: PHASE 1 IMPLEMENTATION-READY SPECIFICATION
+==================================================
+
+After Sections 16–20, convert the existing Phase 1 recommendation into an exact implementation specification.
+
+Phase 1 remains:
+
+PRODUCTION FOUNDATION + REAL AUTHENTICATION
+
+It should NOT migrate Projects or other business domains yet.
+
+==================================================
+A. MAKE THE AUTHENTICATION DECISION
+==================================================
+
+The earlier report left this unresolved.
+
+Inspect the current stack/environment and recommend ONE concrete authentication approach for this product.
+
+We need:
+
+- company-controlled user accounts
+- Studio Admin
+- future user invitations
+- server-authoritative identity
+- secure sessions
+- eventual role/project-membership support
+- dedicated deployment per client
+
+Compare briefly if necessary, but finish with ONE recommendation.
+
+If recommending local email/password authentication, specify:
+
+- password hashing
+- session storage
+- cookies
+- CSRF
+- rate limiting
+- password reset architecture
+- email verification architecture
+- admin bootstrap
+
+If recommending a managed identity provider, explain exactly why it is preferable here and how it integrates into the dedicated-instance deployment model.
+
+Do not leave the implementation team with several equal options.
+
+==================================================
+B. INITIAL ADMIN BOOTSTRAP
+==================================================
+
+Recommend exactly how the FIRST Studio Admin should be created safely in a fresh deployment.
+
+It must not rely on:
+- hard-coded production passwords
+- public registration
+- browser-controlled admin state
+
+Explain how subsequent users will eventually be invited.
+
+==================================================
+C. DATABASE FOUNDATION
+==================================================
+
+Specify the exact Phase 1 database scope:
+
+- studio_settings
+- users
+- sessions
+- invitations
+
+Clarify:
+
+- UUID strategy
+- timestamps
+- migration conventions
+- indexes
+- deletion/deactivation semantics
+- session lifecycle
+- test DB strategy
+
+Do NOT introduce all future domain tables.
+
+==================================================
+D. SERVER MODULE / FOLDER STRUCTURE
+==================================================
+
+Using the architecture already recommended, give the exact INITIAL folder/file structure needed for Phase 1.
+
+Do not create empty folders for every future module merely for appearance.
+
+Only create what Phase 1 genuinely needs while establishing conventions future modules can follow.
+
+==================================================
+E. API CONTRACTS
+==================================================
+
+Specify the initial API endpoints required for Phase 1.
+
+At minimum consider:
+
+- health
+- readiness
+- sign in
+- sign out
+- current user/session
+- initial admin setup if required
+- invitation acceptance if part of Phase 1
+
+For each endpoint define at a high level:
+
+- method/path
+- authentication requirement
+- request contract
+- response contract
+- major error states
+
+Use the shared Zod/typed-contract approach from the approved architecture.
+
+==================================================
+F. FRONTEND MIGRATION BOUNDARY
+==================================================
+
+Explain exactly what changes in the frontend during Phase 1.
+
+Requirements:
+
+- preserve the existing login page visual design
+- preserve Projects/workspace screens
+- Projects and other business data may continue using current fixture/mock state temporarily
+- replace browser-controlled authentication with the real session API
+- introduce the adapter/hook boundary previously recommended
+
+Identify which existing frontend files are likely to change.
+
+==================================================
+G. SECURITY FOUNDATION
+==================================================
+
+List the exact controls Phase 1 should implement now, including:
+
+- secure session handling
+- cookie configuration
+- CSRF where appropriate
+- rate limiting
+- headers
+- input validation
+- safe errors
+- request IDs
+- log redaction
+- environment validation
+- secret handling
+
+Avoid controls that cannot yet provide value because the relevant feature does not exist.
+
+==================================================
+H. OBSERVABILITY
+==================================================
+
+Define the minimum production-quality logging/health setup for Phase 1.
+
+Keep it lightweight.
+
+We need enough to diagnose:
+
+- startup failure
+- DB connection failure
+- migration issues
+- authentication failure
+- server errors
+
+Do not introduce an excessive observability platform unless justified.
+
+==================================================
+I. EXACT TEST / VALIDATION GATE
+==================================================
+
+Define the commands/checks that must pass before Phase 1 is accepted.
+
+Include:
+
+- install/build
+- TypeScript
+- lint if configured
+- unit tests
+- DB/migration tests
+- authentication integration tests
+- frontend route/login smoke tests
+- security/session tests
+
+Produce a single explicit Phase 1 completion checklist.
+
+==================================================
+J. IMPLEMENTATION SEQUENCE
+==================================================
+
+Give the safest order in which Phase 1 should actually be coded.
+
+For example:
+
+Step 1
+Step 2
+Step 3
+...
+
+For each step include:
+
+- objective
+- expected files changed/created
+- tests added
+- rollback/risk consideration
+
+The application must remain runnable throughout.
+
+==================================================
+K. QUESTIONS THAT ACTUALLY BLOCK PHASE 1
+==================================================
+
+The previous report contains approximately 70 product questions.
+
+Most should NOT block Phase 1.
+
+At the end, isolate ONLY the questions that genuinely require an answer before Phase 1 code can safely begin.
+
+If a sensible engineering default can safely be chosen instead, recommend the default rather than unnecessarily blocking implementation.
+
+==================================================
+FINAL OUTPUT
+==================================================
+
+Return:
+
+1. Section 16 — Email/notifications/background jobs
+2. Section 17 — Mobile/API readiness
+3. Section 18 — Testing strategy
+4. Section 19 — Environment strategy
+5. Section 20 — Ranked refactor recommendations
+6. Phase 1 implementation-ready specification
+7. Exact Phase 1 implementation sequence
+8. Phase 1 completion gate
+9. Only genuine blocking decisions/questions
+10. Final verdict:
+   - READY TO IMPLEMENT PHASE 1
+   OR
+   - NOT READY, with the exact reason
+
+DO NOT MODIFY THE REPOSITORY IN THIS PASS.
+
+This should be the final planning pass before implementation unless you identify a concrete blocker.
