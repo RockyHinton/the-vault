@@ -1,0 +1,199 @@
+We now have enough architectural audit information.
+
+DO NOT repeat the audit.
+DO NOT produce another long architecture report.
+DO NOT modify the repository yet.
+
+Your previous response was truncated during:
+
+Phase 1 Implementation Specification
+Section F — Frontend Migration Boundary
+
+We now want ONE FINAL, CONCISE implementation brief so that the next prompt can begin coding Phase 1.
+
+Keep this response practical and compact.
+
+==================================================
+1. COMPLETE THE FRONTEND MIGRATION BOUNDARY
+==================================================
+
+Continue from where the previous response stopped.
+
+Specify only what Phase 1 needs.
+
+Explain exactly how:
+
+- App.tsx should stop trusting Zustand for authentication
+- Auth.tsx should connect to Clerk while preserving its current visual design
+- protected routes should determine authentication
+- /api/v1/auth/me should establish local Vault user access
+- sign-out should work
+- the existing Projects and ProjectWorkspace screens should continue using their current fixture/local business data temporarily
+- authentication should be removed from persisted Zustand without prematurely migrating business state
+
+List the existing frontend files likely to change and any small new auth/API adapter files required.
+
+Do not redesign UI.
+
+==================================================
+2. SECURITY CONTROLS FOR PHASE 1
+==================================================
+
+Give the exact security controls to implement now.
+
+Only include controls relevant to Phase 1.
+
+Cover:
+
+- Clerk server verification
+- local user status checking
+- Studio Admin authorization
+- bootstrap security
+- rate limiting
+- security headers
+- CORS / same-origin policy
+- request/body limits
+- input validation
+- safe API errors
+- request IDs
+- log redaction
+- environment validation
+- secrets
+- HTTPS/production assumptions
+- CSRF implications for the chosen Clerk authentication approach
+
+Be precise about what is actually required with Clerk rather than copying rules intended for a custom cookie-session implementation.
+
+==================================================
+3. MINIMUM OBSERVABILITY
+==================================================
+
+Define the lightweight Phase 1 production monitoring/logging setup.
+
+We only need enough to diagnose:
+
+- application startup failure
+- invalid environment configuration
+- PostgreSQL connection failure
+- migration failure
+- Clerk verification failure
+- authentication/authorization failure
+- unexpected server errors
+
+Specify:
+
+- what should be logged
+- what must never be logged
+- health endpoint
+- readiness endpoint
+- whether any external monitoring service is necessary now
+
+Do not overengineer.
+
+==================================================
+4. EXACT PHASE 1 IMPLEMENTATION ORDER
+==================================================
+
+Give the exact recommended coding sequence.
+
+Maximum approximately 10–15 steps.
+
+For every step provide only:
+
+- objective
+- main files/modules affected
+- tests/checks added
+- completion condition
+
+The application must remain runnable throughout.
+
+==================================================
+5. PHASE 1 ACCEPTANCE GATE
+==================================================
+
+Give one definitive checklist that must be true before we move to Phase 2 Projects + Project Membership.
+
+Include:
+
+- build
+- TypeScript
+- migrations
+- test database
+- auth tests
+- API tests
+- frontend smoke tests
+- environment isolation
+- staging verification
+- production configuration checks
+
+Clearly distinguish:
+
+MUST PASS BEFORE PHASE 1 COMPLETE
+
+from:
+
+CAN WAIT UNTIL LATER
+
+==================================================
+6. VERIFY THE CLERK DECISION
+==================================================
+
+Before implementation, verify from the CURRENT Replit environment/project capabilities that the recommended Clerk integration is actually supported and appropriate for this repository/deployment model.
+
+Do not assume based on generic knowledge.
+
+Confirm:
+
+- how Clerk is expected to integrate with this current Replit app
+- that Development/Staging/Production identity environments can be kept isolated
+- that the existing custom-designed login screen can remain visually intact while using Clerk underneath
+- that future dedicated client deployments can each use isolated Clerk configuration/user stores
+
+If the audit's phrase "Replit-managed Clerk" was inaccurate or imprecise, correct it now.
+
+Do not switch authentication architecture unless there is a concrete technical reason.
+
+==================================================
+7. ONLY TRUE BLOCKERS
+==================================================
+
+The earlier report contained many future product questions.
+
+Ignore all questions that belong to later phases.
+
+List ONLY decisions that genuinely prevent safe Phase 1 implementation.
+
+For each:
+
+- explain why it blocks
+- give your recommended default
+
+Prefer selecting a sensible default rather than asking us unnecessary questions.
+
+==================================================
+8. FINAL VERDICT
+==================================================
+
+End with exactly one of:
+
+READY TO IMPLEMENT PHASE 1
+
+or
+
+NOT READY TO IMPLEMENT PHASE 1
+
+If NOT READY, give only the concrete blockers.
+
+==================================================
+IMPORTANT
+==================================================
+
+DO NOT modify the repository in this response.
+
+DO NOT repeat Sections 1–20.
+
+DO NOT discuss future Finance, Scripts, Distribution, AI, Files, mobile or other domains unless directly relevant to Phase 1.
+
+Keep the response concise enough that it will not be truncated.
+
+This is the final planning checkpoint before implementation.
