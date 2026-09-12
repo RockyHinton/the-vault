@@ -1,36 +1,65 @@
-import { createServer } from "node:http";
-import { closeDatabase } from "../../server/db/client";
-import { errorHandler } from "../../server/http/errors";
-import { createApp } from "../../server/index";
-import { registerRoutes } from "../../server/routes";
-import { setupVite } from "../../server/vite";
+// Playwright web server: the real Vault app (API + Vite) on a disposable
+// database, with the test identity seam standing in for Clerk sign-in.
+//
+// Playwright kills this process without letting shutdown hooks run, so the
+// database name is written to VAULT_E2E_STATE_FILE and dropped by
+// tests/e2e/global-teardown.ts.
+import "../../server/config/load-env";
+import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { createVaultServer } from "../../server/app";
+import { createDatabase } from "../../server/db/client";
 import { createIsolatedPostgresDatabase } from "../support/isolated-postgres";
+import {
+  bootstrapIdentity,
+  dummyClerkKeys,
+  testEnvironment,
+} from "../support/test-context";
 
-const identity = { clerkUserId: "playwright_bootstrap", email: "playwright@vault.test", displayName: "Playwright Admin" };
+export const e2eIdentity = {
+  ...bootstrapIdentity,
+  clerkUserId: "playwright_bootstrap",
+  email: "playwright@vault.test",
+  displayName: "Playwright Admin",
+};
 
 async function start() {
-  if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required for browser tests.");
   process.env.NODE_ENV = "test";
-  process.env.VAULT_BOOTSTRAP_ADMIN_CLERK_ID = identity.clerkUserId;
-  process.env.VAULT_TEST_IDENTITY = JSON.stringify(identity);
+  const port = Number(process.env.VAULT_E2E_PORT ?? 5101);
+  const stateFile = process.env.VAULT_E2E_STATE_FILE;
+  if (!stateFile) throw new Error("VAULT_E2E_STATE_FILE is required.");
+
   const database = await createIsolatedPostgresDatabase();
-  process.env.DATABASE_URL = database.databaseUrl;
-  delete process.env.DATABASE_SCHEMA;
+  // Only the URL is needed here; the app owns its own pool.
+  await database.client.end();
+  mkdirSync(path.dirname(stateFile), { recursive: true });
+  writeFileSync(
+    stateFile,
+    JSON.stringify({ databaseName: database.databaseName }),
+  );
 
-  const app = createApp({ verifiedIdentity: identity });
-  const server = await registerRoutes(createServer(app), app, { requireLocalUser: app.locals.requireLocalUser });
-  app.use(errorHandler);
-  await setupVite(server, app);
-  await new Promise<void>((resolve) => server.listen(5001, "127.0.0.1", resolve));
-
-  const shutdown = async () => {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-    await closeDatabase();
-    await database.destroy();
-    process.exit(0);
-  };
-  process.once("SIGTERM", () => void shutdown());
-  process.once("SIGINT", () => void shutdown());
+  const env = testEnvironment({
+    ...dummyClerkKeys,
+    DATABASE_URL: database.databaseUrl,
+    VAULT_BOOTSTRAP_ADMIN_CLERK_ID: e2eIdentity.clerkUserId,
+    PORT: String(port),
+  });
+  const handle = createDatabase({
+    databaseUrl: env.DATABASE_URL,
+    nodeEnv: env.NODE_ENV,
+  });
+  const { httpServer } = await createVaultServer({
+    env,
+    db: handle.db,
+    frontend: "vite",
+    verifiedIdentity: e2eIdentity,
+  });
+  await new Promise<void>((resolve) =>
+    httpServer.listen(env.PORT, "127.0.0.1", resolve),
+  );
 }
 
-void start();
+start().catch((error: unknown) => {
+  console.error(error);
+  process.exit(1);
+});

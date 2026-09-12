@@ -5,13 +5,28 @@ import viteConfig from "../vite.config";
 import fs from "fs";
 import path from "path";
 import { nanoid } from "nanoid";
+import type { VerifiedIdentity } from "./modules/auth/auth-service";
 
 const viteLogger = createLogger();
 
-export async function setupVite(server: Server, app: Express) {
+export interface ViteOptions {
+  mode: "development" | "test";
+  /**
+   * Browser half of the test identity seam: exposes the identity to the
+   * client bundle so it can skip Clerk's sign-in UI. Only the composition
+   * root may set this, and only under NODE_ENV=test.
+   */
+  browserTestIdentity?: VerifiedIdentity;
+}
+
+export async function setupVite(
+  server: Server,
+  app: Express,
+  options: ViteOptions,
+) {
   const testIdentity =
-    process.env.NODE_ENV === "test"
-      ? process.env.VAULT_TEST_IDENTITY
+    options.mode === "test" && options.browserTestIdentity
+      ? JSON.stringify(options.browserTestIdentity)
       : undefined;
   if (testIdentity) {
     app.get("/__vault-test-identity.js", (_req, res) => {
@@ -29,7 +44,7 @@ export async function setupVite(server: Server, app: Express) {
   const vite = await createViteServer({
     ...viteConfig,
     configFile: false,
-    mode: process.env.NODE_ENV === "test" ? "test" : undefined,
+    mode: options.mode === "test" ? "test" : undefined,
     customLogger: {
       ...viteLogger,
       error: (msg, options) => {

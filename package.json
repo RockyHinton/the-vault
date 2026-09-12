@@ -11,8 +11,9 @@
     "check": "tsc",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "lint": "eslint server shared client/src/features --max-warnings=0",
-    "format:check": "prettier --check \"server/**/*.ts\" \"shared/**/*.ts\" \"client/src/features/**/*.{ts,tsx}\"",
+    "lint": "eslint server shared client/src/features tests --max-warnings=0",
+    "format": "prettier --write \"server/**/*.ts\" \"shared/**/*.ts\" \"client/src/features/**/*.{ts,tsx}\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"server/**/*.ts\" \"shared/**/*.ts\" \"client/src/features/**/*.{ts,tsx}\" \"tests/**/*.ts\"",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:watch": "vitest"

@@ -1,6 +1,7 @@
 import type { IncomingHttpHeaders } from "http";
 import type { RequestHandler } from "express";
 import { createProxyMiddleware } from "http-proxy-middleware";
+import type { Environment } from "../config/env";
 import { ApiError } from "../http/errors";
 
 const CLERK_FAPI = "https://frontend-api.clerk.dev";
@@ -74,8 +75,13 @@ export function mutationOriginGuard(
   };
 }
 
-export function clerkProxyMiddleware(): RequestHandler {
-  if (process.env.NODE_ENV !== "production" || !process.env.CLERK_SECRET_KEY) {
+/**
+ * Production-only reverse proxy for Clerk's frontend API, the topology used by
+ * Replit-managed Clerk. Development talks to Clerk directly, so this is a
+ * pass-through there.
+ */
+export function clerkProxyMiddleware(env: Environment): RequestHandler {
+  if (env.NODE_ENV !== "production") {
     return (_req, _res, next) => next();
   }
 
@@ -92,7 +98,7 @@ export function clerkProxyMiddleware(): RequestHandler {
           "Clerk-Proxy-Url",
           `${protocol}://${host}${CLERK_PROXY_PATH}`,
         );
-        proxyReq.setHeader("Clerk-Secret-Key", process.env.CLERK_SECRET_KEY!);
+        proxyReq.setHeader("Clerk-Secret-Key", env.CLERK_SECRET_KEY);
       },
       proxyRes: (proxyRes, req, res) => {
         const headers = { ...proxyRes.headers };

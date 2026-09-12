@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/features/auth/use-current-user";
+import { ApiClientError } from "@/lib/api-client";
 import logoImage from "@/assets/3six9-logo.png";
 import bgImage from "@/assets/cinematic-bg-new.png";
 
@@ -21,13 +22,34 @@ export default function AuthPage({ clerkForm, accessError = false }: AuthPagePro
     if (isSignedIn && currentUser.data && !accessError) setLocation("/projects", { replace: true });
   }, [accessError, currentUser.data, isSignedIn, setLocation]);
 
+  const accessDenial = currentUser.error instanceof ApiClientError ? currentUser.error : undefined;
+  const deniedClerkUserId =
+    accessDenial?.code === "LOCAL_ACCESS_REQUIRED" &&
+    typeof accessDenial.details === "object" &&
+    accessDenial.details !== null &&
+    "clerkUserId" in accessDenial.details &&
+    typeof accessDenial.details.clerkUserId === "string"
+      ? accessDenial.details.clerkUserId
+      : undefined;
+
   const form = accessError ? (
     <div className="rounded-2xl border border-amber-300/20 bg-black/50 p-8 text-white shadow-2xl backdrop-blur-md">
-      <h2 className="font-display text-2xl">Access not yet granted</h2>
+      <h2 className="font-display text-2xl">
+        {accessDenial?.code === "ACCOUNT_SUSPENDED" ? "Account suspended" : "Access not yet granted"}
+      </h2>
       <p className="mt-3 text-sm leading-6 text-white/70">
-        Your identity was verified, but this account is not authorized for this private Vault instance.
-        Contact a studio administrator to be granted local access.
+        {accessDenial?.code === "ACCOUNT_SUSPENDED"
+          ? "Your identity was verified, but this Vault account has been suspended. Contact a studio administrator."
+          : accessDenial
+            ? "Your identity was verified, but this account is not authorized for this private Vault instance. Contact a studio administrator to be granted local access."
+            : "The Vault could not confirm your access. Check that the server is running and try again."}
       </p>
+      {deniedClerkUserId && (
+        <p className="mt-4 text-xs leading-5 text-white/60">
+          Your Clerk user ID, for the administrator (or for first-admin bootstrap):
+          <code className="ml-1 rounded bg-white/10 px-1.5 py-0.5 text-white/90" data-testid="clerk-user-id">{deniedClerkUserId}</code>
+        </p>
+      )}
       <Button className="mt-6" variant="outline" onClick={() => signOut({ redirectUrl: "/" })}>Sign out</Button>
     </div>
   ) : clerkForm ?? (

@@ -13,3 +13,7 @@ vite.config.ts.*
 .env
 .env.*
 !.env.example
+
+# Playwright output (holds the disposable e2e database name while a run is active)
+test-results
+playwright-report

@@ -1,28 +1,32 @@
-/**
- * Guard destructive test setup. Test helpers must call this before resetting
- * any database; it deliberately rejects development and production URLs.
- */
-export function assertSafeTestDatabaseUrl(
-  databaseUrl: string | undefined,
-): string {
-  if (!databaseUrl)
-    throw new Error(
-      "TEST_DATABASE_URL is required for database integration tests.",
-    );
-  const parsed = new URL(databaseUrl);
-  if (!parsed.pathname.replace(/^\//, "").endsWith("_test")) {
-    throw new Error(
-      "Refusing test database reset: database name must end with _test.",
-    );
-  }
-  return databaseUrl;
+const TEST_DATABASE_NAME = /^vault_test_[a-z0-9_]+$/;
+
+export function databaseNameFromUrl(databaseUrl: string): string {
+  return new URL(databaseUrl).pathname.replace(/^\//, "");
 }
 
+export function isTestDatabaseName(databaseName: string): boolean {
+  return TEST_DATABASE_NAME.test(databaseName);
+}
+
+/**
+ * Fail-closed guard for the application pool under NODE_ENV=test: the
+ * connection must target a disposable `vault_test_*` database.
+ */
+export function assertTestDatabaseUrl(databaseUrl: string): void {
+  const name = databaseNameFromUrl(databaseUrl);
+  if (!isTestDatabaseName(name)) {
+    throw new Error(
+      `Refusing to bind the application pool to "${name}" under NODE_ENV=test: the database name must match vault_test_*.`,
+    );
+  }
+}
+
+/**
+ * Guard for destructive test setup (create/drop database). Requires both the
+ * test environment and a disposable database name.
+ */
 export function assertSafeIsolatedTestDatabaseName(databaseName: string): void {
-  if (
-    process.env.NODE_ENV !== "test" ||
-    !/^vault_test_[a-z0-9_]+$/.test(databaseName)
-  ) {
+  if (process.env.NODE_ENV !== "test" || !isTestDatabaseName(databaseName)) {
     throw new Error("Refusing unsafe isolated test database setup.");
   }
 }

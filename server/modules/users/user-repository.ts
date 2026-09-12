@@ -1,52 +1,47 @@
 import { eq } from "drizzle-orm";
-import { applicationUsers, auditEvents } from "@shared/schema";
-import { getDatabase } from "../../db/client";
+import { applicationUsers, type ApplicationUserRow } from "@shared/schema";
+import type { DatabaseExecutor } from "../../db/transaction";
 
-export class UserRepository {
-  async findByClerkUserId(clerkUserId: string) {
-    const [user] = await getDatabase()
+/**
+ * Persistence for `application_users`. Functions take the executor they run
+ * against; callers that need atomicity pass an open transaction.
+ */
+export const userRepository = {
+  async findByClerkUserId(
+    executor: DatabaseExecutor,
+    clerkUserId: string,
+  ): Promise<ApplicationUserRow | undefined> {
+    const [user] = await executor
       .select()
       .from(applicationUsers)
       .where(eq(applicationUsers.clerkUserId, clerkUserId))
       .limit(1);
     return user;
-  }
+  },
 
-  async createBootstrapAdmin(input: {
-    clerkUserId: string;
-    email: string | null;
-    displayName: string | null;
-    requestId: string;
-  }) {
-    return getDatabase().transaction(async (tx) => {
-      const [user] = await tx
-        .insert(applicationUsers)
-        .values({
-          clerkUserId: input.clerkUserId,
-          email: input.email,
-          displayName: input.displayName,
-          role: "studio_admin",
-          status: "active",
-        })
-        .onConflictDoNothing({ target: applicationUsers.clerkUserId })
-        .returning();
-      if (user) {
-        await tx.insert(auditEvents).values({
-          actorUserId: user.id,
-          action: "user.bootstrap_admin_created",
-          entityType: "application_user",
-          entityId: user.id,
-          requestId: input.requestId,
-          metadata: { role: "studio_admin" },
-        });
-      }
-      if (user) return user;
-      const [existing] = await tx
-        .select()
-        .from(applicationUsers)
-        .where(eq(applicationUsers.clerkUserId, input.clerkUserId))
-        .limit(1);
-      return existing;
-    });
-  }
-}
+  /**
+   * Inserts an active studio admin unless the Clerk user already has a local
+   * account. Returns the inserted row, or undefined when it already existed.
+   */
+  async insertStudioAdminIfAbsent(
+    executor: DatabaseExecutor,
+    input: {
+      clerkUserId: string;
+      email: string | null;
+      displayName: string | null;
+    },
+  ): Promise<ApplicationUserRow | undefined> {
+    const [user] = await executor
+      .insert(applicationUsers)
+      .values({
+        clerkUserId: input.clerkUserId,
+        email: input.email,
+        displayName: input.displayName,
+        role: "studio_admin",
+        status: "active",
+      })
+      .onConflictDoNothing({ target: applicationUsers.clerkUserId })
+      .returning();
+    return user;
+  },
+};

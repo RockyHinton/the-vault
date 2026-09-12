@@ -6,7 +6,7 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["server/**/*.ts", "shared/**/*.ts", "client/src/features/**/*.ts", "client/src/features/**/*.tsx"],
+    files: ["server/**/*.ts", "shared/**/*.ts", "client/src/features/**/*.ts", "client/src/features/**/*.tsx", "tests/**/*.ts"],
     rules: {
       "@typescript-eslint/no-explicit-any": "error",
     },

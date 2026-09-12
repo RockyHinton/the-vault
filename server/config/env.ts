@@ -12,18 +12,33 @@ const environmentSchema = z.object({
   REPLIT_DEV_DOMAIN: z.string().optional(),
   CLERK_PUBLISHABLE_KEY: z.string().min(1),
   CLERK_SECRET_KEY: z.string().min(1),
-  DATABASE_SCHEMA: z
-    .string()
-    .regex(/^vault_test_[a-z0-9_]+$/)
-    .optional(),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;
 
+/**
+ * The browser and the server share one Clerk publishable key. Locally the
+ * Clerk CLI writes only `VITE_CLERK_PUBLISHABLE_KEY`, so the server accepts it
+ * as a fallback; an explicit `CLERK_PUBLISHABLE_KEY` (Replit-managed Clerk)
+ * always wins.
+ */
+function withPublishableKeyFallback(
+  source: NodeJS.ProcessEnv,
+): NodeJS.ProcessEnv {
+  if (source.CLERK_PUBLISHABLE_KEY || !source.VITE_CLERK_PUBLISHABLE_KEY)
+    return source;
+  return {
+    ...source,
+    CLERK_PUBLISHABLE_KEY: source.VITE_CLERK_PUBLISHABLE_KEY,
+  };
+}
+
 export function readEnvironment(
   source: NodeJS.ProcessEnv = process.env,
 ): Environment {
-  const parsed = environmentSchema.safeParse(source);
+  const parsed = environmentSchema.safeParse(
+    withPublishableKeyFallback(source),
+  );
   if (!parsed.success) {
     const issues = parsed.error.issues.map(
       (issue) => `${issue.path.join(".")}: ${issue.message}`,
@@ -31,34 +46,43 @@ export function readEnvironment(
     throw new Error(`Invalid server environment: ${issues.join("; ")}`);
   }
 
-  if (parsed.data.NODE_ENV === "production" && !parsed.data.REPLIT_DOMAINS) {
-    throw new Error(
-      "Invalid server environment: REPLIT_DOMAINS is required in production.",
-    );
+  const env = parsed.data;
+  if (env.NODE_ENV === "production") {
+    if (!env.REPLIT_DOMAINS) {
+      throw new Error(
+        "Invalid server environment: REPLIT_DOMAINS is required in production.",
+      );
+    }
+    if (
+      !env.CLERK_PUBLISHABLE_KEY.startsWith("pk_live_") ||
+      !env.CLERK_SECRET_KEY.startsWith("sk_live_")
+    ) {
+      throw new Error(
+        "Invalid server environment: production requires live Clerk keys.",
+      );
+    }
+    if (
+      env.REPLIT_DOMAINS.split(",").some(
+        (domain) => !/^[a-z0-9.-]+$/i.test(domain.trim()),
+      )
+    ) {
+      throw new Error(
+        "Invalid server environment: REPLIT_DOMAINS must contain bare HTTPS hostnames.",
+      );
+    }
   }
-  if (
-    parsed.data.NODE_ENV === "production" &&
-    (!parsed.data.CLERK_PUBLISHABLE_KEY.startsWith("pk_live_") ||
-      !parsed.data.CLERK_SECRET_KEY.startsWith("sk_live_"))
-  ) {
-    throw new Error(
-      "Invalid server environment: production requires live Clerk keys.",
-    );
-  }
-  if (
-    parsed.data.NODE_ENV === "production" &&
-    parsed.data
+  return env;
+}
+
+/** Hostnames the HTTP layer accepts. Production is strict; development adds loopback. */
+export function allowedHosts(env: Environment): string[] {
+  if (env.NODE_ENV === "production") {
+    return env
       .REPLIT_DOMAINS!.split(",")
-      .some((domain) => !/^[a-z0-9.-]+$/i.test(domain.trim()))
-  ) {
-    throw new Error(
-      "Invalid server environment: REPLIT_DOMAINS must contain bare HTTPS hostnames.",
-    );
+      .map((host) => host.trim())
+      .filter(Boolean);
   }
-  if (parsed.data.DATABASE_SCHEMA && parsed.data.NODE_ENV !== "test") {
-    throw new Error(
-      "Invalid server environment: DATABASE_SCHEMA is test-only.",
-    );
-  }
-  return parsed.data;
+  return [env.REPLIT_DEV_DOMAIN, "localhost", "127.0.0.1"].filter(
+    (host): host is string => Boolean(host),
+  );
 }

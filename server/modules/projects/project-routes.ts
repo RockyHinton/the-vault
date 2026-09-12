@@ -9,134 +9,117 @@ import {
   transitionProjectStageSchema,
   updateProjectSchema,
 } from "@shared/contracts";
+import type { Request } from "express";
+import { handle } from "../../http/handler";
+import { validate } from "../../http/validation";
 import { requireStudioAdmin } from "../auth/auth-service";
-import { ProjectService } from "./project-service";
+import type { Actor, ProjectService } from "./project-service";
 
-const service = new ProjectService();
-export const projectRouter = Router();
-const projectId = (params: unknown) =>
-  projectIdParamSchema.parse(params).projectId;
+/**
+ * Thin HTTP adapter: validate input, check role, call the service, respond.
+ * The router is mounted behind `requireLocalUser`, so `req.localUser` exists.
+ */
+export function createProjectRouter(service: ProjectService): Router {
+  const router = Router();
+  const projectId = (req: Request) =>
+    validate(projectIdParamSchema, req.params).projectId;
+  const actor = (req: Request): Actor => ({
+    userId: req.localUser!.id,
+    requestId: req.requestId,
+  });
 
-projectRouter.get("/", async (req, res, next) => {
-  try {
-    const query = projectListQuerySchema.parse(req.query);
-    const result = await service.list(query);
-    res.json({ data: result, requestId: req.requestId });
-  } catch (error) {
-    next(error);
-  }
-});
+  router.get(
+    "/",
+    handle(async (req, res) => {
+      const result = await service.list(
+        validate(projectListQuerySchema, req.query),
+      );
+      res.json({ data: result, requestId: req.requestId });
+    }),
+  );
 
-projectRouter.post("/", requireStudioAdmin, async (req, res, next) => {
-  try {
-    const project = await service.create(
-      createProjectSchema.parse(req.body),
-      req.localUser!.id,
-      req.requestId,
-    );
-    res.status(201).json({ data: project, requestId: req.requestId });
-  } catch (error) {
-    next(error);
-  }
-});
+  router.post(
+    "/",
+    requireStudioAdmin,
+    handle(async (req, res) => {
+      const project = await service.create(
+        validate(createProjectSchema, req.body),
+        actor(req),
+      );
+      res.status(201).json({ data: project, requestId: req.requestId });
+    }),
+  );
 
-projectRouter.get("/:projectId", async (req, res, next) => {
-  try {
-    const project = await service.get(projectId(req.params));
-    res.json({ data: project, requestId: req.requestId });
-  } catch (error) {
-    next(error);
-  }
-});
+  router.get(
+    "/:projectId",
+    handle(async (req, res) => {
+      const project = await service.get(projectId(req));
+      res.json({ data: project, requestId: req.requestId });
+    }),
+  );
 
-projectRouter.patch(
-  "/:projectId",
-  requireStudioAdmin,
-  async (req, res, next) => {
-    try {
+  router.patch(
+    "/:projectId",
+    requireStudioAdmin,
+    handle(async (req, res) => {
       const project = await service.update(
-        projectId(req.params),
-        updateProjectSchema.parse(req.body),
-        req.localUser!.id,
-        req.requestId,
+        projectId(req),
+        validate(updateProjectSchema, req.body),
+        actor(req),
       );
       res.json({ data: project, requestId: req.requestId });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+    }),
+  );
 
-projectRouter.post(
-  "/:projectId/stage-transitions",
-  requireStudioAdmin,
-  async (req, res, next) => {
-    try {
+  router.post(
+    "/:projectId/stage-transitions",
+    requireStudioAdmin,
+    handle(async (req, res) => {
       const project = await service.transition(
-        projectId(req.params),
-        transitionProjectStageSchema.parse(req.body),
-        req.localUser!.id,
-        req.requestId,
+        projectId(req),
+        validate(transitionProjectStageSchema, req.body),
+        actor(req),
       );
       res.json({ data: project, requestId: req.requestId });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+    }),
+  );
 
-projectRouter.post(
-  "/:projectId/archive",
-  requireStudioAdmin,
-  async (req, res, next) => {
-    try {
+  router.post(
+    "/:projectId/archive",
+    requireStudioAdmin,
+    handle(async (req, res) => {
       const project = await service.archive(
-        projectId(req.params),
-        archiveProjectSchema.parse(req.body),
-        req.localUser!.id,
-        req.requestId,
+        projectId(req),
+        validate(archiveProjectSchema, req.body),
+        actor(req),
       );
       res.json({ data: project, requestId: req.requestId });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+    }),
+  );
 
-projectRouter.post(
-  "/:projectId/restore",
-  requireStudioAdmin,
-  async (req, res, next) => {
-    try {
-      const { version } = restoreProjectSchema.parse(req.body);
+  router.post(
+    "/:projectId/restore",
+    requireStudioAdmin,
+    handle(async (req, res) => {
+      const { version } = validate(restoreProjectSchema, req.body);
       const project = await service.restore(
-        projectId(req.params),
+        projectId(req),
         version,
-        req.localUser!.id,
-        req.requestId,
+        actor(req),
       );
       res.json({ data: project, requestId: req.requestId });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+    }),
+  );
 
-projectRouter.delete(
-  "/:projectId",
-  requireStudioAdmin,
-  async (req, res, next) => {
-    try {
-      const { version } = deleteProjectSchema.parse(req.body);
-      await service.delete(
-        projectId(req.params),
-        version,
-        req.localUser!.id,
-        req.requestId,
-      );
+  router.delete(
+    "/:projectId",
+    requireStudioAdmin,
+    handle(async (req, res) => {
+      const { version } = validate(deleteProjectSchema, req.body);
+      await service.delete(projectId(req), version, actor(req));
       res.status(204).end();
-    } catch (error) {
-      next(error);
-    }
-  },
-);
+    }),
+  );
+
+  return router;
+}
