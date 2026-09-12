@@ -34,7 +34,7 @@ export default function ProjectNotesView({ project }: ProjectNotesViewProps) {
     getProjectNotes, 
     addProjectNote, 
     deleteProjectNote,
-    user 
+    fixtureActor: user
   } = useStore();
 
   // Notes State

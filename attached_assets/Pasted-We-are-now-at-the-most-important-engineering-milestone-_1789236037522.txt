@@ -1,0 +1,695 @@
+We are now at the most important engineering milestone in the development of The Vault.
+
+The existing application is a strong frontend prototype that has been validated with our initial production-company client.
+
+We are now turning it into the permanent full-stack foundation of The Vault.
+
+THIS IS NOT PRIMARILY A FEATURE-BUILDING TASK.
+
+The highest priority is to establish an exceptionally strong engineering architecture, coding standard, repository structure and development foundation that The Vault can be built on for years.
+
+We are using a high-capability coding agent specifically because we want this foundation designed and implemented extremely well.
+
+==================================================
+THE PRIMARY GOAL
+==================================================
+
+Treat this pass as establishing THE ENGINEERING PRECEDENT FOR THE ENTIRE PRODUCT.
+
+When this pass is complete, future human developers and AI coding agents should be able to enter the repository and immediately understand:
+
+- how the application is structured
+- where each type of code belongs
+- how domains are separated
+- how frontend and backend communicate
+- where business logic belongs
+- where validation belongs
+- where authorization belongs
+- where persistence belongs
+- how database changes are made
+- how errors are handled
+- how external providers are integrated
+- how server state is consumed by React
+- how tests are written
+- how new modules should be added
+- what architectural patterns must not be introduced
+
+Optimize first for:
+
+- architectural clarity
+- code readability
+- maintainability
+- predictable structure
+- strong typing
+- modularity
+- security
+- testability
+- explicit dependencies
+- clear naming
+- low cognitive overhead
+- excellent documentation
+- ease of safe modification by future AI coding agents
+
+Prefer simple, explicit and highly understandable code over clever abstractions.
+
+Do not overengineer.
+
+But do not preserve weak prototype architecture merely because it already exists.
+
+Preserve validated PRODUCT BEHAVIOUR and general UX.
+
+The underlying implementation may be refactored where doing so creates a materially stronger long-term architecture.
+
+==================================================
+PRODUCT CONTEXT
+==================================================
+
+The Vault is intended to become a large all-in-one film production management platform.
+
+Over time it may cover:
+
+Evaluation
+Development
+Production
+Post-production
+Distribution
+Sales
+Scripts
+AI script coverage
+People / cast / crew / HODs
+Finance
+Budgets
+Cashflow
+Rights
+Legal documentation
+Scheduling
+Production operations
+Files
+Notifications
+Email
+Sales outreach
+AI workflows
+Mobile tools
+
+Do NOT implement all of these now.
+
+Instead, establish the architecture into which all of these can later fit cleanly.
+
+==================================================
+DEPLOYMENT MODEL
+==================================================
+
+The Vault is a dedicated-instance product.
+
+We maintain one canonical master Vault codebase.
+
+Each client receives its own:
+
+- deployment
+- database
+- authentication/users
+- file storage
+- secrets
+- configuration
+
+Do NOT build multi-tenancy.
+
+Avoid client-specific conditionals throughout product code.
+
+Client differences should be configuration-driven where practical.
+
+==================================================
+ARCHITECTURAL DIRECTION
+==================================================
+
+Use the existing stack unless inspection identifies a strong concrete reason to improve something:
+
+Frontend:
+React
+TypeScript
+Vite
+
+Backend:
+Express
+TypeScript
+
+Database:
+PostgreSQL
+Drizzle
+
+Contracts / validation:
+Zod
+
+Authentication:
+Replit-supported Clerk behind an application-owned authentication adapter
+
+Overall architecture:
+MODULAR MONOLITH
+
+Do not introduce microservices, event sourcing, unnecessary framework abstractions, speculative infrastructure or complex enterprise patterns without an actual requirement.
+
+==================================================
+YOUR FIRST TASK: UNDERSTAND BEFORE CHANGING
+==================================================
+
+Before modifying code:
+
+1. Re-inspect the complete repository.
+2. Review the existing architecture and previous audit findings.
+3. Identify the cleanest practical permanent structure for The Vault.
+4. Identify prototype code that should remain temporarily.
+5. Identify code that genuinely should be refactored now because it would otherwise contaminate the long-term foundation.
+6. Produce a concise implementation checklist.
+
+Then implement.
+
+Do not perform another long written audit.
+
+Use your architectural judgement.
+
+==================================================
+PERMANENT CODEBASE STRUCTURE
+==================================================
+
+Establish a clear and predictable structure based around real responsibilities and business domains.
+
+Backend dependency direction should normally resemble:
+
+HTTP
+→ validation/authentication/authorization
+→ application service/use case
+→ repository
+→ Drizzle
+→ PostgreSQL
+
+Routes/controllers must remain thin.
+
+Business rules belong in application/domain services.
+
+Repositories own persistence concerns, not business policy.
+
+External services must live behind narrow adapters.
+
+Public API contracts must not simply expose database row types.
+
+Avoid generic repository/service base classes unless there is a demonstrated need.
+
+Avoid vague dumping-ground modules such as large miscellaneous helper files.
+
+Use explicit descriptive names.
+
+Keep modules focused.
+
+Avoid circular dependencies.
+
+==================================================
+FRONTEND ARCHITECTURE
+==================================================
+
+Establish a clear pattern such as:
+
+Page/component
+→ feature hook
+→ typed API client
+→ backend
+
+Do not scatter raw network calls through React components.
+
+Server-authoritative records should use a server-state/query layer.
+
+React/Zustand should ultimately own only:
+
+- UI state
+- temporary selections
+- unsaved form state
+- non-sensitive preferences
+
+Do not migrate every existing business module during this pass.
+
+But establish the permanent pattern and apply it to the core Project domain.
+
+==================================================
+THIS PASS SHOULD BUILD THE CORE PLATFORM SPINE
+==================================================
+
+Implement a substantial but controlled foundational slice.
+
+At minimum establish:
+
+1. Codebase/module architecture
+2. Engineering documentation and architectural rules
+3. Development/test/production environment discipline
+4. PostgreSQL + Drizzle persistence foundation
+5. Safe reviewed migration workflow
+6. Shared Zod API contracts
+7. Typed API client
+8. Consistent API response/error conventions
+9. Request IDs
+10. Structured redacted logging
+11. Security middleware/boundaries
+12. Automated testing foundation
+13. Minimal real authentication/user model
+14. Minimal immutable audit foundation
+15. Real persisted Project domain
+16. Real project lifecycle/stage history
+17. Projects frontend connected to the backend using the permanent frontend data-access pattern
+
+This should leave us with a genuine full-stack backbone.
+
+==================================================
+AUTHENTICATION: KEEP IT MINIMAL
+==================================================
+
+Authentication is necessary infrastructure, but it is NOT the focus of this pass.
+
+Use Clerk behind an internal adapter.
+
+Clerk proves identity.
+
+The Vault database determines local application access.
+
+Use only coarse application roles for now:
+
+studio_admin
+user
+
+Do NOT design:
+
+- production job roles
+- granular module permissions
+- detailed ProjectMembership permissions
+- large role-management interfaces
+
+Do not spend excessive effort on invitation UX.
+
+We need enough secure account infrastructure to operate the system and start real testing.
+
+Detailed permissions will evolve later from real client usage.
+
+==================================================
+PROJECTS: THE REFERENCE DOMAIN
+==================================================
+
+Make Projects the first canonical business-domain implementation.
+
+The Project domain should demonstrate the pattern later modules will copy.
+
+Design the underlying model properly rather than simply turning the existing frontend Project object into a database table.
+
+Persist the core project identity and lifecycle cleanly.
+
+Support existing essential project behaviour such as:
+
+- create project
+- list projects
+- load project
+- update appropriate project metadata
+- lifecycle/stage transitions
+- archive/restore if already part of the validated product behaviour
+
+Stage transitions should be explicit business operations rather than arbitrary state mutation.
+
+Maintain durable stage/lifecycle history where appropriate.
+
+Use transactions for state changes that require atomicity.
+
+Use server-generated UUIDs / PostgreSQL UUID defaults.
+
+Use proper foreign keys and constraints.
+
+Do NOT migrate every nested feature currently embedded in the frontend Project object.
+
+Separate true core Project data from feature-specific prototype state.
+
+Temporary feature fixture data may continue to exist until its domain is migrated later.
+
+==================================================
+AUDIT FOUNDATION
+==================================================
+
+Introduce a minimal append-only audit-event mechanism.
+
+This is NOT event sourcing.
+
+It establishes the convention every future domain can use.
+
+Record meaningful security/workflow events with:
+
+- actor
+- action
+- relevant entity
+- request ID
+- safe metadata
+- timestamp
+
+Do not store secrets.
+
+==================================================
+FILES
+==================================================
+
+Files will be fundamental to The Vault.
+
+During this pass, inspect the existing upload architecture and establish the correct central file-domain DESIGN and provider abstraction if doing so is architecturally useful.
+
+If the current environment makes it safe and sensible to establish the core private-file infrastructure now without distracting from the foundation work, do so.
+
+However:
+
+- do not wire every existing upload UI
+- do not create a rushed implementation merely to increase scope
+
+The priority is getting the abstraction and ownership model right.
+
+==================================================
+DATABASE PRINCIPLES
+==================================================
+
+Establish conventions future domains must follow.
+
+Prefer:
+
+- UUID primary keys
+- UTC timestamptz
+- real foreign keys
+- explicit unique constraints
+- meaningful indexes
+- transactional state changes
+- optimistic concurrency where useful
+- immutable version records where provenance matters
+- soft deletion only where recovery/history actually warrants it
+
+Do not duplicate stored and derived sources of truth.
+
+Do not create speculative future tables merely because the product may eventually need them.
+
+==================================================
+API PRINCIPLES
+==================================================
+
+Use a versioned API:
+
+/api/v1
+
+Use Zod contracts for public request/response boundaries.
+
+Sensitive business transitions should use explicit operations, for example conceptually:
+
+POST /projects/:id/stage-transitions
+
+rather than allowing arbitrary PATCH operations to change protected workflow state.
+
+Establish consistent:
+
+- validation
+- errors
+- request IDs
+- pagination conventions
+- authentication context
+- authorization hooks/policies
+- concurrency conventions
+
+==================================================
+CODE QUALITY STANDARDS
+==================================================
+
+This pass must establish strong coding standards.
+
+Use modern professional TypeScript practices.
+
+Prioritize:
+
+- clear naming
+- strong types
+- explicit boundaries
+- small cohesive modules
+- low duplication
+- no unnecessary `any`
+- predictable imports
+- no circular dependencies
+- no hidden business rules
+- no giant controller files
+- no giant state files
+- no provider-specific logic leaking into domains
+- no database details leaking into UI
+- no arbitrary global utilities
+
+Introduce sensible linting and formatting standards.
+
+Do not mass-rewrite unrelated UI merely to satisfy formatting.
+
+New and materially changed code should meet the new standards.
+
+==================================================
+DOCUMENTATION IS A FIRST-CLASS DELIVERABLE
+==================================================
+
+Create or substantially improve:
+
+README.md
+ARCHITECTURE.md
+DEVELOPMENT.md
+docs/decisions/
+
+The documentation should function as a map of the system for future humans and AI agents.
+
+ARCHITECTURE.md should explain:
+
+- the overall architecture
+- domain boundaries
+- dependency direction
+- frontend/backend boundary
+- state ownership
+- business logic rules
+- repository rules
+- API contract rules
+- authentication/authorization model
+- database conventions
+- external provider adapters
+- testing expectations
+- migration conventions
+- how future domains should be implemented
+- architectural anti-patterns to avoid
+
+DEVELOPMENT.md should explain:
+
+- development setup
+- environment configuration
+- database workflow
+- migrations
+- tests
+- linting/formatting
+- production build
+- how to create a new backend module
+- how to expose a new API operation
+- how to connect a frontend feature to the API
+
+Use lightweight Architecture Decision Records for major decisions.
+
+Documentation must accurately match the implemented architecture.
+
+Do not write aspirational documentation for code that does not exist.
+
+==================================================
+ENVIRONMENTS
+==================================================
+
+Our current desired workflow is:
+
+DEVELOPMENT
+TEST
+PRODUCTION
+
+Development is where we continue building.
+
+Production is what the client uses.
+
+Test is disposable automated infrastructure.
+
+These must have isolated databases and credentials.
+
+Development must never be able to reset or mutate Production.
+
+Production migrations must use reviewed migration files.
+
+The architecture should allow a staging environment to be introduced later without structural change, but do not add permanent staging complexity solely for convention.
+
+==================================================
+SECURITY
+==================================================
+
+Create a strong practical baseline.
+
+At minimum:
+
+- server-side identity verification
+- local user status enforcement
+- server-side authorization
+- typed environment validation
+- secrets isolated server-side
+- no production secrets in client bundles
+- safe CORS/origin policy
+- request validation
+- request limits
+- targeted rate limiting
+- security headers
+- safe error responses
+- structured redacted logs
+- request IDs
+- secure production configuration
+
+Never log credentials, tokens, cookies, authorization headers, database URLs or secrets.
+
+==================================================
+TESTING
+==================================================
+
+Testing is part of the architecture, not an afterthought.
+
+Establish a professional but lightweight foundation appropriate to the current stack.
+
+The audited suggestion was:
+
+- Vitest
+- Supertest
+- Playwright smoke tests
+- real PostgreSQL test database
+- TypeScript verification
+
+Use those if they remain appropriate after repository inspection.
+
+Routine tests should not depend on live third-party authentication.
+
+Protect:
+
+- environment validation
+- clean migrations
+- database constraints
+- unsafe test-reset protection
+- API errors
+- authentication boundaries
+- authorization
+- core project operations
+- stage transitions
+- audit events
+- protected route behaviour
+- Projects UI loading from the backend
+- existing project workspace rendering
+
+Do not weaken tests to get green output.
+
+==================================================
+PRESERVE PRODUCT, NOT PROTOTYPE TECHNICAL DEBT
+==================================================
+
+The existing frontend has been carefully designed and should generally look and behave the same.
+
+However:
+
+If existing prototype implementation materially conflicts with a clean long-term architecture, prioritize the long-term architecture.
+
+Do not preserve weak state or component patterns purely to minimize changed lines.
+
+At the same time, do not redesign the UI or unrelated features without reason.
+
+==================================================
+OUT OF SCOPE
+==================================================
+
+Do NOT attempt to fully migrate:
+
+- Scripts
+- Finance
+- People/Creatives
+- Rights
+- Documentation
+- Distribution
+- Scheduling
+- AI
+- Notifications
+- Sales
+- Mobile
+- granular permissions
+
+Those will be migrated cleanly after this foundation exists.
+
+==================================================
+SUCCESS CRITERIA
+==================================================
+
+At the end of this pass, The Vault should have crossed a clear architectural threshold.
+
+We should be able to say:
+
+"The Vault now has its permanent full-stack engineering foundation."
+
+A future coding agent should have a clear reference implementation in Projects and clear documentation explaining how to build the next domain.
+
+The system should have:
+
+- coherent architecture
+- clean module boundaries
+- professional coding standards
+- safe migrations
+- real persistence
+- real authentication
+- real project storage
+- typed API contracts
+- clear frontend server-state patterns
+- audit foundations
+- security foundations
+- automated tests
+- environment isolation
+- excellent architectural documentation
+
+==================================================
+IMPLEMENTATION METHOD
+==================================================
+
+Use your strongest engineering judgement.
+
+Before coding:
+
+1. inspect the relevant repository thoroughly
+2. confirm or improve the proposed architecture
+3. create a concise implementation plan
+4. identify any major architectural concern
+
+Then implement the foundation in coherent steps.
+
+Run tests and static checks repeatedly during implementation.
+
+If an instruction above would create a materially worse architecture given the actual repository, stop and explain the issue rather than following it mechanically.
+
+Do not optimize for speed or number of changed files.
+
+Optimize for the quality of the permanent foundation.
+
+==================================================
+FINAL REPORT
+==================================================
+
+When complete, report:
+
+1. Final architecture chosen
+2. Why it is appropriate for The Vault
+3. Final high-level folder/module structure
+4. Coding standards established
+5. Database architecture and migrations created
+6. Authentication architecture
+7. Project-domain architecture
+8. API architecture
+9. Frontend data-access architecture
+10. Audit/security/logging foundations
+11. Testing architecture and exact results
+12. Environment isolation
+13. Documentation / ADRs created
+14. Any prototype architecture deliberately replaced and why
+15. Any requested area deliberately deferred and why
+16. Any risks or architectural concerns remaining
+17. Exact build/type/test/lint results
+18. Whether this codebase is now ready to use as the permanent foundation for the remaining Vault full-stack migration
+
+Do not claim success if material verification is failing.
+
+The priority above everything else is to leave behind an exceptionally well-built, understandable and extensible codebase that future humans and AI coding agents can confidently continue developing for years.

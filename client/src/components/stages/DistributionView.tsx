@@ -244,7 +244,7 @@ function TerritoryWorkspace({
     addTerritoryDocument,
     deleteTerritoryDocument,
     updateTerritoryDealInfo,
-    user,
+    fixtureActor: user,
   } = useStore();
 
   // Notes state

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link, useRoute, useLocation } from "wouter";
 import { useStore } from "@/lib/store";
+import { useProject } from "@/features/projects/use-projects";
+import { toWorkspaceProject } from "@/features/projects/project-fixture-adapter";
 import { Shell } from "@/components/layout/Shell";
 import DocumentLibrary from "@/pages/DocumentLibrary";
 import EvaluationView from "@/components/stages/EvaluationView";
@@ -50,6 +52,7 @@ import {
   BreadcrumbSeparator 
 } from "@/components/ui/breadcrumb";
 import { Badge } from "@/components/ui/badge";
+import { EditProjectMetadataDialog } from "@/components/features/EditProjectMetadataDialog";
 
 // Icon mapping helper
 const iconMap: Record<string, any> = {
@@ -268,21 +271,32 @@ const ProjectSidebar = ({
 
 export default function ProjectWorkspace() {
   const [match, params] = useRoute("/project/:id/:category?/:subcategory?");
-  const { projects, getProjectCategories, getCategorySubcategories, setCurrentProject } = useStore();
+  const { getProjectCategories, getCategorySubcategories, setCurrentProject, registerTransientProject, projects } = useStore();
   
   // Cast params
   const safeParams = params as { id: string; category?: string; subcategory?: string } | null;
 
-  // Find current project
-  const project = projects.find(p => p.id === safeParams?.id);
-  const categories = project ? getProjectCategories(project.id) : [];
+  const projectQuery = useProject(safeParams?.id);
+  // Server owns core project data. Feature-specific screens continue to use
+  // their existing fixture state through this explicitly temporary adapter.
+  const apiProject = projectQuery.data?.data;
+  const transientFeatureState = projects.find((candidate) => candidate.id === apiProject?.id);
+  const project = apiProject ? toWorkspaceProject(apiProject, transientFeatureState) : undefined;
+  const categories = project ? getProjectCategories(project.id, project.stage) : [];
+  const [metadataDialogOpen, setMetadataDialogOpen] = useState(false);
 
   // Sync current project id to store
   useEffect(() => {
     if (safeParams?.id) setCurrentProject(safeParams.id);
   }, [safeParams?.id, setCurrentProject]);
 
+  useEffect(() => {
+    if (apiProject) registerTransientProject(toWorkspaceProject(apiProject));
+  }, [apiProject, registerTransientProject]);
+
+  if (projectQuery.isLoading) return <div>Loading project…</div>;
   if (!project) return <div>Project not found</div>;
+  if (!transientFeatureState) return <div>Preparing workspace…</div>;
 
   // Derive breadcrumbs
   const currentCategory = categories.find(c => c.slug === safeParams?.category);
@@ -485,9 +499,12 @@ export default function ProjectWorkspace() {
            
            {/* Global Project Actions (future proofing) */}
            <div className="flex items-center gap-2">
-              {/* Add global actions here later */}
+               <Button variant="outline" size="sm" onClick={() => setMetadataDialogOpen(true)}>
+                 Edit metadata
+               </Button>
            </div>
         </div>
+         <EditProjectMetadataDialog project={project} open={metadataDialogOpen} onOpenChange={setMetadataDialogOpen} />
 
         {/* Content Area */}
         <div className="min-h-[500px]">

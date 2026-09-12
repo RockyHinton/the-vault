@@ -1,5 +1,13 @@
 import { Shell } from "@/components/layout/Shell";
-import { useStore, ProjectStatus, ProjectStage } from "@/lib/store";
+import type { ProjectStage } from "@/lib/store";
+import type { Project as ApiProject } from "@shared/contracts";
+import {
+  useDeleteProject,
+  useProjects,
+  useRestoreProject,
+  useTransitionProjectStage,
+} from "@/features/projects/use-projects";
+import { toWorkspaceProject } from "@/features/projects/project-fixture-adapter";
 import { 
   Card, 
   CardContent, 
@@ -86,12 +94,20 @@ const stageIcons: Record<ProjectStage, any> = {
 };
 
 export default function ProjectsPage() {
-  const { projects, setCurrentProject, setProjectStage, deleteProject, unarchiveProject } = useStore();
+  const activeProjects = useProjects("false");
+  const archivedProjects = useProjects("true");
+  const transition = useTransitionProjectStage();
+  const restore = useRestoreProject();
+  const remove = useDeleteProject();
+  const projects = [
+    ...(activeProjects.data?.pages.flatMap((page) => page.data.items) ?? []),
+    ...(archivedProjects.data?.pages.flatMap((page) => page.data.items) ?? []),
+  ];
   const [activeTab, setActiveTab] = useState<ProjectStage | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
-  const [projectToArchive, setProjectToArchive] = useState<{id: string, title: string} | null>(null);
+  const [projectToArchive, setProjectToArchive] = useState<ApiProject | null>(null);
 
   // Archive Filter State
   const [archiveFilterReason, setArchiveFilterReason] = useState<string>('All');
@@ -99,13 +115,14 @@ export default function ProjectsPage() {
   const [archiveFilterStarred, setArchiveFilterStarred] = useState(false);
   
   // Delete confirmation state
-  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<ApiProject | null>(null);
 
   const filteredProjects = projects.filter(p => {
     // 1. Filter by Stage
-    const matchesStage = activeTab === 'All' 
-      ? p.stage !== 'Archived' 
-      : p.stage === activeTab;
+    const workspaceProject = toWorkspaceProject(p);
+    const matchesStage = activeTab === 'All'
+      ? !p.archivedAt
+      : workspaceProject.stage === activeTab;
 
     // 2. Filter by Search Query
     if (!searchQuery && activeTab !== 'Archived') return matchesStage;
@@ -118,7 +135,7 @@ export default function ProjectsPage() {
 
     // 3. Special Filters for Archived Stage
     if (activeTab === 'Archived') {
-       const details = p.archiveDetails;
+       const details = workspaceProject.archiveDetails;
        
        // Filter by Reason
        const matchesReason = archiveFilterReason === 'All' || details?.reason === archiveFilterReason;
@@ -135,27 +152,31 @@ export default function ProjectsPage() {
     return matchesStage && matchesSearch;
   });
 
-  const handleAdvanceStage = (projectId: string, currentStage: ProjectStage) => {
-    let nextStage: ProjectStage | null = null;
-    if (currentStage === 'Evaluation') nextStage = 'Development';
-    else if (currentStage === 'Development') nextStage = 'Production';
+  const handleAdvanceStage = async (project: ApiProject) => {
+    const nextStage = project.stage === "evaluation" ? "development" : project.stage === "development" ? "production" : null;
     
     if (nextStage) {
-      setProjectStage(projectId, nextStage);
-      toast.success(`Project moved to ${nextStage}`);
+      try {
+        await transition.mutateAsync({ id: project.id, input: { toStage: nextStage, version: project.version } });
+        toast.success(`Project moved to ${nextStage === "development" ? "Development" : "Production"}`);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Unable to update project stage");
+      }
     }
   };
 
-  const openArchiveDialog = (projectId: string, title: string) => {
-    setProjectToArchive({ id: projectId, title });
+  const openArchiveDialog = (project: ApiProject) => {
+    setProjectToArchive(project);
     setIsArchiveDialogOpen(true);
   };
 
   const confirmDelete = () => {
     if (projectToDelete) {
-      deleteProject(projectToDelete);
+      remove.mutate({ id: projectToDelete.id, version: projectToDelete.version }, {
+        onSuccess: () => toast.success("Project deleted"),
+        onError: (error) => toast.error(error.message),
+      });
       setProjectToDelete(null);
-      toast.success("Project deleted");
     }
   };
 
@@ -272,8 +293,9 @@ export default function ProjectsPage() {
 
              {/* Projects Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProjects.map((project, index) => {
-                const StageIcon = stageIcons[project.stage];
+               {filteredProjects.map((apiProject, index) => {
+                 const project = toWorkspaceProject(apiProject);
+                 const StageIcon = stageIcons[project.stage];
                 
                 // Keep the archived visual indicator but adapt it for the cinematic card
                 let borderAccent = "border-white/10";
@@ -288,7 +310,7 @@ export default function ProjectsPage() {
                 const projectImage = hasImage ? ((project as any).coverImage || (project as any).posterUrl) : undefined;
                 
                 // Deterministic placeholder based on project ID so images don't shift when filtering
-                const originalIndex = projects.findIndex(p => p.id === project.id);
+                 const originalIndex = projects.findIndex(p => p.id === project.id);
                 const imageUrl = projectImage || placeholderImages[Math.max(0, originalIndex) % placeholderImages.length];
 
                 return (
@@ -299,7 +321,7 @@ export default function ProjectsPage() {
                     transition={{ duration: 0.3, delay: index * 0.1 }}
                     className="h-full"
                   >
-                    <Link href={`/project/${project.id}`} onClick={() => setCurrentProject(project.id)}>
+                      <Link href={`/project/${project.id}`}>
                       <Card className={`group relative h-full min-h-[280px] flex flex-col cursor-pointer overflow-hidden rounded-xl border ${borderAccent} bg-black/40 shadow-xl transition-all duration-500 hover:shadow-2xl hover:shadow-black/50 hover:border-white/20`}>
                         
                         {/* Background Image / Placeholder */}
@@ -344,7 +366,7 @@ export default function ProjectsPage() {
                                 {(project.stage === 'Evaluation' || project.stage === 'Development') && (
                                   <DropdownMenuItem onClick={(e) => {
                                     e.stopPropagation();
-                                    handleAdvanceStage(project.id, project.stage);
+                                     handleAdvanceStage(apiProject);
                                   }}>
                                     <ArrowRight className="mr-2 h-4 w-4" />
                                     Advance Stage
@@ -355,7 +377,7 @@ export default function ProjectsPage() {
                                 {project.stage !== 'Archived' && (
                                   <DropdownMenuItem onClick={(e) => {
                                     e.stopPropagation();
-                                    openArchiveDialog(project.id, project.title);
+                                     openArchiveDialog(apiProject);
                                   }}>
                                     <Archive className="mr-2 h-4 w-4" />
                                     Archive
@@ -366,8 +388,10 @@ export default function ProjectsPage() {
                                 {project.stage === 'Archived' && (
                                   <DropdownMenuItem onClick={(e) => {
                                     e.stopPropagation();
-                                    unarchiveProject(project.id);
-                                    toast.success("Project restored to active list");
+                                     restore.mutate({ id: apiProject.id, version: apiProject.version }, {
+                                       onSuccess: () => toast.success("Project restored to active list"),
+                                       onError: (error) => toast.error(error.message),
+                                     });
                                   }}>
                                     <Undo2 className="mr-2 h-4 w-4" />
                                     Restore Project
@@ -381,7 +405,7 @@ export default function ProjectsPage() {
                                   className="text-destructive focus:text-destructive"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setProjectToDelete(project.id);
+                                     setProjectToDelete(apiProject);
                                   }}
                                 >
                                   <Trash2 className="mr-2 h-4 w-4" />
@@ -442,6 +466,20 @@ export default function ProjectsPage() {
                 </motion.div>
               )}
             </div>
+             {(activeProjects.hasNextPage || archivedProjects.hasNextPage) && (
+               <div className="mt-6 flex justify-center">
+                 <Button
+                   variant="outline"
+                   disabled={activeProjects.isFetchingNextPage || archivedProjects.isFetchingNextPage}
+                   onClick={() => {
+                     if (activeProjects.hasNextPage) void activeProjects.fetchNextPage();
+                     if (archivedProjects.hasNextPage) void archivedProjects.fetchNextPage();
+                   }}
+                 >
+                   Load more projects
+                 </Button>
+               </div>
+             )}
             
             {filteredProjects.length === 0 && activeTab !== 'Evaluation' && activeTab !== 'All' && (
               <div className="text-center py-20 text-muted-foreground">
@@ -471,7 +509,7 @@ export default function ProjectsPage() {
               setIsArchiveDialogOpen(false);
               setProjectToArchive(null);
             }}
-            projectId={projectToArchive.id}
+             project={projectToArchive}
             projectTitle={projectToArchive.title}
           />
         )}

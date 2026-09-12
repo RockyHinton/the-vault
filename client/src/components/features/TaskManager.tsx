@@ -59,7 +59,7 @@ const CATEGORY_CONFIG: Record<TaskCategory, { color: string, icon: any }> = {
 };
 
 export function TaskManager({ projectId }: TaskManagerProps) {
-  const { getProjectTasks, addTask, toggleTaskStatus, deleteTask, user } = useStore();
+  const { getProjectTasks, addTask, toggleTaskStatus, deleteTask, fixtureActor: user } = useStore();
   const tasks = getProjectTasks(projectId);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDescription, setNewTaskDescription] = useState("");

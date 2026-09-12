@@ -46,7 +46,7 @@ export default function ScriptView({ project }: ScriptViewProps) {
   const { 
     getProjectDocuments, 
     deleteDocument,
-    user 
+    fixtureActor: user
   } = useStore();
 
   // Documents

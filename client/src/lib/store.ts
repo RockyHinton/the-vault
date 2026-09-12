@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import { format } from 'date-fns';
 
 // --- Types ---
@@ -50,6 +49,8 @@ export interface Task {
 
 export interface Project {
   id: string;
+  /** Present only when the project is supplied by the server-core adapter. */
+  version?: number;
   title: string;
   stage: ProjectStage;
   status: ProjectStatus; // Legacy status field, mapped or kept for nuances
@@ -349,6 +350,9 @@ export interface ScriptReview {
   directorScore: number; // 1-10
   castScore: number;     // 1-10
   financingScore: number; // 1-10
+  creativeScore?: number;
+  commercialScore?: number;
+  budgetScore?: number;
   recommendation: 'Pass' | 'Consider' | 'Develop';
   summaryNotes: string;
   timestamp: string;
@@ -855,8 +859,11 @@ const MOCK_CREATIVE_PROFILES: CreativeProfile[] = [
 // --- Store ---
 
 interface AppState {
-  user: User | null;
+  /** Temporary actor for prototype-only feature fixtures; never authentication. */
+  fixtureActor: User;
   projects: Project[];
+  registerTransientProject: (project: Project) => void;
+  resetPrototypeFixtures: () => void;
   categories: Category[];
   subcategories: Subcategory[];
   documents: Document[];
@@ -873,14 +880,12 @@ interface AppState {
   users: User[];
   auditLogs: AuditLog[];
   
-  login: (email: string) => void;
-  logout: () => void;
   addProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'stage'>) => void;
   setCurrentProject: (id: string | null) => void;
   addDocument: (doc: Omit<Document, 'id' | 'uploadedBy' | 'uploadedAt'>) => void;
   deleteDocument: (documentId: string) => void;
   getProjectDocuments: (projectId: string, categoryId?: string, subcategoryId?: string) => Document[];
-  getProjectCategories: (projectId: string) => Category[];
+  getProjectCategories: (projectId: string, apiStage?: ProjectStage) => Category[];
   getCategorySubcategories: (categoryId: string) => Subcategory[];
   
   setProjectStage: (projectId: string, stage: ProjectStage) => void;
@@ -948,10 +953,8 @@ interface AppState {
   updateTerritoryDealInfo: (territoryId: string, dealInfo: Partial<TerritoryDealInfo>) => void;
 }
 
-export const useStore = create<AppState>()(
-  persist(
-    (set, get) => ({
-  user: null, 
+export const useStore = create<AppState>()((set, get) => ({
+   fixtureActor: MOCK_USER,
   projects: MOCK_PROJECTS,
   categories: MOCK_CATEGORIES,
   subcategories: MOCK_SUBCATEGORIES,
@@ -967,11 +970,25 @@ export const useStore = create<AppState>()(
   users: MOCK_USERS,
   auditLogs: MOCK_AUDIT_LOGS,
 
-  login: (email) => set({ 
-    user: { ...MOCK_USER, email } 
-  }),
-  
-  logout: () => set({ user: null }),
+  registerTransientProject: (project) => set((state) =>
+    state.projects.some((candidate) => candidate.id === project.id)
+      ? state
+      : { projects: [...state.projects, project] },
+  ),
+  resetPrototypeFixtures: () =>
+    set({
+      fixtureActor: MOCK_USER,
+      projects: MOCK_PROJECTS,
+      documents: MOCK_DOCUMENTS,
+      tasks: MOCK_TASKS,
+      annotations: MOCK_ANNOTATIONS,
+      reviews: MOCK_REVIEWS,
+      projectNotes: MOCK_PROJECT_NOTES,
+      producerProfiles: MOCK_PRODUCER_PROFILES,
+      creativeProfiles: MOCK_CREATIVE_PROFILES,
+      territories: [],
+      currentProjectId: null,
+    }),
 
   addProject: (data) => set((state) => ({
     projects: [
@@ -1008,8 +1025,8 @@ export const useStore = create<AppState>()(
       {
         ...note,
         id: `pn${Date.now()}`,
-        authorId: state.user?.id || 'unknown',
-        authorName: state.user?.name || 'Unknown User',
+        authorId: state.fixtureActor.id,
+        authorName: state.fixtureActor.name,
         timestamp: new Date().toISOString(),
       },
       ...state.projectNotes
@@ -1073,7 +1090,7 @@ export const useStore = create<AppState>()(
       {
         ...data,
         id: `d${Date.now()}`,
-        uploadedBy: state.user?.name || 'Unknown',
+        uploadedBy: state.fixtureActor.name,
         uploadedAt: new Date().toISOString(),
       },
       ...state.documents,
@@ -1099,13 +1116,12 @@ export const useStore = create<AppState>()(
     );
   },
 
-  getProjectCategories: (projectId) => {
+  getProjectCategories: (projectId, apiStage) => {
     const { categories, projects } = get();
     const project = projects.find(p => p.id === projectId);
     
-    if (!project) return categories.map(c => ({...c, projectId}));
-
-    const stage = project.stage;
+    const stage = apiStage ?? project?.stage;
+    if (!stage) return [];
     
     const visibleSlugs = new Set<string>();
     visibleSlugs.add('script');
@@ -1183,7 +1199,7 @@ export const useStore = create<AppState>()(
           ...details,
           archivedAt: new Date().toISOString(),
           archivedFromStage: p.stage,
-          archivedBy: state.user?.name || 'Unknown'
+          archivedBy: state.fixtureActor.name
         }
       } : p
     )
@@ -1246,8 +1262,8 @@ export const useStore = create<AppState>()(
       ...task, 
       id: `t${Date.now()}`,
       createdAt: new Date().toISOString(),
-      authorId: state.user?.id || 'unknown',
-      authorName: state.user?.name || 'Unknown User'
+      authorId: state.fixtureActor.id,
+      authorName: state.fixtureActor.name
     }]
   })),
 
@@ -1308,8 +1324,8 @@ export const useStore = create<AppState>()(
     annotations: [...state.annotations, {
       ...annotation,
       id: `a${Date.now()}`,
-      authorId: state.user?.id || 'unknown',
-      authorName: state.user?.name || 'Unknown User',
+      authorId: state.fixtureActor.id,
+      authorName: state.fixtureActor.name,
       timestamp: new Date().toISOString(),
     }]
   })),
@@ -1332,7 +1348,7 @@ export const useStore = create<AppState>()(
 
   addReview: (review) => set((state) => {
     // Check if user already submitted a review for this project
-    const currentUserId = state.user?.id;
+    const currentUserId = state.fixtureActor.id;
     const existingReviewIndex = state.reviews.findIndex(
       r => r.projectId === review.projectId && r.authorId === currentUserId
     );
@@ -1344,8 +1360,8 @@ export const useStore = create<AppState>()(
         ...review,
         id: updatedReviews[existingReviewIndex].id, // Keep same ID
         timestamp: new Date().toISOString(),
-        authorId: state.user?.id || 'unknown',
-        authorName: state.user?.name || 'Unknown User'
+        authorId: state.fixtureActor.id,
+        authorName: state.fixtureActor.name
       };
       return { reviews: updatedReviews };
     } else {
@@ -1356,8 +1372,8 @@ export const useStore = create<AppState>()(
             ...review, 
             id: `r${Date.now()}`,
             timestamp: new Date().toISOString(),
-            authorId: state.user?.id || 'unknown',
-            authorName: state.user?.name || 'Unknown User'
+            authorId: state.fixtureActor.id,
+            authorName: state.fixtureActor.name
           },
           ...state.reviews
         ]
@@ -1407,7 +1423,7 @@ export const useStore = create<AppState>()(
   })),
 
   addTerritoryNote: (territoryId, text) => set((state) => {
-    const user = state.user;
+    const user = state.fixtureActor;
     return {
       territories: state.territories.map(t => {
         if (t.id !== territoryId) return t;
@@ -1418,8 +1434,8 @@ export const useStore = create<AppState>()(
             {
               id: `tn${Date.now()}`,
               territoryId,
-              authorId: user?.id || 'unknown',
-              authorName: user?.name || 'Unknown User',
+              authorId: user.id,
+              authorName: user.name,
               text,
               createdAt: new Date().toISOString(),
             },
@@ -1449,7 +1465,7 @@ export const useStore = create<AppState>()(
   })),
 
   addTerritoryDocument: (territoryId, doc) => set((state) => {
-    const user = state.user;
+    const user = state.fixtureActor;
     return {
       territories: state.territories.map(t => {
         if (t.id !== territoryId) return t;
@@ -1462,7 +1478,7 @@ export const useStore = create<AppState>()(
               ...doc,
               id: `td${Date.now()}`,
               territoryId,
-              uploadedBy: user?.name || 'Unknown User',
+              uploadedBy: user.name,
               uploadedAt: new Date().toISOString(),
             }
           ]
@@ -1487,10 +1503,4 @@ export const useStore = create<AppState>()(
     )
   })),
 
-}),
-{
-  name: 'vault-storage-v11',
-  storage: createJSONStorage(() => localStorage),
-}
-)
-);
+}));

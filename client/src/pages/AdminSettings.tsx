@@ -24,7 +24,7 @@ import {
 import { format } from "date-fns";
 
 export default function AdminSettings() {
-  const { user, users, auditLogs } = useStore();
+  const { users, auditLogs } = useStore();
 
   return (
     <Shell>

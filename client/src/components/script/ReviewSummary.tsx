@@ -23,9 +23,9 @@ export default function ReviewSummary({ scriptId }: ReviewSummaryProps) {
 
   // Calculate Averages
   const total = reviews.length;
-  const avgCreative = reviews.reduce((acc, r) => acc + r.creativeScore, 0) / total;
-  const avgCommercial = reviews.reduce((acc, r) => acc + r.commercialScore, 0) / total;
-  const avgBudget = reviews.reduce((acc, r) => acc + r.budgetScore, 0) / total;
+  const avgCreative = reviews.reduce((acc, r) => acc + (r.creativeScore ?? r.scriptScore), 0) / total;
+  const avgCommercial = reviews.reduce((acc, r) => acc + (r.commercialScore ?? r.financingScore), 0) / total;
+  const avgBudget = reviews.reduce((acc, r) => acc + (r.budgetScore ?? r.financingScore), 0) / total;
 
   const recommendations = reviews.reduce((acc, r) => {
     acc[r.recommendation] = (acc[r.recommendation] || 0) + 1;

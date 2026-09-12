@@ -75,7 +75,7 @@ export default function NotesPanel({
   onCreateNote,
   onAddNoteAtLocation
 }: NotesPanelProps) {
-  const { getScriptAnnotations, deleteAnnotation, user } = useStore();
+  const { getScriptAnnotations, deleteAnnotation, fixtureActor: user } = useStore();
   const annotations = getScriptAnnotations(scriptId);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   

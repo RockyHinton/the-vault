@@ -1,132 +1,57 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
-import { useStore } from "@/lib/store";
+import { useAuth, useClerk } from "@clerk/react";
+import { useEffect } from "react";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { useCurrentUser } from "@/features/auth/use-current-user";
 import logoImage from "@/assets/3six9-logo.png";
 import bgImage from "@/assets/cinematic-bg-new.png";
 
-export default function AuthPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [, setLocation] = useLocation();
-  const login = useStore((state) => state.login);
+interface AuthPageProps {
+  clerkForm?: React.ReactNode;
+  accessError?: boolean;
+}
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      login(email);
-      setIsLoading(false);
-      setLocation("/projects");
-    }, 1000);
-  };
+export default function AuthPage({ clerkForm, accessError = false }: AuthPageProps) {
+  const { isSignedIn } = useAuth();
+  const { signOut } = useClerk();
+  const currentUser = useCurrentUser();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (isSignedIn && currentUser.data && !accessError) setLocation("/projects", { replace: true });
+  }, [accessError, currentUser.data, isSignedIn, setLocation]);
+
+  const form = accessError ? (
+    <div className="rounded-2xl border border-amber-300/20 bg-black/50 p-8 text-white shadow-2xl backdrop-blur-md">
+      <h2 className="font-display text-2xl">Access not yet granted</h2>
+      <p className="mt-3 text-sm leading-6 text-white/70">
+        Your identity was verified, but this account is not authorized for this private Vault instance.
+        Contact a studio administrator to be granted local access.
+      </p>
+      <Button className="mt-6" variant="outline" onClick={() => signOut({ redirectUrl: "/" })}>Sign out</Button>
+    </div>
+  ) : clerkForm ?? (
+    <div className="rounded-2xl border border-white/10 bg-black/40 p-8 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-md">
+      <p className="text-sm leading-6 text-white/70">Authorized studio personnel can sign in to access this private production workspace.</p>
+      <Button asChild className="mt-6 w-full h-12"><Link href="/sign-in">Enter The Vault</Link></Button>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen flex bg-background relative overflow-hidden font-sans">
-      {/* Cinematic Background - Full screen, no heavy dark overlay */}
-      <div 
-        className="absolute inset-0 z-0 bg-cover bg-no-repeat"
-        style={{ 
-          backgroundImage: `url(${bgImage})`,
-          backgroundPosition: 'center right'
-        }}
-      >
-        {/* Very subtle left-side gradient to ensure logo and title readability without killing the image */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/30 to-transparent w-full md:w-[60%]" />
+    <div className="relative flex min-h-screen overflow-hidden bg-background font-sans">
+      <div className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url(${bgImage})` }}>
+        <div className="absolute inset-0 w-full bg-gradient-to-r from-black/80 via-black/30 to-transparent md:w-[60%]" />
       </div>
-
-      {/* Top Left Logo (Fixed position relative to viewport) */}
-      <div className="absolute top-7 left-8 z-20">
-        <img src={logoImage} alt="3six9 Studios" className="w-[100px] md:w-[140px] h-auto object-contain opacity-90" />
-      </div>
-
-      {/* Main Content Layout */}
-      <div className="w-full flex justify-start items-center relative z-10 pl-6 md:pl-12 lg:pl-[12%]">
-        
-        {/* Left Side: Login Zone */}
-        <div className="w-full max-w-[440px] flex flex-col animate-in fade-in slide-in-from-left-8 duration-1000 ease-out mt-32 md:mt-16">
-          
-          {/* Title Section (Above form) */}
+      <div className="absolute left-8 top-7 z-20"><img src={logoImage} alt="3six9 Studios" className="h-auto w-[100px] object-contain opacity-90 md:w-[140px]" /></div>
+      <main className="relative z-10 flex w-full items-center justify-start pl-6 md:pl-12 lg:pl-[12%]">
+        <div className="mt-32 flex w-full max-w-[440px] flex-col animate-in fade-in slide-in-from-left-8 duration-1000 md:mt-16">
           <div className="mb-8 pl-2">
-            <h1 className="text-4xl md:text-5xl font-display tracking-[0.05em] font-light text-white drop-shadow-xl">
-              The Vault
-            </h1>
-            <p className="text-sm md:text-base text-white/70 font-light tracking-wide mt-2">
-              Production management system
-            </p>
+            <h1 className="font-display text-4xl font-light tracking-[0.05em] text-white drop-shadow-xl md:text-5xl">The Vault</h1>
+            <p className="mt-2 text-sm font-light tracking-wide text-white/70 md:text-base">Production management system</p>
           </div>
-
-          {/* Login Form Card */}
-          <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.4)] relative overflow-hidden">
-            {/* Subtle top edge highlight */}
-            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-            
-            <div className="p-8 sm:p-10">
-              <form onSubmit={handleLogin} className="space-y-6">
-                <div className="space-y-2.5">
-                  <Label htmlFor="email" className="text-xs font-medium text-white/60 uppercase tracking-wider">
-                    Studio Email
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="producer@3six9studios.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-primary/50 focus:ring-primary/20 transition-all rounded-lg backdrop-blur-sm"
-                  />
-                </div>
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password" className="text-xs font-medium text-white/60 uppercase tracking-wider">
-                      Password
-                    </Label>
-                    <a href="#" className="text-xs text-primary/80 hover:text-primary transition-colors font-medium">
-                      Forgot?
-                    </a>
-                  </div>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-primary/50 focus:ring-primary/20 transition-all rounded-lg backdrop-blur-sm"
-                  />
-                </div>
-                <Button 
-                  type="submit" 
-                  className="w-full h-12 text-base font-medium mt-8 bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_rgba(var(--primary),0.3)] transition-all rounded-lg" 
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Authenticating...
-                    </>
-                  ) : (
-                    "Enter The Vault"
-                  )}
-                </Button>
-              </form>
-            </div>
-            
-            {/* Footer */}
-            <div className="px-8 py-5 bg-black/30 border-t border-white/5 flex justify-center">
-              <p className="text-xs text-white/50">
-                Authorized personnel only. <span className="text-white/80 hover:text-white transition-colors cursor-pointer">Support</span>
-              </p>
-            </div>
-          </div>
+          {form}
         </div>
-        
-      </div>
+      </main>
     </div>
   );
 }

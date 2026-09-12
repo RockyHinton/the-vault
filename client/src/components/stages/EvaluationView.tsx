@@ -22,13 +22,16 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import EvaluationScoringView from "./EvaluationScoringView";
 import { Link } from "wouter";
+import { useTransitionProjectStage } from "@/features/projects/use-projects";
+import { toast } from "sonner";
 
 interface EvaluationViewProps {
   project: Project;
 }
 
 export default function EvaluationView({ project }: EvaluationViewProps) {
-  const { setProjectStage, getProjectReviews } = useStore();
+  const { getProjectReviews } = useStore();
+  const transition = useTransitionProjectStage();
   const [isScoringMode, setIsScoringMode] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
@@ -312,9 +315,15 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               className="bg-primary hover:bg-primary/90"
-              onClick={() => {
-                setProjectStage(project.id, 'Development');
-                setShowApproveDialog(false);
+              onClick={async () => {
+                if (!project.version) return;
+                try {
+                  await transition.mutateAsync({ id: project.id, input: { toStage: "development", version: project.version } });
+                  setShowApproveDialog(false);
+                  toast.success("Project moved to Development");
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "Unable to change project stage");
+                }
               }}
             >
               Approve Project
@@ -335,10 +344,7 @@ export default function EvaluationView({ project }: EvaluationViewProps) {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               className="bg-destructive hover:bg-destructive/90"
-              onClick={() => {
-                setProjectStage(project.id, 'Archived');
-                setShowRejectDialog(false);
-              }}
+              onClick={() => toast.error("Use the project archive action to record the required archive reason.")}
             >
               Archive
             </AlertDialogAction>

@@ -27,13 +27,16 @@ import {
 } from "lucide-react";
 import { TaskManager } from "@/components/features/TaskManager";
 import { cn } from "@/lib/utils";
+import { useTransitionProjectStage } from "@/features/projects/use-projects";
+import { toast } from "sonner";
 
 interface DevelopmentViewProps {
   project: Project;
 }
 
 export default function DevelopmentView({ project }: DevelopmentViewProps) {
-  const { setProjectStage, creativeProfiles } = useStore();
+  const { creativeProfiles } = useStore();
+  const transition = useTransitionProjectStage();
   const [showPromoteDialog, setShowPromoteDialog] = useState(false);
   const [, setLocation] = useLocation();
 
@@ -393,9 +396,15 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               className="bg-green-600 hover:bg-green-700"
-              onClick={() => {
-                setProjectStage(project.id, 'Production');
-                setShowPromoteDialog(false);
+              onClick={async () => {
+                if (!project.version) return;
+                try {
+                  await transition.mutateAsync({ id: project.id, input: { toStage: "production", version: project.version } });
+                  setShowPromoteDialog(false);
+                  toast.success("Project moved to Production");
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "Unable to change project stage");
+                }
               }}
             >
               Confirm Greenlight

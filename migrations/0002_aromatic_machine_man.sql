@@ -1,0 +1,3 @@
+-- Drizzle snapshot synchronization migration.
+-- The checks represented by the companion snapshot were already applied in
+-- 0001_project_invariants.sql before the schema declarations were added.

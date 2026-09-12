@@ -9,6 +9,17 @@ import { nanoid } from "nanoid";
 const viteLogger = createLogger();
 
 export async function setupVite(server: Server, app: Express) {
+  const testIdentity =
+    process.env.NODE_ENV === "test"
+      ? process.env.VAULT_TEST_IDENTITY
+      : undefined;
+  if (testIdentity) {
+    app.get("/__vault-test-identity.js", (_req, res) => {
+      res
+        .type("application/javascript")
+        .send(`window.__VAULT_TEST_IDENTITY__ = ${testIdentity};`);
+    });
+  }
   const serverOptions = {
     middlewareMode: true,
     hmr: { server, path: "/vite-hmr" },
@@ -18,6 +29,7 @@ export async function setupVite(server: Server, app: Express) {
   const vite = await createViteServer({
     ...viteConfig,
     configFile: false,
+    mode: process.env.NODE_ENV === "test" ? "test" : undefined,
     customLogger: {
       ...viteLogger,
       error: (msg, options) => {
@@ -44,6 +56,11 @@ export async function setupVite(server: Server, app: Express) {
 
       // always reload the index.html file from disk incase it changes
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
+      if (testIdentity)
+        template = template.replace(
+          "</head>",
+          '<script src="/__vault-test-identity.js"></script></head>',
+        );
       template = template.replace(
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`,

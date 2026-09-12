@@ -42,7 +42,7 @@ interface EvaluationScoringViewProps {
 }
 
 export default function EvaluationScoringView({ project, onBack }: EvaluationScoringViewProps) {
-  const { addReview, getProjectReviews, deleteReview, user } = useStore();
+  const { addReview, getProjectReviews, deleteReview, fixtureActor: user } = useStore();
   const reviews = getProjectReviews(project.id);
 
   // Form State

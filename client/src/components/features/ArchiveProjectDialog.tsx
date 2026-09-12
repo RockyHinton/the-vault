@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useStore } from "@/lib/store";
+import type { Project } from "@shared/contracts";
+import { useArchiveProject } from "@/features/projects/use-projects";
 import {
   Dialog,
   DialogContent,
@@ -25,15 +26,15 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 interface ArchiveProjectDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  projectId: string;
+  project: Project;
   projectTitle: string;
 }
 
 type ArchiveReason = 'Creative pass' | 'Commercial viability' | 'Financing not secured' | 'Rights / legal issues' | 'Packaging fell through' | 'Paused (strategic / timing)' | 'Produced / completed' | 'Withdrawn';
 type RevisitStatus = 'Yes' | 'Maybe' | 'No';
 
-export function ArchiveProjectDialog({ isOpen, onClose, projectId, projectTitle }: ArchiveProjectDialogProps) {
-  const { archiveProject } = useStore();
+export function ArchiveProjectDialog({ isOpen, onClose, project, projectTitle }: ArchiveProjectDialogProps) {
+  const archiveProject = useArchiveProject();
   
   const [reason, setReason] = useState<ArchiveReason | ''>('');
   const [revisit, setRevisit] = useState<RevisitStatus | ''>('');
@@ -41,7 +42,7 @@ export function ArchiveProjectDialog({ isOpen, onClose, projectId, projectTitle 
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<{reason?: boolean; revisit?: boolean}>({});
 
-  const handleArchive = () => {
+  const handleArchive = async () => {
     const newErrors = {
       reason: !reason,
       revisit: !revisit
@@ -52,14 +53,21 @@ export function ArchiveProjectDialog({ isOpen, onClose, projectId, projectTitle 
       return;
     }
     
-    archiveProject(projectId, {
-      reason: reason as ArchiveReason,
-      revisit: revisit as RevisitStatus,
-      starred,
-      notes
-    });
-    
-    onClose();
+    try {
+      await archiveProject.mutateAsync({
+        id: project.id,
+        input: {
+          reason: reason === "Creative pass" ? "creative_pass" : reason === "Commercial viability" ? "commercial_viability" : reason === "Financing not secured" ? "financing_not_secured" : reason === "Rights / legal issues" ? "rights_legal_issues" : reason === "Packaging fell through" ? "packaging_fell_through" : reason === "Paused (strategic / timing)" ? "paused_strategic_timing" : reason === "Produced / completed" ? "produced_completed" : "withdrawn",
+          revisit: revisit.toLowerCase() as "yes" | "maybe" | "no",
+          starred,
+          notes: notes || undefined,
+          version: project.version,
+        },
+      });
+      onClose();
+    } catch {
+      setErrors({ reason: true });
+    }
   };
 
   return (
@@ -152,7 +160,7 @@ export function ArchiveProjectDialog({ isOpen, onClose, projectId, projectTitle 
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleArchive}>Archive Project</Button>
+          <Button onClick={handleArchive} disabled={archiveProject.isPending}>Archive Project</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
