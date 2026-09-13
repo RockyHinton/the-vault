@@ -19,6 +19,7 @@ import { createNoteService } from "./modules/notes/note-service";
 import { createLegalRecordService } from "./modules/legal/legal-record-service";
 import { createPersonService } from "./modules/people/person-service";
 import { createRightService } from "./modules/rights/right-service";
+import { createScriptService } from "./modules/scripts/script-service";
 import { createTaskService } from "./modules/tasks/task-service";
 import { createFileService } from "./modules/files/file-service";
 import { createProjectService } from "./modules/projects/project-service";
@@ -144,6 +145,7 @@ export async function createVaultServer(
       personService: createPersonService({ db }),
       rightService: createRightService({ db }),
       legalRecordService: createLegalRecordService({ db }),
+      scriptService: createScriptService({ db }),
       taskService: createTaskService({ db }),
     }),
   );

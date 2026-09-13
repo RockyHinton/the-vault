@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  annotationTagSchema,
+  annotationTypeSchema,
   archiveReasonSchema,
   contractStatusSchema,
   creativeRoleTypeSchema,
@@ -20,6 +22,8 @@ import {
   taskStatusSchema,
 } from "@shared/contracts";
 import {
+  annotationTag,
+  annotationType,
   applicationRole,
   archiveReason,
   contractStatus,
@@ -85,5 +89,10 @@ describe("contract and schema enum parity", () => {
     expect(rightsTypeSchema.options).toEqual(rightsType.enumValues);
     expect(rightsStatusSchema.options).toEqual(rightsStatus.enumValues);
     expect(legalCategorySchema.options).toEqual(legalCategory.enumValues);
+  });
+
+  it("script annotation enums match", () => {
+    expect(annotationTypeSchema.options).toEqual(annotationType.enumValues);
+    expect(annotationTagSchema.options).toEqual(annotationTag.enumValues);
   });
 });

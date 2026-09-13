@@ -64,6 +64,13 @@
       "when": 1789299118652,
       "tag": "0008_rights_legal_records",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789307065683,
+      "tag": "0009_scripts_annotations",
+      "breakpoints": true
     }
   ]
 }

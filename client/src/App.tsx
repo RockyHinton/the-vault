@@ -8,7 +8,7 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/Auth";
 import ProjectsPage from "@/pages/Projects";
 import ProjectWorkspace from "@/pages/ProjectWorkspace";
-import ScriptAnalysisPage from "@/pages/ScriptAnalysis";
+import ScriptReaderPage from "@/pages/ScriptReader";
 import AdminSettings from "@/pages/AdminSettings";
 import { useCurrentUser, useIsStudioAdmin } from "@/features/auth/use-current-user";
 
@@ -49,7 +49,7 @@ function Router() {
           <Route path="/project/:id">{() => <ProtectedRoute><ProjectWorkspace /></ProtectedRoute>}</Route>
           <Route path="/project/:id/:category">{() => <ProtectedRoute><ProjectWorkspace /></ProtectedRoute>}</Route>
           <Route path="/project/:id/:category/:subcategory">{() => <ProtectedRoute><ProjectWorkspace /></ProtectedRoute>}</Route>
-          <Route path="/script/:id">{() => <ProtectedRoute><ScriptAnalysisPage /></ProtectedRoute>}</Route>
+          <Route path="/script-reader/:projectId/:scriptId/:documentId">{() => <ProtectedRoute><ScriptReaderPage /></ProtectedRoute>}</Route>
           <Route component={NotFound} />
         </Switch>
       </TooltipProvider>

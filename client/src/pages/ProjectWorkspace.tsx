@@ -210,8 +210,8 @@ function ProjectSidebar({
  * Bridge for screens that have not been migrated yet: they still read the
  * prototype workspace shape and their fixture state from the store. Each
  * domain migration removes its screen from here. Documents, Evaluation,
- * Project Notes, Producers, Creatives, Underlying Rights and Documentation
- * are served from server state in WorkspaceShell.
+ * Project Notes, Producers, Creatives, Underlying Rights, Documentation and
+ * Script are served from server state in WorkspaceShell.
  */
 function PrototypeContent({
   categorySlug,
@@ -241,7 +241,6 @@ function PrototypeContent({
   if (currentCategory?.slug === "schedules") {
     return <SchedulesView project={project} currentSubcategory={currentSubcategory?.name} subcategoryId={currentSubcategory?.slug} folder={folder} />;
   }
-  if (currentCategory?.slug === "script") return <ScriptView project={project} />;
   if (currentCategory?.slug === "distribution") return <DistributionView project={project} />;
   if (currentCategory) {
     return (
@@ -348,6 +347,8 @@ function WorkspaceShell({ categorySlug, subcategorySlug }: { categorySlug?: stri
             <ProducersView />
           ) : categorySlug === "creatives" ? (
             <CreativesView />
+          ) : categorySlug === "script" ? (
+            <ScriptView />
           ) : categorySlug === "underlying-rights" ? (
             <UnderlyingRightsPage />
           ) : categorySlug === "legal" && !subcategorySlug ? (

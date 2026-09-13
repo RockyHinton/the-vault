@@ -163,6 +163,75 @@ export async function createDocumentInTransaction(
 }
 
 /**
+ * Adds version N+1 to a lineage inside the caller's transaction: retires the
+ * current row (compare-and-set on its version), claims the new file, inserts
+ * the new row, appends `document.version_added`. The HTTP command and owning
+ * domains (Scripts) both go through here. The old version and bytes are
+ * untouched.
+ */
+export async function addDocumentVersionInTransaction(
+  tx: Transaction,
+  input: {
+    projectId: string;
+    documentId: string;
+    version: AddDocumentVersionInput;
+    actor: DocumentActor;
+  },
+): Promise<Document> {
+  const { projectId, documentId, version, actor } = input;
+  const id = randomUUID();
+  const current = requireDocument(
+    await documentRepository.findById(tx, { projectId, documentId }),
+  );
+  if (!current.document.isCurrent) {
+    throw new ApiError(
+      409,
+      "NOT_CURRENT_VERSION",
+      "New versions are added to the current version of a document.",
+    );
+  }
+  requireFresh(
+    await documentRepository.retireCurrent(tx, {
+      id: current.document.id,
+      expectedVersion: version.version,
+    }),
+  );
+  const file = await claimStagedFile(tx, version.fileObjectId, actor);
+  const next = await documentRepository.insert(tx, {
+    id,
+    projectId,
+    lineageId: current.document.lineageId,
+    versionNumber: current.document.versionNumber + 1,
+    fileObjectId: file.id,
+    folder: current.document.folder,
+    title: current.document.title,
+    status: version.status,
+    notes: version.notes ?? current.document.notes,
+    createdByUserId: actor.userId,
+  });
+  await appendAuditEvent(tx, {
+    actorUserId: actor.userId,
+    action: "document.version_added",
+    entityType: "document",
+    entityId: next.id,
+    requestId: actor.requestId,
+    metadata: {
+      projectId,
+      lineageId: next.lineageId,
+      versionNumber: next.versionNumber,
+      previousDocumentId: current.document.id,
+      fileObjectId: file.id,
+      sha256: file.sha256,
+    },
+  });
+  return toDocumentContract(
+    requireDocument(
+      await documentRepository.findById(tx, { projectId, documentId: id }),
+    ),
+  );
+}
+
+/**
  * Documents use-cases. Each command is one transaction over PostgreSQL only;
  * the bytes were already stored by the Files domain before the command runs,
  * so the command either records the document or changes nothing.
@@ -202,68 +271,20 @@ export function createDocumentService({ db }: { db: Database }) {
       );
     },
 
-    /**
-     * New version: retire the current row (compare-and-set on its version),
-     * claim the new file, insert version N+1 in the same lineage. The old
-     * version and its bytes are untouched.
-     */
     async addVersion(
       projectId: string,
       documentId: string,
       input: AddDocumentVersionInput,
       actor: DocumentActor,
     ): Promise<Document> {
-      const id = randomUUID();
-      const record = await withTransaction(db, async (tx) => {
-        const current = requireDocument(
-          await documentRepository.findById(tx, { projectId, documentId }),
-        );
-        if (!current.document.isCurrent) {
-          throw new ApiError(
-            409,
-            "NOT_CURRENT_VERSION",
-            "New versions are added to the current version of a document.",
-          );
-        }
-        requireFresh(
-          await documentRepository.retireCurrent(tx, {
-            id: current.document.id,
-            expectedVersion: input.version,
-          }),
-        );
-        const file = await claimStagedFile(tx, input.fileObjectId, actor);
-        const next = await documentRepository.insert(tx, {
-          id,
+      return withTransaction(db, (tx) =>
+        addDocumentVersionInTransaction(tx, {
           projectId,
-          lineageId: current.document.lineageId,
-          versionNumber: current.document.versionNumber + 1,
-          fileObjectId: file.id,
-          folder: current.document.folder,
-          title: current.document.title,
-          status: input.status,
-          notes: input.notes ?? current.document.notes,
-          createdByUserId: actor.userId,
-        });
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "document.version_added",
-          entityType: "document",
-          entityId: next.id,
-          requestId: actor.requestId,
-          metadata: {
-            projectId,
-            lineageId: next.lineageId,
-            versionNumber: next.versionNumber,
-            previousDocumentId: current.document.id,
-            fileObjectId: file.id,
-            sha256: file.sha256,
-          },
-        });
-        return requireDocument(
-          await documentRepository.findById(tx, { projectId, documentId: id }),
-        );
-      });
-      return toDocumentContract(record);
+          documentId,
+          version: input,
+          actor,
+        }),
+      );
     },
 
     async update(

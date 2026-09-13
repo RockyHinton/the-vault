@@ -215,25 +215,6 @@ export interface Document {
   stageContext?: ProjectStage; // Which stage does this document belong to?
 }
 
-// --- Script Analysis Types ---
-
-export type NoteType = 'Creative' | 'Commercial' | 'Question' | 'Concern';
-export type NoteTag = 'Dialogue' | 'Structure' | 'Character' | 'Pacing' | 'Budget Impact' | 'Other';
-
-export interface ScriptAnnotation {
-  id: string;
-  scriptVersionId: string; // Links to a Document (PDF)
-  pageNumber: number;
-  x: number; // Percentage coordinate
-  y: number; // Percentage coordinate
-  authorId: string;
-  authorName: string;
-  text: string;
-  type: NoteType;
-  tag?: NoteTag;
-  timestamp: string;
-}
-
 // --- Distribution / Territory Types ---
 
 export type TerritoryStatus = 'Available' | 'In Discussion' | 'Licensed' | 'Delivered' | 'Closed';
@@ -462,35 +443,6 @@ const MOCK_DOCUMENTS: Document[] = [
   },
 ];
 
-const MOCK_ANNOTATIONS: ScriptAnnotation[] = [
-  {
-    id: 'a1',
-    scriptVersionId: 'd1',
-    pageNumber: 1,
-    x: 10,
-    y: 15,
-    authorId: 'u1',
-    authorName: 'Sarah Producer',
-    text: 'Great opening hook, really sets the tone immediately.',
-    type: 'Creative',
-    tag: 'Pacing',
-    timestamp: '2023-12-11T10:00:00Z',
-  },
-  {
-    id: 'a2',
-    scriptVersionId: 'd1',
-    pageNumber: 1,
-    x: 50,
-    y: 30,
-    authorId: 'u2',
-    authorName: 'Mike Finance',
-    text: 'This location (New Tokyo aerial) will be expensive. Can we establish this differently?',
-    type: 'Commercial',
-    tag: 'Budget Impact',
-    timestamp: '2023-12-11T11:30:00Z',
-  }
-];
-
 // --- Store ---
 
 interface AppState {
@@ -502,7 +454,6 @@ interface AppState {
   categories: Category[];
   subcategories: Subcategory[];
   documents: Document[];
-  annotations: ScriptAnnotation[];
   currentProjectId: string | null;
   territories: Territory[];
 
@@ -529,9 +480,6 @@ interface AppState {
 
   // Evaluation Actions
   updateFinancing: (projectId: string, data: Partial<Project['financing']>) => void;
-  getScriptAnnotations: (scriptId: string) => ScriptAnnotation[];
-  addAnnotation: (annotation: Omit<ScriptAnnotation, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
-  deleteAnnotation: (annotationId: string) => void;
   deleteProject: (projectId: string) => void;
 
 
@@ -558,7 +506,6 @@ export const useStore = create<AppState>()((set, get) => ({
   categories: MOCK_CATEGORIES,
   subcategories: MOCK_SUBCATEGORIES,
   documents: MOCK_DOCUMENTS,
-  annotations: MOCK_ANNOTATIONS,
   currentProjectId: null,
   territories: [],
 
@@ -572,7 +519,6 @@ export const useStore = create<AppState>()((set, get) => ({
       fixtureActor: MOCK_USER,
       projects: MOCK_PROJECTS,
       documents: MOCK_DOCUMENTS,
-      annotations: MOCK_ANNOTATIONS,
       territories: [],
       currentProjectId: null,
     }),
@@ -776,25 +722,6 @@ export const useStore = create<AppState>()((set, get) => ({
         }
       } : p
     )
-  })),
-
-  getScriptAnnotations: (scriptId) => {
-    const { annotations } = get();
-    return annotations.filter(a => a.scriptVersionId === scriptId);
-  },
-
-  addAnnotation: (annotation) => set((state) => ({
-    annotations: [...state.annotations, {
-      ...annotation,
-      id: `a${Date.now()}`,
-      authorId: state.fixtureActor.id,
-      authorName: state.fixtureActor.name,
-      timestamp: new Date().toISOString(),
-    }]
-  })),
-
-  deleteAnnotation: (annotationId) => set((state) => ({
-    annotations: state.annotations.filter(a => a.id !== annotationId)
   })),
 
   // Territory / Distribution Actions

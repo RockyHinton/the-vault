@@ -7,6 +7,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   primaryKey,
@@ -135,6 +136,20 @@ export const legalCategory = pgEnum("legal_category", [
   "funding_tax_credit",
   "sales_agency",
   "cama",
+]);
+export const annotationType = pgEnum("annotation_type", [
+  "creative",
+  "commercial",
+  "question",
+  "concern",
+]);
+export const annotationTag = pgEnum("annotation_tag", [
+  "dialogue",
+  "structure",
+  "character",
+  "pacing",
+  "budget_impact",
+  "other",
 ]);
 export const contractStatus = pgEnum("contract_status", [
   "not_sent",
@@ -790,6 +805,86 @@ export const legalRecordDocuments = pgTable(
   ],
 );
 
+/**
+ * A screenplay: a project concept over exactly one Document lineage. Every
+ * screenplay version is a `documents` row in that lineage (the Documents
+ * domain owns numbering, bytes, checksum and uploader); the script row is
+ * the stable identity annotations and future analysis hang off.
+ */
+export const scripts = pgTable(
+  "scripts",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "restrict" }),
+    documentLineageId: uuid("document_lineage_id")
+      .notNull()
+      .references(() => documents.id, { onDelete: "restrict" }),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("scripts_document_lineage_unique").on(table.documentLineageId),
+    index("scripts_project_created_idx").on(table.projectId, table.createdAt),
+  ],
+);
+
+/**
+ * A note written against one exact screenplay version (`document_id`), never
+ * against the lineage: a note on v1 must never appear on v2. Position is the
+ * page-local percentage the reader captures.
+ */
+export const scriptAnnotations = pgTable(
+  "script_annotations",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    scriptId: uuid("script_id")
+      .notNull()
+      .references(() => scripts.id, { onDelete: "restrict" }),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => documents.id, { onDelete: "restrict" }),
+    authorUserId: uuid("author_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    pageNumber: integer("page_number").notNull(),
+    positionX: numeric("position_x", { precision: 5, scale: 2 }).notNull(),
+    positionY: numeric("position_y", { precision: 5, scale: 2 }).notNull(),
+    noteType: annotationType("note_type").notNull(),
+    tag: annotationTag("tag"),
+    body: text("body").notNull(),
+    version: integer("version").notNull().default(1),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    index("script_annotations_document_page_idx").on(
+      table.documentId,
+      table.pageNumber,
+      table.createdAt,
+    ),
+    index("script_annotations_script_idx").on(table.scriptId),
+    check("script_annotations_version_positive", sql`${table.version} > 0`),
+    check("script_annotations_page_positive", sql`${table.pageNumber} > 0`),
+    check(
+      "script_annotations_position_in_page",
+      sql`${table.positionX} BETWEEN 0 AND 100 AND ${table.positionY} BETWEEN 0 AND 100`,
+    ),
+    check(
+      "script_annotations_body_not_blank",
+      sql`length(btrim(${table.body})) > 0`,
+    ),
+  ],
+);
+
 export const applicationUsersRelations = relations(
   applicationUsers,
   ({ many }) => ({
@@ -817,6 +912,8 @@ export type ProjectTaskRow = typeof projectTasks.$inferSelect;
 export type ProjectPersonRow = typeof projectPeople.$inferSelect;
 export type ProjectRightRow = typeof projectRights.$inferSelect;
 export type LegalRecordRow = typeof legalRecords.$inferSelect;
+export type ScriptRow = typeof scripts.$inferSelect;
+export type ScriptAnnotationRow = typeof scriptAnnotations.$inferSelect;
 export type ProjectPersonDocumentRow =
   typeof projectPersonDocuments.$inferSelect;
 export type ProjectRow = typeof projects.$inferSelect;

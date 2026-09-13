@@ -1007,3 +1007,126 @@ export const legalRecordDocumentParamSchema = legalRecordIdParamSchema.extend({
 export const legalRecordListQuerySchema = z.object({
   category: legalCategorySchema.optional(),
 });
+
+// --- Scripts ---
+
+/**
+ * A screenplay is a project business concept over one Document lineage. The
+ * Documents domain owns every version (id, number, bytes, checksum, uploader);
+ * the Script owns project meaning and exact-version annotations. There is no
+ * script-side version counter and no mutable script field today.
+ */
+export const scriptSchema = z.object({
+  id: z.string().uuid(),
+  projectId: z.string().uuid(),
+  /** The first version's document id; stable for the life of the script. */
+  documentLineageId: z.string().uuid(),
+  title: z.string(),
+  /** The lineage's live current version: exact provenance for readers and future analysis. */
+  currentVersion: documentSchema,
+  versionCount: z.number().int().positive(),
+  createdBy: userRefSchema,
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type Script = z.infer<typeof scriptSchema>;
+
+/** Script plus every live version of its lineage, oldest first. */
+export const scriptDetailSchema = z.object({
+  script: scriptSchema,
+  versions: z.array(documentSchema),
+});
+export type ScriptDetail = z.infer<typeof scriptDetailSchema>;
+
+export const createScriptSchema = z.object({
+  fileObjectId: z.string().uuid(),
+  title: z.string().trim().min(1).max(200),
+  notes: z.string().trim().max(4_000).optional(),
+});
+export type CreateScriptInput = z.infer<typeof createScriptSchema>;
+
+export const addScriptVersionSchema = z.object({
+  fileObjectId: z.string().uuid(),
+  notes: z.string().trim().max(4_000).optional(),
+  /** The current version document's own `version`, so two uploads cannot race. */
+  currentDocumentVersion: z.number().int().positive(),
+});
+export type AddScriptVersionInput = z.infer<typeof addScriptVersionSchema>;
+
+export const scriptIdParamSchema = z.object({
+  projectId: z.string().uuid(),
+  scriptId: z.string().uuid(),
+});
+export const scriptVersionParamSchema = scriptIdParamSchema.extend({
+  documentId: z.string().uuid(),
+});
+
+// --- Script annotations (bound to an exact document version) ---
+
+export const annotationTypeSchema = z.enum([
+  "creative",
+  "commercial",
+  "question",
+  "concern",
+]);
+export type AnnotationType = z.infer<typeof annotationTypeSchema>;
+export const annotationTagSchema = z.enum([
+  "dialogue",
+  "structure",
+  "character",
+  "pacing",
+  "budget_impact",
+  "other",
+]);
+export type AnnotationTag = z.infer<typeof annotationTagSchema>;
+
+/** Page-local position as percentages of the rendered page, as the reader captures it. */
+const percentSchema = z.number().min(0).max(100);
+
+export const scriptAnnotationSchema = z.object({
+  id: z.string().uuid(),
+  scriptId: z.string().uuid(),
+  /** The exact document version this note was written against. Never the lineage. */
+  documentId: z.string().uuid(),
+  author: userRefSchema,
+  pageNumber: z.number().int().positive(),
+  x: percentSchema,
+  y: percentSchema,
+  type: annotationTypeSchema,
+  tag: annotationTagSchema.nullable(),
+  body: z.string(),
+  version: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type ScriptAnnotation = z.infer<typeof scriptAnnotationSchema>;
+
+export const createScriptAnnotationSchema = z.object({
+  pageNumber: z.number().int().positive().max(10_000),
+  x: percentSchema,
+  y: percentSchema,
+  type: annotationTypeSchema,
+  tag: annotationTagSchema.nullable().default(null),
+  body: z.string().trim().min(1).max(4_000),
+});
+export type CreateScriptAnnotationInput = z.infer<
+  typeof createScriptAnnotationSchema
+>;
+
+export const updateScriptAnnotationSchema = z
+  .object({
+    type: annotationTypeSchema.optional(),
+    tag: annotationTagSchema.nullable().optional(),
+    body: z.string().trim().min(1).max(4_000).optional(),
+    version: z.number().int().positive(),
+  })
+  .refine((value) => Object.keys(value).some((key) => key !== "version"), {
+    message: "At least one annotation field must be supplied.",
+  });
+export type UpdateScriptAnnotationInput = z.infer<
+  typeof updateScriptAnnotationSchema
+>;
+
+export const scriptAnnotationIdParamSchema = scriptIdParamSchema.extend({
+  annotationId: z.string().uuid(),
+});
