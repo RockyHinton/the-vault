@@ -3,16 +3,12 @@ import { allowedHosts, readEnvironment } from "../../server/config/env";
 
 const base = {
   DATABASE_URL: "postgres://vault:password@localhost:5432/vault_test",
-  CLERK_PUBLISHABLE_KEY: "pk_test_example",
-  CLERK_SECRET_KEY: "sk_test_example",
 };
 
 const production = {
   ...base,
   NODE_ENV: "production",
   REPLIT_DOMAINS: "vault.example.com",
-  CLERK_PUBLISHABLE_KEY: "pk_live_example",
-  CLERK_SECRET_KEY: "sk_live_example",
 };
 
 describe("environment validation", () => {
@@ -22,45 +18,19 @@ describe("environment validation", () => {
     );
   });
 
-  it("allows a development configuration", () => {
-    expect(readEnvironment(base).NODE_ENV).toBe("development");
+  it("allows a development configuration with no other variables", () => {
+    const env = readEnvironment(base);
+    expect(env.NODE_ENV).toBe("development");
+    expect(env.PORT).toBe(5000);
   });
 
-  it("falls back to the Vite publishable key so .env.local needs no duplicate", () => {
-    const env = readEnvironment({
-      ...base,
-      CLERK_PUBLISHABLE_KEY: undefined,
-      VITE_CLERK_PUBLISHABLE_KEY: "pk_test_from_vite",
-    });
-    expect(env.CLERK_PUBLISHABLE_KEY).toBe("pk_test_from_vite");
-    expect(
-      readEnvironment({
-        ...base,
-        VITE_CLERK_PUBLISHABLE_KEY: "pk_test_ignored",
-      }).CLERK_PUBLISHABLE_KEY,
-    ).toBe("pk_test_example");
-  });
-
-  it("requires a public domain in production", () => {
+  it("requires a public domain in production and validates its shape", () => {
     expect(() =>
       readEnvironment({ ...production, REPLIT_DOMAINS: undefined }),
     ).toThrow("REPLIT_DOMAINS");
-  });
-
-  it("rejects Clerk test keys in production, including via the Vite fallback", () => {
     expect(() =>
-      readEnvironment({ ...production, CLERK_PUBLISHABLE_KEY: "pk_test_x" }),
-    ).toThrow("live Clerk keys");
-    expect(() =>
-      readEnvironment({ ...production, CLERK_SECRET_KEY: "sk_test_x" }),
-    ).toThrow("live Clerk keys");
-    expect(() =>
-      readEnvironment({
-        ...production,
-        CLERK_PUBLISHABLE_KEY: undefined,
-        VITE_CLERK_PUBLISHABLE_KEY: "pk_test_x",
-      }),
-    ).toThrow("live Clerk keys");
+      readEnvironment({ ...production, REPLIT_DOMAINS: "https://bad.example" }),
+    ).toThrow("bare HTTPS hostnames");
     expect(readEnvironment(production).NODE_ENV).toBe("production");
   });
 

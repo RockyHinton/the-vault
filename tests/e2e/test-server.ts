@@ -1,5 +1,6 @@
 // Playwright web server: the real Vault app (API + Vite) on a disposable
-// database, with the test identity seam standing in for Clerk sign-in.
+// database seeded with a studio_admin and an ordinary user. Browser tests
+// sign in through the real login form; nothing bypasses authentication.
 //
 // Playwright kills this process without letting shutdown hooks run, so the
 // database name is written to VAULT_E2E_STATE_FILE and dropped by
@@ -10,18 +11,7 @@ import path from "node:path";
 import { createVaultServer } from "../../server/app";
 import { createDatabase } from "../../server/db/client";
 import { createIsolatedPostgresDatabase } from "../support/isolated-postgres";
-import {
-  bootstrapIdentity,
-  dummyClerkKeys,
-  testEnvironment,
-} from "../support/test-context";
-
-export const e2eIdentity = {
-  ...bootstrapIdentity,
-  clerkUserId: "playwright_bootstrap",
-  email: "playwright@vault.test",
-  displayName: "Playwright Admin",
-};
+import { seedAccessFixtures, testEnvironment } from "../support/test-context";
 
 async function start() {
   process.env.NODE_ENV = "test";
@@ -39,20 +29,18 @@ async function start() {
   );
 
   const env = testEnvironment({
-    ...dummyClerkKeys,
     DATABASE_URL: database.databaseUrl,
-    VAULT_BOOTSTRAP_ADMIN_CLERK_ID: e2eIdentity.clerkUserId,
     PORT: String(port),
   });
   const handle = createDatabase({
     databaseUrl: env.DATABASE_URL,
     nodeEnv: env.NODE_ENV,
   });
+  await seedAccessFixtures(handle.db);
   const { httpServer } = await createVaultServer({
     env,
     db: handle.db,
     frontend: "vite",
-    verifiedIdentity: e2eIdentity,
   });
   await new Promise<void>((resolve) =>
     httpServer.listen(env.PORT, "127.0.0.1", resolve),

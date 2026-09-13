@@ -1,18 +1,14 @@
 import { Link, useLocation } from "wouter";
-import { cn } from "@/lib/utils";
 import { APP_CONFIG } from "@/config/app-config";
 import {
-  Film,
   LayoutGrid,
   Settings,
   LogOut,
-  Search,
-  Bell,
   ChevronRight,
   Menu,
 } from "lucide-react";
-import { useClerk } from "@clerk/react";
-import { useCurrentUser } from "@/features/auth/use-current-user";
+import { useLogout } from "@/features/auth/use-auth-session";
+import { useCurrentUser, useIsStudioAdmin } from "@/features/auth/use-current-user";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -33,10 +29,11 @@ interface ShellProps {
 }
 
 export function Shell({ children, sidebar }: ShellProps) {
-  const [location] = useLocation();
-  const { signOut } = useClerk();
+  const [location, setLocation] = useLocation();
+  const logout = useLogout();
   const { data } = useCurrentUser();
   const user = data?.data.user;
+  const isStudioAdmin = useIsStudioAdmin();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const legacyFixtureExport =
     typeof window !== "undefined"
@@ -44,7 +41,9 @@ export function Shell({ children, sidebar }: ShellProps) {
       : null;
 
   const handleLogout = () => {
-    signOut({ redirectUrl: "/" });
+    logout.mutate(undefined, {
+      onSettled: () => setLocation("/", { replace: true }),
+    });
   };
   const downloadLegacyFixtureExport = () => {
     if (!legacyFixtureExport) return;
@@ -146,15 +145,17 @@ export function Shell({ children, sidebar }: ShellProps) {
                   Projects
                 </Button>
               </Link>
-              <Link href="/admin">
-                <Button
-                  variant={location === "/admin" ? "secondary" : "ghost"}
-                  className="w-full justify-start gap-3"
-                >
-                  <Settings className="h-4 w-4" />
-                  Settings & Admin
-                </Button>
-              </Link>
+              {isStudioAdmin && (
+                <Link href="/admin">
+                  <Button
+                    variant={location === "/admin" ? "secondary" : "ghost"}
+                    className="w-full justify-start gap-3"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Settings & Admin
+                  </Button>
+                </Link>
+              )}
             </nav>
           )}
         </div>
@@ -162,7 +163,11 @@ export function Shell({ children, sidebar }: ShellProps) {
         <div className="p-4 border-t border-sidebar-border">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <div className="flex items-center gap-3 p-2 rounded-md hover:bg-sidebar-accent cursor-pointer transition-colors">
+              <div
+                role="button"
+                aria-label="Account menu"
+                className="flex items-center gap-3 p-2 rounded-md hover:bg-sidebar-accent cursor-pointer transition-colors"
+              >
                 <Avatar className="h-8 w-8 rounded-md border border-sidebar-border">
                   <AvatarImage />
                   <AvatarFallback className="rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
@@ -184,14 +189,9 @@ export function Shell({ children, sidebar }: ShellProps) {
               align="end"
               className="w-56 bg-sidebar border-sidebar-border text-sidebar-foreground"
             >
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-sidebar-border" />
-              <DropdownMenuItem className="focus:bg-sidebar-accent focus:text-sidebar-accent-foreground">
-                Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem className="focus:bg-sidebar-accent focus:text-sidebar-accent-foreground">
-                Notifications
-              </DropdownMenuItem>
+              <DropdownMenuLabel>
+                {isStudioAdmin ? "Studio administrator" : "Vault user"}
+              </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-sidebar-border" />
               <DropdownMenuItem
                 onClick={handleLogout}

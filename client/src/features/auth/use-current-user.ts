@@ -1,20 +1,31 @@
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@clerk/react";
 import { getCurrentUser } from "./auth-api";
 
+export const currentUserKey = ["auth", "me"] as const;
+
+/**
+ * The signed-in user, resolved from the session cookie by the server.
+ * 401 means "not signed in"; 403 means the session exists but access is
+ * refused (suspended). Login and logout replace or clear this query
+ * explicitly, so an errored result is left alone until then: React Query
+ * would otherwise flip a data-less errored query back to pending on every
+ * observer mount and make the route guard loop.
+ */
 export function useCurrentUser() {
-  const { isLoaded, isSignedIn } = useAuth();
-  const testIdentityEnabled =
-    import.meta.env.MODE === "test" &&
-    Boolean(
-      (window as Window & { __VAULT_TEST_IDENTITY__?: unknown })
-        .__VAULT_TEST_IDENTITY__,
-    );
   return useQuery({
-    queryKey: ["auth", "me"],
+    queryKey: currentUserKey,
     queryFn: getCurrentUser,
-    enabled: testIdentityEnabled || (isLoaded && isSignedIn),
     retry: false,
+    retryOnMount: false,
     staleTime: 60_000,
   });
+}
+
+/**
+ * UX gating only: hides administrative navigation and actions from ordinary
+ * users. The server enforces every permission independently.
+ */
+export function useIsStudioAdmin(): boolean {
+  const { data } = useCurrentUser();
+  return data?.data.user.role === "studio_admin";
 }

@@ -1,39 +1,51 @@
+import { randomUUID } from "node:crypto";
 import type { Express } from "express";
+import request from "supertest";
 import { createVaultServer } from "../../server/app";
 import { readEnvironment, type Environment } from "../../server/config/env";
 import { createDatabase, type Database } from "../../server/db/client";
-import type { VerifiedIdentity } from "../../server/modules/auth/auth-service";
-import type { ProfileLookup } from "../../server/modules/auth/clerk-profile";
+import { bootstrapStudioAdmin } from "../../server/modules/users/bootstrap-admin";
+import { createUserService } from "../../server/modules/users/user-service";
 import {
   createIsolatedPostgresDatabase,
   type IsolatedPostgresDatabase,
 } from "./isolated-postgres";
 
-/**
- * Syntactically valid Clerk development keys that belong to no instance.
- * API tests never talk to Clerk: identity comes through the test seam, and an
- * unauthenticated request is rejected before any Clerk network call.
- */
-export const dummyClerkKeys = {
-  CLERK_PUBLISHABLE_KEY: `pk_test_${Buffer.from("example.clerk.accounts.test$").toString("base64")}`,
-  CLERK_SECRET_KEY: "sk_test_not_a_real_key",
+export interface TestCredentials {
+  email: string;
+  password: string;
+  displayName: string;
+}
+
+/** The seeded studio_admin every test context starts with. */
+export const adminCredentials: TestCredentials = {
+  email: "admin@vault.test",
+  password: "Admin-Password-2026-strong",
+  displayName: "Test Admin",
 };
 
-export const bootstrapIdentity: VerifiedIdentity = {
-  clerkUserId: "user_bootstrap",
-  email: "admin@vault.test",
-  displayName: "Test Admin",
+/** An ordinary active user, also seeded. */
+export const memberCredentials: TestCredentials = {
+  email: "member@vault.test",
+  password: "Member-Password-2026-strong",
+  displayName: "Test Member",
 };
 
 export interface TestContext {
   env: Environment;
   db: Database;
   database: IsolatedPostgresDatabase;
-  /** Builds an API-only app whose every request carries `identity` (or none). */
-  appFor(
-    identity?: VerifiedIdentity,
-    options?: { profileLookup?: ProfileLookup },
-  ): Promise<Express>;
+  /** One API-only app shared by the suite. */
+  app: Express;
+  /** Vault ids of the seeded users. */
+  seeded: { adminUserId: string; memberUserId: string };
+  /** A fresh app instance (own rate-limit counters) on the same database. */
+  newApp(): Promise<Express>;
+  /** Logs in through the real endpoint; the agent keeps the session cookie. */
+  loginAs(
+    credentials: TestCredentials,
+    app?: Express,
+  ): Promise<ReturnType<typeof request.agent>>;
   destroy(): Promise<void>;
 }
 
@@ -42,45 +54,63 @@ export function testEnvironment(
 ): Environment {
   return readEnvironment({
     ...process.env,
-    ...dummyClerkKeys,
     NODE_ENV: "test",
     REPLIT_DEV_DOMAIN: undefined,
-    VAULT_BOOTSTRAP_ADMIN_CLERK_ID: undefined,
     ...overrides,
   });
+}
+
+/**
+ * Seeds the two accounts every suite needs through the real use-cases:
+ * bootstrap for the studio_admin, provisioning for the ordinary user.
+ */
+export async function seedAccessFixtures(
+  db: Database,
+): Promise<{ adminUserId: string; memberUserId: string }> {
+  const admin = await bootstrapStudioAdmin(
+    { db },
+    { ...adminCredentials, requestId: randomUUID() },
+  );
+  const member = await createUserService({ db }).provision(
+    { ...memberCredentials, role: "user" },
+    { userId: admin.userId, requestId: randomUUID() },
+  );
+  return { adminUserId: admin.userId, memberUserId: member.id };
 }
 
 /**
  * One disposable PostgreSQL database plus an explicit environment. Tests
  * never mutate `process.env`: the app is built from these values directly.
  */
-export async function createTestContext(
-  options: {
-    bootstrapAdminClerkId?: string;
-  } = {},
-): Promise<TestContext> {
+export async function createTestContext(): Promise<TestContext> {
   const database = await createIsolatedPostgresDatabase();
-  const env = testEnvironment({
-    DATABASE_URL: database.databaseUrl,
-    VAULT_BOOTSTRAP_ADMIN_CLERK_ID: options.bootstrapAdminClerkId,
-  });
+  const env = testEnvironment({ DATABASE_URL: database.databaseUrl });
   const handle = createDatabase({
     databaseUrl: env.DATABASE_URL,
     nodeEnv: env.NODE_ENV,
   });
+  const seeded = await seedAccessFixtures(handle.db);
+  const newApp = async () =>
+    (await createVaultServer({ env, db: handle.db, frontend: "none" })).app;
+  const app = await newApp();
   return {
     env,
     db: handle.db,
     database,
-    async appFor(identity, appOptions = {}) {
-      const { app } = await createVaultServer({
-        env,
-        db: handle.db,
-        frontend: "none",
-        verifiedIdentity: identity,
-        profileLookup: appOptions.profileLookup,
-      });
-      return app;
+    app,
+    seeded,
+    newApp,
+    async loginAs(credentials, target = app) {
+      const agent = request.agent(target);
+      const response = await agent
+        .post("/api/v1/auth/login")
+        .send({ email: credentials.email, password: credentials.password });
+      if (response.status !== 200) {
+        throw new Error(
+          `Login as ${credentials.email} failed: ${response.status} ${JSON.stringify(response.body)}`,
+        );
+      }
+      return agent;
     },
     async destroy() {
       await handle.close();

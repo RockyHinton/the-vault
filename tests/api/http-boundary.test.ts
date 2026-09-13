@@ -26,7 +26,7 @@ afterAll(async () => {
 });
 
 describe("HTTP boundary", () => {
-  it("does not expose projects without a verified Clerk session", async () => {
+  it("does not expose projects without a session cookie", async () => {
     const response = await request(app).get("/api/v1/projects");
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe("UNAUTHENTICATED");

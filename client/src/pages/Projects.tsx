@@ -8,6 +8,7 @@ import {
   useTransitionProjectStage,
 } from "@/features/projects/use-projects";
 import { toWorkspaceProject } from "@/features/projects/project-fixture-adapter";
+import { useIsStudioAdmin } from "@/features/auth/use-current-user";
 import { 
   Card, 
   CardContent, 
@@ -59,7 +60,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { NewProjectDialog } from "@/components/features/NewProjectDialog";
 import { ArchiveProjectDialog } from "@/components/features/ArchiveProjectDialog";
-import { toast } from "sonner";
 import { 
   Select, 
   SelectContent, 
@@ -99,6 +99,7 @@ export default function ProjectsPage() {
   const transition = useTransitionProjectStage();
   const restore = useRestoreProject();
   const remove = useDeleteProject();
+  const isStudioAdmin = useIsStudioAdmin();
   const projects = [
     ...(activeProjects.data?.pages.flatMap((page) => page.data.items) ?? []),
     ...(archivedProjects.data?.pages.flatMap((page) => page.data.items) ?? []),
@@ -156,12 +157,8 @@ export default function ProjectsPage() {
     const nextStage = project.stage === "evaluation" ? "development" : project.stage === "development" ? "production" : null;
     
     if (nextStage) {
-      try {
-        await transition.mutateAsync({ id: project.id, input: { toStage: nextStage, version: project.version } });
-        toast.success(`Project moved to ${nextStage === "development" ? "Development" : "Production"}`);
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Unable to update project stage");
-      }
+      // Success and error toasts are owned by the mutation hook.
+      await transition.mutateAsync({ id: project.id, input: { toStage: nextStage, version: project.version } }).catch(() => undefined);
     }
   };
 
@@ -172,10 +169,7 @@ export default function ProjectsPage() {
 
   const confirmDelete = () => {
     if (projectToDelete) {
-      remove.mutate({ id: projectToDelete.id, version: projectToDelete.version }, {
-        onSuccess: () => toast.success("Project deleted"),
-        onError: (error) => toast.error(error.message),
-      });
+      remove.mutate({ id: projectToDelete.id, version: projectToDelete.version });
       setProjectToDelete(null);
     }
   };
@@ -190,10 +184,12 @@ export default function ProjectsPage() {
             <h1 className="text-3xl font-display font-bold tracking-tight text-foreground">Projects</h1>
             <p className="text-muted-foreground mt-1">Manage your slate across all stages of production.</p>
           </div>
-          <Button size="lg" className="shadow-lg shadow-primary/20" onClick={() => setIsNewProjectDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Project
-          </Button>
+          {isStudioAdmin && (
+            <Button size="lg" className="shadow-lg shadow-primary/20" onClick={() => setIsNewProjectDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Project
+            </Button>
+          )}
         </div>
 
         {/* Stage Tabs - Refined to be more text-based and editorial */}
@@ -352,6 +348,7 @@ export default function ProjectsPage() {
                                 <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 drop-shadow-md animate-in zoom-in duration-300" />
                             )}
                             
+                            {isStudioAdmin && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-8 w-8 bg-black/20 hover:bg-black/40 backdrop-blur-md border border-white/5 text-white/70 hover:text-white rounded-full transition-all">
@@ -388,10 +385,7 @@ export default function ProjectsPage() {
                                 {project.stage === 'Archived' && (
                                   <DropdownMenuItem onClick={(e) => {
                                     e.stopPropagation();
-                                     restore.mutate({ id: apiProject.id, version: apiProject.version }, {
-                                       onSuccess: () => toast.success("Project restored to active list"),
-                                       onError: (error) => toast.error(error.message),
-                                     });
+                                     restore.mutate({ id: apiProject.id, version: apiProject.version });
                                   }}>
                                     <Undo2 className="mr-2 h-4 w-4" />
                                     Restore Project
@@ -413,6 +407,7 @@ export default function ProjectsPage() {
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
+                            )}
                           </div>
                         </div>
 
@@ -442,7 +437,7 @@ export default function ProjectsPage() {
               })}
 
               {/* New Project Evaluation Placeholder */}
-              {(activeTab === 'All' || activeTab === 'Evaluation') && (
+              {isStudioAdmin && (activeTab === 'All' || activeTab === 'Evaluation') && (
                 <motion.div
                    initial={{ opacity: 0, y: 20 }}
                    animate={{ opacity: 1, y: 0 }}

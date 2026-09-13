@@ -1,3 +1,5 @@
+> **Superseded by ADR 0007.** The Vault no longer uses Clerk or any external identity provider. Kept for history only; do not reintroduce.
+
 # ADR 0002: Clerk identity with local application access
 
 ## Decision

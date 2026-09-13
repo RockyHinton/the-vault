@@ -1,14 +1,12 @@
-import type { Express } from "express";
-import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
-  bootstrapIdentity,
+  adminCredentials,
   createTestContext,
   type TestContext,
 } from "../support/test-context";
 
 let context: TestContext;
-let app: Express;
+let app: Awaited<ReturnType<TestContext["loginAs"]>>;
 
 const countRows = async (table: "audit_events" | "project_stage_history") =>
   (
@@ -18,16 +16,14 @@ const countRows = async (table: "audit_events" | "project_stage_history") =>
   ).rows[0].count;
 
 const createProject = async (title: string) => {
-  const created = await request(app).post("/api/v1/projects").send({ title });
+  const created = await app.post("/api/v1/projects").send({ title });
   expect(created.status).toBe(201);
   return created.body.data as { id: string; version: number; stage: string };
 };
 
 beforeAll(async () => {
-  context = await createTestContext({
-    bootstrapAdminClerkId: bootstrapIdentity.clerkUserId,
-  });
-  app = await context.appFor(bootstrapIdentity);
+  context = await createTestContext();
+  app = await context.loginAs(adminCredentials);
 });
 
 afterAll(async () => {
@@ -36,11 +32,11 @@ afterAll(async () => {
 
 describe("Projects API against an isolated PostgreSQL database", () => {
   it("persists lifecycle and audit history atomically with optimistic concurrency", async () => {
-    const me = await request(app).get("/api/v1/auth/me");
+    const me = await app.get("/api/v1/auth/me");
     expect(me.status).toBe(200);
     expect(me.body.data.user.role).toBe("studio_admin");
 
-    const invalidId = await request(app).get("/api/v1/projects/not-a-uuid");
+    const invalidId = await app.get("/api/v1/projects/not-a-uuid");
     expect(invalidId.status).toBe(400);
     expect(invalidId.body.error.code).toBe("VALIDATION_ERROR");
     expect(invalidId.body.error.details.fieldErrors.projectId).toBeDefined();
@@ -59,20 +55,18 @@ describe("Projects API against an isolated PostgreSQL database", () => {
       ),
     ).rejects.toThrow();
 
-    const invalid = await request(app)
-      .post("/api/v1/projects")
-      .send({ title: "" });
+    const invalid = await app.post("/api/v1/projects").send({ title: "" });
     expect(invalid.status).toBe(400);
     expect(invalid.body.error.code).toBe("VALIDATION_ERROR");
 
-    const created = await request(app)
+    const created = await app
       .post("/api/v1/projects")
       .send({ title: "A Durable Project", genre: "Drama" });
     expect(created.status).toBe(201);
     const project = created.body.data;
     expect(project.version).toBe(1);
 
-    const updated = await request(app)
+    const updated = await app
       .patch(`/api/v1/projects/${project.id}`)
       .send({ version: 1, logline: "A real persisted project." });
     expect(updated.status).toBe(200);
@@ -81,25 +75,25 @@ describe("Projects API against an isolated PostgreSQL database", () => {
     // A stale write is rejected and leaves no audit or history rows behind.
     const auditBefore = await countRows("audit_events");
     const historyBefore = await countRows("project_stage_history");
-    const conflict = await request(app)
+    const conflict = await app
       .patch(`/api/v1/projects/${project.id}`)
       .send({ version: 1, logline: "Stale write" });
     expect(conflict.status).toBe(409);
     expect(conflict.body.error.code).toBe("VERSION_CONFLICT");
-    const staleTransition = await request(app)
+    const staleTransition = await app
       .post(`/api/v1/projects/${project.id}/stage-transitions`)
       .send({ version: 1, toStage: "development" });
     expect(staleTransition.status).toBe(409);
     expect(await countRows("audit_events")).toBe(auditBefore);
     expect(await countRows("project_stage_history")).toBe(historyBefore);
 
-    const transitioned = await request(app)
+    const transitioned = await app
       .post(`/api/v1/projects/${project.id}/stage-transitions`)
       .send({ version: 2, toStage: "development" });
     expect(transitioned.status).toBe(200);
     expect(transitioned.body.data.version).toBe(3);
 
-    const archived = await request(app)
+    const archived = await app
       .post(`/api/v1/projects/${project.id}/archive`)
       .send({
         version: 3,
@@ -111,14 +105,14 @@ describe("Projects API against an isolated PostgreSQL database", () => {
     expect(archived.body.data.archivedAt).toBeTruthy();
     expect(archived.body.data.archive.archivedFromStage).toBe("development");
 
-    const restored = await request(app)
+    const restored = await app
       .post(`/api/v1/projects/${project.id}/restore`)
       .send({ version: 4 });
     expect(restored.status).toBe(200);
     expect(restored.body.data.stage).toBe("development");
     expect(restored.body.data.archive).toBeNull();
 
-    const deleted = await request(app)
+    const deleted = await app
       .delete(`/api/v1/projects/${project.id}`)
       .send({ version: 5 });
     expect(deleted.status).toBe(204);
@@ -162,29 +156,29 @@ describe("Projects API against an isolated PostgreSQL database", () => {
   it("rejects invalid stage transitions with 422 and writes nothing", async () => {
     const project = await createProject("Cannot Skip");
     const auditBefore = await countRows("audit_events");
-    const skipped = await request(app)
+    const skipped = await app
       .post(`/api/v1/projects/${project.id}/stage-transitions`)
       .send({ version: project.version, toStage: "production" });
     expect(skipped.status).toBe(422);
     expect(skipped.body.error.code).toBe("INVALID_STAGE_TRANSITION");
-    const backwards = await request(app)
+    const backwards = await app
       .post(`/api/v1/projects/${project.id}/stage-transitions`)
       .send({ version: project.version, toStage: "evaluation" });
     expect(backwards.status).toBe(422);
     expect(await countRows("audit_events")).toBe(auditBefore);
-    const unchanged = await request(app).get(`/api/v1/projects/${project.id}`);
+    const unchanged = await app.get(`/api/v1/projects/${project.id}`);
     expect(unchanged.body.data.version).toBe(project.version);
   });
 
   it("refuses edits and stage changes while archived, and restore when not archived", async () => {
     const project = await createProject("Frozen");
-    const notArchived = await request(app)
+    const notArchived = await app
       .post(`/api/v1/projects/${project.id}/restore`)
       .send({ version: project.version });
     expect(notArchived.status).toBe(409);
     expect(notArchived.body.error.code).toBe("PROJECT_NOT_ARCHIVED");
 
-    const archived = await request(app)
+    const archived = await app
       .post(`/api/v1/projects/${project.id}/archive`)
       .send({
         version: project.version,
@@ -195,17 +189,17 @@ describe("Projects API against an isolated PostgreSQL database", () => {
     expect(archived.status).toBe(200);
     const version = archived.body.data.version;
 
-    const edit = await request(app)
+    const edit = await app
       .patch(`/api/v1/projects/${project.id}`)
       .send({ version, title: "Renamed while archived" });
     expect(edit.status).toBe(409);
     expect(edit.body.error.code).toBe("PROJECT_ARCHIVED");
-    const transition = await request(app)
+    const transition = await app
       .post(`/api/v1/projects/${project.id}/stage-transitions`)
       .send({ version, toStage: "development" });
     expect(transition.status).toBe(409);
     expect(transition.body.error.code).toBe("PROJECT_ARCHIVED");
-    const again = await request(app)
+    const again = await app
       .post(`/api/v1/projects/${project.id}/archive`)
       .send({ version, reason: "withdrawn", revisit: "no", starred: false });
     expect(again.status).toBe(409);
@@ -217,7 +211,7 @@ describe("Projects API against an isolated PostgreSQL database", () => {
     const created = [];
     for (const title of titles) created.push(await createProject(title));
     const toArchive = created[0];
-    const archived = await request(app)
+    const archived = await app
       .post(`/api/v1/projects/${toArchive.id}/archive`)
       .send({
         version: toArchive.version,
@@ -227,7 +221,7 @@ describe("Projects API against an isolated PostgreSQL database", () => {
       });
     expect(archived.status).toBe(200);
 
-    const active = await request(app).get("/api/v1/projects?archived=false");
+    const active = await app.get("/api/v1/projects?archived=false");
     const activeIds = active.body.data.items.map(
       (item: { id: string }) => item.id,
     );
@@ -236,9 +230,7 @@ describe("Projects API against an isolated PostgreSQL database", () => {
       expect.arrayContaining([created[1].id, created[2].id]),
     );
 
-    const onlyArchived = await request(app).get(
-      "/api/v1/projects?archived=true",
-    );
+    const onlyArchived = await app.get("/api/v1/projects?archived=true");
     expect(
       onlyArchived.body.data.items.every(
         (item: { archivedAt: string | null }) => item.archivedAt,
@@ -252,7 +244,7 @@ describe("Projects API against an isolated PostgreSQL database", () => {
     const seen: string[] = [];
     let cursor: string | null = null;
     do {
-      const page = await request(app).get(
+      const page = await app.get(
         `/api/v1/projects?archived=all&limit=1${cursor ? `&cursor=${cursor}` : ""}`,
       );
       expect(page.status).toBe(200);
@@ -265,29 +257,29 @@ describe("Projects API against an isolated PostgreSQL database", () => {
       expect.arrayContaining(created.map((item) => item.id)),
     );
 
-    const badCursor = await request(app).get("/api/v1/projects?cursor=nope");
+    const badCursor = await app.get("/api/v1/projects?cursor=nope");
     expect(badCursor.status).toBe(400);
   });
 
   it("hides soft-deleted projects from every read and write", async () => {
     const project = await createProject("Gone");
-    const deleted = await request(app)
+    const deleted = await app
       .delete(`/api/v1/projects/${project.id}`)
       .send({ version: project.version });
     expect(deleted.status).toBe(204);
 
-    const read = await request(app).get(`/api/v1/projects/${project.id}`);
+    const read = await app.get(`/api/v1/projects/${project.id}`);
     expect(read.status).toBe(404);
     expect(read.body.error.code).toBe("PROJECT_NOT_FOUND");
-    const listed = await request(app).get("/api/v1/projects?archived=all");
+    const listed = await app.get("/api/v1/projects?archived=all");
     expect(
       listed.body.data.items.map((item: { id: string }) => item.id),
     ).not.toContain(project.id);
-    const edit = await request(app)
+    const edit = await app
       .patch(`/api/v1/projects/${project.id}`)
       .send({ version: project.version + 1, title: "Back from the dead" });
     expect(edit.status).toBe(404);
-    const deleteAgain = await request(app)
+    const deleteAgain = await app
       .delete(`/api/v1/projects/${project.id}`)
       .send({ version: project.version + 1 });
     expect(deleteAgain.status).toBe(404);

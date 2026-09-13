@@ -11,6 +11,7 @@
     "check": "tsc",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "bootstrap:admin": "tsx script/bootstrap-admin.ts",
     "lint": "eslint server shared client/src/features tests --max-warnings=0",
     "format": "prettier --write \"server/**/*.ts\" \"shared/**/*.ts\" \"client/src/features/**/*.{ts,tsx}\" \"tests/**/*.ts\"",
     "format:check": "prettier --check \"server/**/*.ts\" \"shared/**/*.ts\" \"client/src/features/**/*.{ts,tsx}\" \"tests/**/*.ts\"",
@@ -19,10 +20,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@clerk/express": "^2.1.67",
-    "@clerk/react": "^6.15.2",
-    "@clerk/shared": "^4.31.1",
-    "@clerk/themes": "^2.4.57",
     "@hookform/resolvers": "^3.10.0",
     "@jridgewell/trace-mapping": "^0.3.25",
     "@radix-ui/react-accordion": "^1.2.12",
@@ -67,7 +64,6 @@
     "express-session": "^1.18.1",
     "framer-motion": "^12.23.24",
     "helmet": "^8.3.0",
-    "http-proxy-middleware": "^3.0.7",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.545.0",
     "memorystore": "^1.6.7",

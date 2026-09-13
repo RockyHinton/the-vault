@@ -22,17 +22,25 @@ export async function apiClient<T extends ZodTypeAny>(
   const response = await fetch(`/api/v1${path}`, {
     method,
     credentials: "include",
-    headers: body === undefined ? undefined : { "content-type": "application/json" },
+    headers:
+      body === undefined ? undefined : { "content-type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  const payload: unknown = response.status === 204 ? undefined : await response.json().catch(() => undefined);
+  const payload: unknown =
+    response.status === 204
+      ? undefined
+      : await response.json().catch(() => undefined);
   if (!response.ok) {
     const error = apiErrorSchema.safeParse(payload);
     throw new ApiClientError(
-      error.success ? error.data.error.message : "The server returned an invalid error response.",
+      error.success
+        ? error.data.error.message
+        : "The server returned an invalid error response.",
       response.status,
       error.success ? error.data.error.code : "INVALID_ERROR_RESPONSE",
-      error.success ? error.data.error.requestId : response.headers.get("x-request-id") ?? undefined,
+      error.success
+        ? error.data.error.requestId
+        : (response.headers.get("x-request-id") ?? undefined),
       error.success ? error.data.error.details : undefined,
     );
   }

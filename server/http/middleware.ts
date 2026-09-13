@@ -7,10 +7,9 @@ declare module "express-serve-static-core" {
     requestId: string;
     localUser?: {
       id: string;
-      clerkUserId: string;
       role: "studio_admin" | "user";
       status: "active" | "suspended";
-      email: string | null;
+      email: string;
       displayName: string | null;
     };
   }

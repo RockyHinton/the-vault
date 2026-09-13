@@ -475,20 +475,6 @@ export interface Territory {
   updatedAt: string;
 }
 
-// --- Admin / Security Types ---
-
-export type AuditAction = 'LOGIN' | 'LOGOUT' | 'UPLOAD_DOC' | 'DELETE_DOC' | 'STAGE_CHANGE' | 'USER_CREATE' | 'USER_DELETE';
-
-export interface AuditLog {
-  id: string;
-  action: AuditAction;
-  userId: string;
-  userName: string;
-  details: string;
-  ipAddress: string;
-  timestamp: string;
-}
-
 // --- Mock Data ---
 
 const MOCK_USER: User = {
@@ -498,19 +484,6 @@ const MOCK_USER: User = {
   role: 'Producer',
   avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80',
 };
-
-const MOCK_USERS: User[] = [
-  MOCK_USER,
-  { id: 'u2', name: 'Mike Finance', email: 'mike@prodco.com', role: 'TeamMember', avatar: 'https://github.com/shadcn.png' },
-  { id: 'u3', name: 'Tom Legal', email: 'tom@legal.com', role: 'External', avatar: undefined },
-];
-
-const MOCK_AUDIT_LOGS: AuditLog[] = [
-  { id: 'l1', action: 'LOGIN', userId: 'u1', userName: 'Sarah Producer', details: 'Successful login', ipAddress: '192.168.1.5', timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString() },
-  { id: 'l2', action: 'UPLOAD_DOC', userId: 'u1', userName: 'Sarah Producer', details: 'Uploaded Neon_Nights_Script_v4_Final.pdf', ipAddress: '192.168.1.5', timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString() },
-  { id: 'l3', action: 'STAGE_CHANGE', userId: 'u1', userName: 'Sarah Producer', details: 'Moved Neon Nights to Production', ipAddress: '192.168.1.5', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() },
-  { id: 'l4', action: 'LOGIN', userId: 'u2', userName: 'Mike Finance', details: 'Successful login', ipAddress: '10.0.0.42', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 25).toISOString() },
-];
 
 const MOCK_TASKS: Task[] = [
   { id: 't1', projectId: 'p1', title: 'Finalize Cast Contracts', category: 'Legal', description: 'Need to get signatures from lead actors agents.', status: 'In Progress', priority: 'High', assignedTo: 'Sarah Producer', dueDate: '2023-12-25', authorId: 'u1', authorName: 'Sarah Producer', createdAt: '2023-12-01T10:00:00Z' },
@@ -875,11 +848,7 @@ interface AppState {
   creativeProfiles: CreativeProfile[];
   currentProjectId: string | null;
   territories: Territory[];
-  
-  // Admin State
-  users: User[];
-  auditLogs: AuditLog[];
-  
+
   addProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'stage'>) => void;
   setCurrentProject: (id: string | null) => void;
   addDocument: (doc: Omit<Document, 'id' | 'uploadedBy' | 'uploadedAt'>) => void;
@@ -967,8 +936,6 @@ export const useStore = create<AppState>()((set, get) => ({
   creativeProfiles: MOCK_CREATIVE_PROFILES,
   currentProjectId: null,
   territories: [],
-  users: MOCK_USERS,
-  auditLogs: MOCK_AUDIT_LOGS,
 
   registerTransientProject: (project) => set((state) =>
     state.projects.some((candidate) => candidate.id === project.id)

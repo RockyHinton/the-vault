@@ -22,6 +22,20 @@
       "when": 1789238306680,
       "tag": "0002_aromatic_machine_man",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789249480043,
+      "tag": "0003_users_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789252622666,
+      "tag": "0004_first_party_auth",
+      "breakpoints": true
     }
   ]
 }

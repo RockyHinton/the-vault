@@ -1,15 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { adminCredentials, signIn } from "./support";
 
-test("test-factory identity can access Projects, create a project, and open its workspace", async ({
+test("the seeded admin signs in, creates a project and opens its workspace", async ({
   page,
-  request,
 }) => {
-  const me = await request.get("/api/v1/auth/me");
-  expect(me.ok()).toBeTruthy();
-  expect((await me.json()).data.user.email).toBe("playwright@vault.test");
-
-  await page.goto("/projects");
-  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+  await signIn(page, adminCredentials);
   await page
     .getByRole("button", { name: "New Project", exact: true })
     .first()
@@ -24,4 +19,10 @@ test("test-factory identity can access Projects, create a project, and open its 
     page.getByRole("button", { name: "Edit metadata" }),
   ).toBeVisible();
   await expect(page.getByText("Project Evaluation Overview")).toBeVisible();
+
+  // A refresh keeps the session.
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Edit metadata" }),
+  ).toBeVisible();
 });

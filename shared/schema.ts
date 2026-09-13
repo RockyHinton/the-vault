@@ -54,16 +54,66 @@ export const applicationUsers = pgTable(
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    clerkUserId: text("clerk_user_id").notNull(),
-    email: text("email"),
+    /** Login identifier; unique case-insensitively. */
+    email: text("email").notNull(),
     displayName: text("display_name"),
     role: applicationRole("role").notNull().default("user"),
     status: userStatus("status").notNull().default("active"),
+    version: integer("version").notNull().default(1),
     ...timestamps,
   },
   (table) => [
-    uniqueIndex("application_users_clerk_user_id_unique").on(table.clerkUserId),
+    uniqueIndex("application_users_email_lower_unique").on(
+      sql`lower(${table.email})`,
+    ),
     index("application_users_status_idx").on(table.status),
+    check("application_users_version_positive", sql`${table.version} > 0`),
+  ],
+);
+
+/**
+ * Password credential, kept apart from identity/access. `password_hash` is a
+ * self-describing string (algorithm and parameters included), so hashing can
+ * be upgraded per credential without a schema change.
+ */
+export const userCredentials = pgTable("user_credentials", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => applicationUsers.id, { onDelete: "cascade" }),
+  passwordHash: text("password_hash").notNull(),
+  passwordChangedAt: timestamp("password_changed_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  ...timestamps,
+});
+
+/**
+ * Server-side sessions. The browser holds an opaque random token; only its
+ * SHA-256 is stored, so the table never reveals a usable credential.
+ */
+export const authSessions = pgTable(
+  "auth_sessions",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("auth_sessions_token_hash_unique").on(table.tokenHash),
+    index("auth_sessions_user_id_idx").on(table.userId),
+    index("auth_sessions_expires_at_idx").on(table.expiresAt),
   ],
 );
 
@@ -190,4 +240,6 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
 }));
 
 export type ApplicationUserRow = typeof applicationUsers.$inferSelect;
+export type UserCredentialRow = typeof userCredentials.$inferSelect;
+export type AuthSessionRow = typeof authSessions.$inferSelect;
 export type ProjectRow = typeof projects.$inferSelect;
