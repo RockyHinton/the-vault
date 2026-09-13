@@ -53,6 +53,8 @@ cross-domain imports.
 - `server/modules/cash-flow`: the schedule over the plan's locked version and approved
   sources (see "Finance: cash flow"). `server/modules/financing-overview`: a read-only
   composition of the three, with no table (see "Finance: financing overview").
+- `server/modules/distribution`: territory workspaces with status, deal information, notes
+  and documents (see "Distribution").
 - `server/modules/<domain>`: `<domain>-routes.ts`, `<domain>-service.ts`,
   `<domain>-repository.ts`, plus pure domain rules (e.g. `project-lifecycle.ts`).
 - `shared/schema.ts`: PostgreSQL schema only. `shared/contracts`: Zod request/response contracts.
@@ -421,6 +423,49 @@ unscheduled amounts). Each section is `null` where that domain has nothing yet, 
 shows real empty states rather than placeholder figures. Development readiness reads the same
 overview: budget locked, funding gap, first shortfall. Copy this shape for any future
 dashboard: compose services, never persist copied totals.
+
+## Distribution
+
+A **Distribution Territory** (`distribution_territories`) is one project-scoped market
+workspace: the team's own name for the market, its commercial status, descriptive deal
+information, authored notes and attached agreements. It is the reference shape for a
+commercial record that carries free-text terms rather than ledger entries.
+
+- **Identity.** Territories are user-named (the product works in markets such as "United
+  Kingdom" or "Rest of World"), so there is no fixed taxonomy. A name is unique within its
+  project ignoring case: the service answers `409 TERRITORY_NAME_TAKEN` and a partial unique
+  index on `(project_id, lower(name)) WHERE deleted_at IS NULL` enforces it. Soft deletion
+  frees the name. Ordering is creation order.
+- **Status** (`distribution_territory_status`: `available`, `in_discussion`, `licensed`,
+  `delivered`, `closed`) changes only through `POST …/territories/:id/status`; `PATCH`
+  rejects it. The product has no transition rules and no state implies immutability, so none
+  are enforced; a repeated status is `409 STATUS_UNCHANGED`.
+- **Deal information is text, not money.** `distributor`, `contact`, `signature_payment`,
+  `delivery_payment` and `general_notes` are nullable text columns edited together through
+  `PATCH` (blank clears). The product records terms such as "20% on signature" and never
+  calculates with them, so the Finance money convention is deliberately not applied here.
+  Exact amounts and currency would be new columns beside these fields, not a reinterpretation
+  of them.
+- **Notes** (`distribution_territory_notes`) are authored records under the territory:
+  session author, author-or-admin edit and delete, `edited_at` once changed, soft delete,
+  newest first. They are not Project Notes.
+- **Documents** attach through `distribution_territory_documents` (owner convention, folder
+  `distribution`, lineage-based so new versions stay attached). Detach is creator-or-admin;
+  document status stays with Documents.
+- **Authorization.** Any active user creates territories, renames them, edits deal
+  information, changes status, writes notes and attaches documents. Removing a territory or
+  detaching a document is creator-or-admin (`created_by_user_id` from the session).
+- **Concurrency.** The territory and each note carry their own `version`; deal edits are
+  saved as one compare-and-set write from an explicit Save, so field-by-field races do not
+  arise. Stale writes are `409 VERSION_CONFLICT` with no side effects.
+- **Reads.** `GET …/territories` returns summaries with live note and document counts (two
+  grouped queries); `GET …/territories/:id` returns the full territory; every command
+  returns the full territory.
+- **Out of scope by decision:** royalties, revenue, payments, invoicing, FX, and links to
+  Rights or Legal records: the current product has no writer for any of them.
+- **Audit vocabulary:** `distribution_territory.created|updated|status_changed|deleted|
+  document_attached|document_detached` (rename records from and to, status records from and
+  to) and `distribution_territory_note.created|updated|deleted`.
 
 ## HTTP boundary
 

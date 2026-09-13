@@ -180,6 +180,10 @@ export const cashFlowDirection = pgEnum("cash_flow_direction", [
   "inflow",
   "outflow",
 ]);
+export const distributionTerritoryStatus = pgEnum(
+  "distribution_territory_status",
+  ["available", "in_discussion", "licensed", "delivered", "closed"],
+);
 export const contractStatus = pgEnum("contract_status", [
   "not_sent",
   "sent",
@@ -1316,6 +1320,108 @@ export const cashFlowSourceTimings = pgTable(
   ],
 );
 
+/**
+ * A territory workspace: one project-scoped market (user-named, unique per
+ * project case-insensitively) with its commercial status and the descriptive
+ * deal fields the team keeps. Deal fields are text by design: the product
+ * records "20% on signature", it never calculates with it.
+ */
+export const distributionTerritories = pgTable(
+  "distribution_territories",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "restrict" }),
+    name: text("name").notNull(),
+    status: distributionTerritoryStatus("status")
+      .notNull()
+      .default("available"),
+    distributor: text("distributor"),
+    contact: text("contact"),
+    signaturePayment: text("signature_payment"),
+    deliveryPayment: text("delivery_payment"),
+    generalNotes: text("general_notes"),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    version: integer("version").notNull().default(1),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("distribution_territories_project_name_unique")
+      .on(table.projectId, sql`lower(${table.name})`)
+      .where(sql`${table.deletedAt} IS NULL`),
+    index("distribution_territories_project_created_idx").on(
+      table.projectId,
+      table.createdAt,
+    ),
+    check(
+      "distribution_territories_version_positive",
+      sql`${table.version} > 0`,
+    ),
+    check(
+      "distribution_territories_name_not_blank",
+      sql`length(btrim(${table.name})) > 0`,
+    ),
+  ],
+);
+
+/** Authored notes against a territory; soft-deleted so audit trails keep their subject. */
+export const distributionTerritoryNotes = pgTable(
+  "distribution_territory_notes",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    territoryId: uuid("territory_id")
+      .notNull()
+      .references(() => distributionTerritories.id, { onDelete: "restrict" }),
+    authorUserId: uuid("author_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    body: text("body").notNull(),
+    editedAt: timestamp("edited_at", { withTimezone: true }),
+    version: integer("version").notNull().default(1),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    index("distribution_territory_notes_territory_created_idx").on(
+      table.territoryId,
+      table.createdAt,
+    ),
+    check(
+      "distribution_territory_notes_version_positive",
+      sql`${table.version} > 0`,
+    ),
+    check(
+      "distribution_territory_notes_body_not_blank",
+      sql`length(btrim(${table.body})) > 0`,
+    ),
+  ],
+);
+
+/** Agreements and contracts attached to a territory (owner→documents convention). */
+export const distributionTerritoryDocuments = pgTable(
+  "distribution_territory_documents",
+  {
+    territoryId: uuid("territory_id")
+      .notNull()
+      .references(() => distributionTerritories.id, { onDelete: "restrict" }),
+    ...attachmentColumns,
+  },
+  (table) => [
+    primaryKey({ columns: [table.territoryId, table.documentLineageId] }),
+    index("distribution_territory_documents_lineage_idx").on(
+      table.documentLineageId,
+    ),
+  ],
+);
+
 export const applicationUsersRelations = relations(
   applicationUsers,
   ({ many }) => ({
@@ -1359,3 +1465,7 @@ export type CashFlowDepartmentWindowRow =
   typeof cashFlowDepartmentWindows.$inferSelect;
 export type CashFlowPaymentRow = typeof cashFlowPayments.$inferSelect;
 export type CashFlowSourceTimingRow = typeof cashFlowSourceTimings.$inferSelect;
+export type DistributionTerritoryRow =
+  typeof distributionTerritories.$inferSelect;
+export type DistributionTerritoryNoteRow =
+  typeof distributionTerritoryNotes.$inferSelect;

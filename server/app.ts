@@ -17,6 +17,7 @@ import { createBudgetService } from "./modules/budget/budget-service";
 import { createDocumentService } from "./modules/documents/document-service";
 import { createFinancePlanService } from "./modules/finance-plan/finance-plan-service";
 import { createCashFlowService } from "./modules/cash-flow/cash-flow-service";
+import { createDistributionService } from "./modules/distribution/distribution-service";
 import { createFinancingOverviewService } from "./modules/financing-overview/financing-overview-service";
 import { createEvaluationService } from "./modules/evaluation/evaluation-service";
 import { createNoteService } from "./modules/notes/note-service";
@@ -38,6 +39,12 @@ export interface VaultServerOptions {
   storage: FileStorage;
   /** `static` serves the built client, `vite` runs the dev server, `none` is API only. */
   frontend: "none" | "static" | "vite";
+  /**
+   * Overrides of the per-IP rate-limit budgets. Production never sets this;
+   * the browser test harness raises the write budget because every parallel
+   * spec shares one loopback address.
+   */
+  rateLimits?: Partial<RateLimits>;
 }
 
 export interface VaultServer {
@@ -50,20 +57,31 @@ export interface VaultServer {
  * split by route family so a busy workspace (one query per domain per page)
  * is never throttled by the tighter write, login and provisioning limits.
  */
-const rateLimits = {
+export interface RateLimitBudget {
+  windowMs: number;
+  limit: number;
+  skipSuccessfulRequests?: boolean;
+}
+export type RateLimits = Record<
+  "read" | "write" | "login" | "provisioning",
+  RateLimitBudget
+>;
+
+export const defaultRateLimits: RateLimits = {
   read: { windowMs: 60_000, limit: 600 },
   write: { windowMs: 60_000, limit: 120 },
   /** Failed attempts only; successful logins do not consume the budget. */
   login: { windowMs: 60_000, limit: 10, skipSuccessfulRequests: true },
   provisioning: { windowMs: 60_000, limit: 20 },
-} as const;
+};
 
 function limiter(
-  name: keyof typeof rateLimits,
+  budgets: RateLimits,
+  name: keyof RateLimits,
   applies: (req: express.Request) => boolean,
 ) {
   return rateLimit({
-    ...rateLimits[name],
+    ...budgets[name],
     standardHeaders: "draft-7",
     legacyHeaders: false,
     skip: (req) => !applies(req),
@@ -116,12 +134,14 @@ export async function createVaultServer(
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: false, limit: "32kb" }));
   app.use(requestLogger);
-  app.use("/api", limiter("read", isRead));
-  app.use("/api", limiter("write", isWrite));
-  app.use("/api/v1/auth/login", limiter("login", isWrite));
+  const budgets: RateLimits = { ...defaultRateLimits, ...options.rateLimits };
+  app.use("/api", limiter(budgets, "read", isRead));
+  app.use("/api", limiter(budgets, "write", isWrite));
+  app.use("/api/v1/auth/login", limiter(budgets, "login", isWrite));
   app.use(
     "/api/v1/users",
     limiter(
+      budgets,
       "provisioning",
       (req) => req.method === "POST" && (req.path === "/" || req.path === ""),
     ),
@@ -163,6 +183,7 @@ export async function createVaultServer(
         cashFlowService,
       }),
       taskService: createTaskService({ db }),
+      distributionService: createDistributionService({ db }),
     }),
   );
 

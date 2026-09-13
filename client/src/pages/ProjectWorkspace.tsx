@@ -241,7 +241,6 @@ function PrototypeContent({
   if (currentCategory?.slug === "schedules") {
     return <SchedulesView project={project} currentSubcategory={currentSubcategory?.name} subcategoryId={currentSubcategory?.slug} folder={folder} />;
   }
-  if (currentCategory?.slug === "distribution") return <DistributionView project={project} />;
   if (currentCategory) {
     return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -355,6 +354,8 @@ function WorkspaceShell({ categorySlug, subcategorySlug }: { categorySlug?: stri
             <CashFlow />
           ) : categorySlug === "financing" && !subcategorySlug ? (
             <FinancingView />
+          ) : categorySlug === "distribution" ? (
+            <DistributionView />
           ) : categorySlug === "script" ? (
             <ScriptView />
           ) : categorySlug === "underlying-rights" ? (

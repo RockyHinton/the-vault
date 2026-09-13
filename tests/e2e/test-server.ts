@@ -47,6 +47,12 @@ async function start() {
     db: handle.db,
     storage: storage.storage,
     frontend: "vite",
+    // Every parallel spec shares 127.0.0.1, so the suite as a whole would
+    // exhaust the per-IP write budget meant for one browser.
+    rateLimits: {
+      read: { windowMs: 60_000, limit: 6_000 },
+      write: { windowMs: 60_000, limit: 1_200 },
+    },
   });
   await new Promise<void>((resolve) =>
     httpServer.listen(env.PORT, "127.0.0.1", resolve),

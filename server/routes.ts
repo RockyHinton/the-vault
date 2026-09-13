@@ -11,6 +11,8 @@ import type { BudgetService } from "./modules/budget/budget-service";
 import { createDocumentRouter } from "./modules/documents/document-routes";
 import { createFinancePlanRouter } from "./modules/finance-plan/finance-plan-routes";
 import { createCashFlowRouter } from "./modules/cash-flow/cash-flow-routes";
+import { createDistributionRouter } from "./modules/distribution/distribution-routes";
+import type { DistributionService } from "./modules/distribution/distribution-service";
 import type { CashFlowService } from "./modules/cash-flow/cash-flow-service";
 import { createFinancingOverviewRouter } from "./modules/financing-overview/financing-overview-routes";
 import type { FinancingOverviewService } from "./modules/financing-overview/financing-overview-service";
@@ -60,6 +62,7 @@ export interface ApiRouterDependencies {
   financePlanService: FinancePlanService;
   cashFlowService: CashFlowService;
   financingOverviewService: FinancingOverviewService;
+  distributionService: DistributionService;
 }
 
 /** `/api/v1`. Add a domain here by mounting its router behind `requireLocalUser`. */
@@ -152,6 +155,11 @@ export function createApiRouter(deps: ApiRouterDependencies): Router {
     "/projects/:projectId/financing-overview",
     deps.requireLocalUser,
     createFinancingOverviewRouter(deps.financingOverviewService),
+  );
+  api.use(
+    "/projects/:projectId/distribution",
+    deps.requireLocalUser,
+    createDistributionRouter(deps.distributionService),
   );
   api.use(
     "/projects",

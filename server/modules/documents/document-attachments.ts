@@ -5,6 +5,7 @@ import {
   budgetDepartmentDocuments,
   financeSourceDocuments,
   legalRecordDocuments,
+  distributionTerritoryDocuments,
   projectPersonDocuments,
   projectRightDocuments,
 } from "@shared/schema";
@@ -26,6 +27,7 @@ export interface AttachmentRow {
  * makes adding an owner a deliberate, reviewed change.
  */
 type AttachmentJoinTable =
+  | typeof distributionTerritoryDocuments
   | typeof projectPersonDocuments
   | typeof projectRightDocuments
   | typeof legalRecordDocuments
@@ -33,6 +35,7 @@ type AttachmentJoinTable =
   | typeof financeSourceDocuments;
 type OwnerKey =
   | "personId"
+  | "territoryId"
   | "rightId"
   | "legalRecordId"
   | "budgetDepartmentId"
@@ -113,6 +116,7 @@ export function createAttachmentRepository(config: {
         attachedByUserId: input.attachedByUserId,
       } as {
         personId: string;
+        territoryId: string;
         rightId: string;
         legalRecordId: string;
         budgetDepartmentId: string;

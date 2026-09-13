@@ -162,7 +162,10 @@ use-cases, and `loginAs(credentials)` returns a Supertest agent that signed in t
 
 **Playwright.** The web server (`tests/e2e/test-server.ts`) listens on `VAULT_E2E_PORT`
 (default 5101, distinct from the dev port), creates its own disposable database and seeds the
-same two accounts. Specs sign in through the login form (`tests/e2e/support.ts`). Playwright
+same two accounts, and raises the per-IP read and write rate-limit budgets through the
+`rateLimits` option of `createVaultServer` because every parallel spec shares one loopback
+address (production never sets that option). Specs sign in through the login form
+(`tests/e2e/support.ts`). Playwright
 kills the server without running shutdown hooks, so the database name is written to
 `test-results/e2e-database.json` and dropped by `tests/e2e/global-teardown.ts`. On Replit,
 install Chromium through the Nix configuration; if auto-discovery fails set

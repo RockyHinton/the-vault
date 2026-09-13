@@ -1639,3 +1639,141 @@ export const financingOverviewSchema = z.object({
     .nullable(),
 });
 export type FinancingOverview = z.infer<typeof financingOverviewSchema>;
+
+// --- Distribution ---
+
+/** The commercial state of a territory. No transition rules: the team records what is true. */
+export const distributionTerritoryStatusSchema = z.enum([
+  "available",
+  "in_discussion",
+  "licensed",
+  "delivered",
+  "closed",
+]);
+export type DistributionTerritoryStatus = z.infer<
+  typeof distributionTerritoryStatusSchema
+>;
+
+const territoryNameSchema = z.string().trim().min(1).max(120);
+const dealTextSchema = z.string().trim().max(500);
+const dealNotesSchema = z.string().trim().max(4_000);
+
+/**
+ * Deal information is descriptive text the team keeps per territory ("20% on
+ * signature"); the product records it, it never calculates with it, so
+ * nothing here is money.
+ */
+export const distributionDealSchema = z.object({
+  distributor: z.string().nullable(),
+  contact: z.string().nullable(),
+  signaturePayment: z.string().nullable(),
+  deliveryPayment: z.string().nullable(),
+  generalNotes: z.string().nullable(),
+});
+export type DistributionDeal = z.infer<typeof distributionDealSchema>;
+
+/** A note written against one territory: an authored record (author-or-admin). */
+export const distributionTerritoryNoteSchema = z.object({
+  id: z.string().uuid(),
+  territoryId: z.string().uuid(),
+  author: userRefSchema,
+  body: z.string(),
+  /** Set once the body has been edited after creation. */
+  editedAt: z.string().datetime().nullable(),
+  version: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type DistributionTerritoryNote = z.infer<
+  typeof distributionTerritoryNoteSchema
+>;
+
+/** The grid card: a territory with counts, without its notes and documents. */
+export const distributionTerritorySummarySchema = z.object({
+  id: z.string().uuid(),
+  projectId: z.string().uuid(),
+  name: z.string(),
+  status: distributionTerritoryStatusSchema,
+  noteCount: z.number().int().nonnegative(),
+  documentCount: z.number().int().nonnegative(),
+  createdBy: userRefSchema,
+  version: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type DistributionTerritorySummary = z.infer<
+  typeof distributionTerritorySummarySchema
+>;
+
+export const distributionTerritorySchema =
+  distributionTerritorySummarySchema.extend({
+    deal: distributionDealSchema,
+    notes: z.array(distributionTerritoryNoteSchema),
+    /** Current versions of every attached document lineage. */
+    documents: z.array(documentSchema),
+  });
+export type DistributionTerritory = z.infer<typeof distributionTerritorySchema>;
+
+export const distributionTerritoryListSchema = z.object({
+  items: z.array(distributionTerritorySummarySchema),
+});
+
+export const createDistributionTerritorySchema = z.object({
+  name: territoryNameSchema,
+});
+export type CreateDistributionTerritoryInput = z.infer<
+  typeof createDistributionTerritorySchema
+>;
+
+/** Rename and deal edits are collaborative; status moves through its own command. */
+export const updateDistributionTerritorySchema = z
+  .object({
+    name: territoryNameSchema.optional(),
+    distributor: dealTextSchema.optional(),
+    contact: dealTextSchema.optional(),
+    signaturePayment: dealTextSchema.optional(),
+    deliveryPayment: dealTextSchema.optional(),
+    generalNotes: dealNotesSchema.optional(),
+    version: z.number().int().positive(),
+  })
+  .refine((value) => Object.keys(value).some((key) => key !== "version"), {
+    message: "Nothing to change.",
+  });
+export type UpdateDistributionTerritoryInput = z.infer<
+  typeof updateDistributionTerritorySchema
+>;
+
+export const changeDistributionTerritoryStatusSchema = z.object({
+  status: distributionTerritoryStatusSchema,
+  version: z.number().int().positive(),
+});
+export type ChangeDistributionTerritoryStatusInput = z.infer<
+  typeof changeDistributionTerritoryStatusSchema
+>;
+
+export const createDistributionTerritoryNoteSchema = z.object({
+  body: z.string().trim().min(1).max(4_000),
+});
+export type CreateDistributionTerritoryNoteInput = z.infer<
+  typeof createDistributionTerritoryNoteSchema
+>;
+export const updateDistributionTerritoryNoteSchema = z.object({
+  body: z.string().trim().min(1).max(4_000),
+  version: z.number().int().positive(),
+});
+export type UpdateDistributionTerritoryNoteInput = z.infer<
+  typeof updateDistributionTerritoryNoteSchema
+>;
+
+export const distributionTerritoryParamSchema = z.object({
+  projectId: z.string().uuid(),
+  territoryId: z.string().uuid(),
+});
+export const distributionTerritoryNoteParamSchema =
+  distributionTerritoryParamSchema.extend({
+    noteId: z.string().uuid(),
+  });
+export const distributionTerritoryDocumentParamSchema =
+  distributionTerritoryParamSchema.extend({
+    documentId: z.string().uuid(),
+  });
