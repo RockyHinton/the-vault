@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/select";
 import DocumentLibrary from "@/pages/DocumentLibrary";
 import { FinancingSourcesTable } from "@/components/features/FinancingSourcesTable";
-import FinancePlan from "@/components/features/financing/FinancePlan";
 import CashFlow from "@/components/features/financing/CashFlow";
 import { 
   PieChart, 
@@ -50,10 +49,6 @@ export default function FinancingView({ project, currentSubcategory, subcategory
 
   // If we are drilled down into a subcategory (like "Banking Docs"), just show the docs
   if (subcategoryId) {
-    if (currentSubcategory === "Finance Plan") {
-      return <FinancePlan project={project} />;
-    }
-
     if (currentSubcategory === "Cashflow") {
       return <CashFlow project={project} />;
     }

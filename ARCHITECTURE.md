@@ -46,8 +46,10 @@ cross-domain imports.
 - `server/modules/scripts`: screenplays over document lineages and exact-version annotations
   (see "Scripts and provenance").
 - `server/modules/budget`: the Finance bounded context's first subdomain (see "Finance:
-  budget"). Finance Plan and Cash Flow will be sibling modules that reference it, not parts
-  of it.
+  budget"). Finance Plan and Cash Flow are sibling modules that reference it, not parts of
+  it.
+- `server/modules/finance-plan`: funding sources against one exact locked budget version
+  (see "Finance: finance plan").
 - `server/modules/<domain>`: `<domain>-routes.ts`, `<domain>-service.ts`,
   `<domain>-repository.ts`, plus pure domain rules (e.g. `project-lifecycle.ts`).
 - `shared/schema.ts`: PostgreSQL schema only. `shared/contracts`: Zod request/response contracts.
@@ -313,6 +315,49 @@ sets the money conventions the later Finance Plan and Cash Flow modules follow (
 - **Audit vocabulary:** `budget.created`, `budget_version.created|submitted|locked`,
   `budget_department.created|updated|deleted|document_attached|document_detached`,
   `budget_line_item.created|updated|deleted` (amount changes record from and to).
+
+## Finance: finance plan
+
+The Finance Plan is the second Finance subdomain: a project's register of funding sources
+measured against **one exact locked budget version** (ADR 0011, amended). It is the input the
+later Cash Flow module reads for inflows.
+
+- **Provenance.** `finance_plans` (one per project, unique) references
+  `budget_versions.id` with `ON DELETE RESTRICT`. Creation and `POST …/finance-plan/budget-version`
+  (rebase to another version) both require a version _of the same project_ (404 otherwise) with
+  status `locked` (`422 BUDGET_VERSION_NOT_LOCKED`). The API answers `budgetVersionId` and
+  `budgetVersionNumber`; the referenced version's exact total is the baseline even while a newer
+  draft revision is being edited.
+- **One calculation.** `summarizeFinancing` in `shared/contracts/finance-plan.ts` is the only
+  place financing totals are computed: per-status totals, `committedTotal` (soft committed plus
+  approved), `fundingGap` (budget minus approved, floored at zero) and `overFinancedBy`. It works
+  in BigInt cents through the shared money helpers, runs on the server for every response, and
+  the client renders the returned strings. Nothing is stored: `finance_plans` and
+  `finance_sources` hold no total or gap column, and the integration suite asserts that.
+- **Sources** (`finance_sources`): name, type (`finance_source_type`), `amount numeric(14,2)`
+  non-negative, status (`targeted`, `soft_committed`, `approved`), optional `expected_date`
+  (`date`, exact for cash flow), notes, deterministic `position` (unique per plan), creator,
+  approver, `approved_at`, own optimistic `version`. Edits (`PATCH`) are collaborative and never
+  carry status. `POST …/status` moves between `targeted` and `soft_committed`.
+- **Approval is a sign-off.** `POST …/sources/:id/approve` is studio_admin-only, irreversible,
+  records `approved_by_user_id` and `approved_at` (CHECK
+  `finance_sources_approval_matches_status` ties both to the status), and freezes the source:
+  every later edit, status change, removal or document detach answers
+  `409 FINANCE_SOURCE_APPROVED`. Only approved money counts as secured funding. Removal of an
+  unapproved source is creator-or-admin. There is no plan-level submit or lock: the plan is a
+  living register; the budget version it references is what is locked.
+- **Concurrency.** Every source command runs in one transaction, locks the plan row
+  (`SELECT … FOR UPDATE`) and compare-and-sets the source's `version`; the rebase command uses the
+  plan's `version`. Every command returns the whole plan with its summary so the client never
+  adds money.
+- **Documents** attach to a source through `finance_source_documents` (owner convention,
+  folder `financing/finance-plan`). Attaching to an approved source is allowed (evidence keeps
+  arriving); detaching from one is not.
+- **Cash-flow readiness.** Cash Flow will read `financePlan.budgetVersionId`, the approved
+  sources with their exact amounts and `expectedDate`, and never recompute the gap itself.
+- **Audit vocabulary:** `finance_plan.created|rebased`,
+  `finance_source.created|updated|status_changed|approved|deleted|document_attached|document_detached`
+  (amount changes record from and to; approval records the prior status and amount).
 
 ## HTTP boundary
 

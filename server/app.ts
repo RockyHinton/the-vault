@@ -15,6 +15,7 @@ import {
 import type { CookiePolicy } from "./modules/auth/session-cookie";
 import { createBudgetService } from "./modules/budget/budget-service";
 import { createDocumentService } from "./modules/documents/document-service";
+import { createFinancePlanService } from "./modules/finance-plan/finance-plan-service";
 import { createEvaluationService } from "./modules/evaluation/evaluation-service";
 import { createNoteService } from "./modules/notes/note-service";
 import { createLegalRecordService } from "./modules/legal/legal-record-service";
@@ -148,6 +149,7 @@ export async function createVaultServer(
       legalRecordService: createLegalRecordService({ db }),
       scriptService: createScriptService({ db }),
       budgetService: createBudgetService({ db }),
+      financePlanService: createFinancePlanService({ db }),
       taskService: createTaskService({ db }),
     }),
   );

@@ -69,41 +69,9 @@ export interface Project {
   };
 
 
-  // Finance Plan Data (New)
-  financePlan?: {
-    sources: FinanceSource[];
-  };
-
   // Cash Flow Data (New)
   cashFlow?: CashFlowState;
 
-}
-
-// --- Finance Plan Types ---
-
-export type FinanceSourceType = 'Equity' | 'Pre-sale' | 'Distributor MG' | 'Grant' | 'Tax Credit' | 'Loan / Lender' | 'Gap Finance' | 'Other';
-export type FinanceSourceStatus = 'Targeted' | 'Soft committed' | 'Approved';
-
-export interface FinanceDocument {
-  id: string;
-  fileName: string;
-  docType: 'Term sheet' | 'Contract / Agreement' | 'LOI' | 'Grant letter' | 'Tax credit opinion' | 'Bank / lender letter' | 'Other';
-  status: 'Reference' | 'Pending approval' | 'Approved';
-  uploadedAt: string;
-  fileSize?: string;
-}
-
-export interface FinanceSource {
-  id: string;
-  name: string;
-  amount: number;
-  type: FinanceSourceType;
-  status: FinanceSourceStatus;
-  isApproved: boolean; // Derived from status === 'Approved', but helpful to have explicit
-  expectedDate?: string;
-  notes?: string;
-  documents: FinanceDocument[];
-  isExpanded?: boolean; // UI state
 }
 
 // --- Cash Flow Types ---

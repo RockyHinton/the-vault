@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { rightsStatusValues } from "./rights-status";
 import { currencyCodeSchema, moneySchema, moneyValueSchema } from "./money";
+import {
+  financeSourceStatusValues,
+  financingSummarySchema,
+} from "./finance-plan";
 
 export const apiErrorSchema = z.object({
   error: z.object({
@@ -1281,3 +1285,121 @@ export const budgetLineItemParamSchema = z.object({
   projectId: z.string().uuid(),
   lineItemId: z.string().uuid(),
 });
+
+// --- Finance: Finance Plan ---
+
+export const financeSourceTypeSchema = z.enum([
+  "equity",
+  "pre_sale",
+  "distributor_mg",
+  "grant",
+  "tax_credit",
+  "loan",
+  "gap_finance",
+  "other",
+]);
+export type FinanceSourceType = z.infer<typeof financeSourceTypeSchema>;
+export const financeSourceStatusSchema = z.enum(financeSourceStatusValues);
+
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.");
+
+/**
+ * One source of financing. An approved source is a permanent financial fact:
+ * its fields never change again and it cannot be removed, so later cash-flow
+ * work may reference it by id.
+ */
+export const financeSourceSchema = z.object({
+  id: z.string().uuid(),
+  financePlanId: z.string().uuid(),
+  name: z.string(),
+  type: financeSourceTypeSchema,
+  amount: moneyValueSchema,
+  status: financeSourceStatusSchema,
+  expectedDate: isoDate.nullable(),
+  notes: z.string().nullable(),
+  position: z.number().int().nonnegative(),
+  documents: z.array(documentSchema),
+  createdBy: userRefSchema,
+  approvedBy: userRefSchema.nullable(),
+  approvedAt: z.string().datetime().nullable(),
+  version: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type FinanceSource = z.infer<typeof financeSourceSchema>;
+
+/**
+ * The project's finance plan: a living register of sources that finances one
+ * exact, locked budget version. Currency and budget total come from that
+ * version; totals and the gap are the shared `summarizeFinancing` result.
+ */
+export const financePlanSchema = z.object({
+  id: z.string().uuid(),
+  projectId: z.string().uuid(),
+  budgetVersionId: z.string().uuid(),
+  budgetVersionNumber: z.number().int().positive(),
+  currency: currencyCodeSchema,
+  summary: financingSummarySchema,
+  sources: z.array(financeSourceSchema),
+  createdBy: userRefSchema,
+  /** Optimistic concurrency for plan-level commands (rebasing to another budget version). */
+  version: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type FinancePlan = z.infer<typeof financePlanSchema>;
+
+export const createFinancePlanSchema = z.object({
+  /** Must be a locked version of this project's budget. */
+  budgetVersionId: z.string().uuid(),
+});
+export type CreateFinancePlanInput = z.infer<typeof createFinancePlanSchema>;
+export const rebaseFinancePlanSchema = z.object({
+  budgetVersionId: z.string().uuid(),
+  version: z.number().int().positive(),
+});
+export type RebaseFinancePlanInput = z.infer<typeof rebaseFinancePlanSchema>;
+
+export const createFinanceSourceSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  type: financeSourceTypeSchema,
+  amount: moneySchema,
+  /** Approval is a separate command; a source is created targeted or soft committed. */
+  status: z.enum(["targeted", "soft_committed"]).default("targeted"),
+  expectedDate: isoDate.nullable().optional(),
+  notes: z.string().trim().max(4_000).nullable().optional(),
+});
+export type CreateFinanceSourceInput = z.infer<
+  typeof createFinanceSourceSchema
+>;
+export const updateFinanceSourceSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200).optional(),
+    type: financeSourceTypeSchema.optional(),
+    amount: moneySchema.optional(),
+    expectedDate: isoDate.nullable().optional(),
+    notes: z.string().trim().max(4_000).nullable().optional(),
+    version: z.number().int().positive(),
+  })
+  .refine((value) => Object.keys(value).some((key) => key !== "version"), {
+    message: "At least one source field must be supplied.",
+  });
+export type UpdateFinanceSourceInput = z.infer<
+  typeof updateFinanceSourceSchema
+>;
+export const changeFinanceSourceStatusSchema = z.object({
+  status: z.enum(["targeted", "soft_committed"]),
+  version: z.number().int().positive(),
+});
+export type ChangeFinanceSourceStatusInput = z.infer<
+  typeof changeFinanceSourceStatusSchema
+>;
+export const financeSourceParamSchema = z.object({
+  projectId: z.string().uuid(),
+  sourceId: z.string().uuid(),
+});
+export const financeSourceDocumentParamSchema = financeSourceParamSchema.extend(
+  {
+    documentId: z.string().uuid(),
+  },
+);

@@ -3,6 +3,7 @@ import type { PgColumn } from "drizzle-orm/pg-core";
 import type { Document } from "@shared/contracts";
 import {
   budgetDepartmentDocuments,
+  financeSourceDocuments,
   legalRecordDocuments,
   projectPersonDocuments,
   projectRightDocuments,
@@ -28,8 +29,14 @@ type AttachmentJoinTable =
   | typeof projectPersonDocuments
   | typeof projectRightDocuments
   | typeof legalRecordDocuments
-  | typeof budgetDepartmentDocuments;
-type OwnerKey = "personId" | "rightId" | "legalRecordId" | "budgetDepartmentId";
+  | typeof budgetDepartmentDocuments
+  | typeof financeSourceDocuments;
+type OwnerKey =
+  | "personId"
+  | "rightId"
+  | "legalRecordId"
+  | "budgetDepartmentId"
+  | "financeSourceId";
 
 /**
  * Persistence for one owner→documents join table. Owners (People, Rights,
@@ -109,6 +116,7 @@ export function createAttachmentRepository(config: {
         rightId: string;
         legalRecordId: string;
         budgetDepartmentId: string;
+        financeSourceId: string;
       } & {
         documentLineageId: string;
         attachedByUserId: string;

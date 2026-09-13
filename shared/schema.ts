@@ -157,6 +157,21 @@ export const budgetVersionStatus = pgEnum("budget_version_status", [
   "awaiting_approval",
   "locked",
 ]);
+export const financeSourceType = pgEnum("finance_source_type", [
+  "equity",
+  "pre_sale",
+  "distributor_mg",
+  "grant",
+  "tax_credit",
+  "loan",
+  "gap_finance",
+  "other",
+]);
+export const financeSourceStatus = pgEnum("finance_source_status", [
+  "targeted",
+  "soft_committed",
+  "approved",
+]);
 export const contractStatus = pgEnum("contract_status", [
   "not_sent",
   "sent",
@@ -1061,6 +1076,103 @@ export const budgetDepartmentDocuments = pgTable(
   ],
 );
 
+/**
+ * One finance plan per project, financing one exact budget version. The
+ * service admits only locked versions of the project's own budget; the FK
+ * keeps the reference real, and `version` guards the rebase command.
+ */
+export const financePlans = pgTable(
+  "finance_plans",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "restrict" }),
+    budgetVersionId: uuid("budget_version_id")
+      .notNull()
+      .references(() => budgetVersions.id, { onDelete: "restrict" }),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    version: integer("version").notNull().default(1),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("finance_plans_project_unique").on(table.projectId),
+    check("finance_plans_version_positive", sql`${table.version} > 0`),
+  ],
+);
+
+/**
+ * A financing source. Approval is recorded with actor and time and is
+ * irreversible; approved rows are immutable by service policy and the CHECK
+ * keeps the approval columns coherent with the status.
+ */
+export const financeSources = pgTable(
+  "finance_sources",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    financePlanId: uuid("finance_plan_id")
+      .notNull()
+      .references(() => financePlans.id, { onDelete: "restrict" }),
+    name: text("name").notNull(),
+    type: financeSourceType("type").notNull(),
+    amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+    status: financeSourceStatus("status").notNull().default("targeted"),
+    expectedDate: date("expected_date"),
+    notes: text("notes"),
+    position: integer("position").notNull(),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    approvedByUserId: uuid("approved_by_user_id").references(
+      () => applicationUsers.id,
+      {
+        onDelete: "restrict",
+      },
+    ),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    version: integer("version").notNull().default(1),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("finance_sources_plan_position_unique").on(
+      table.financePlanId,
+      table.position,
+    ),
+    check("finance_sources_version_positive", sql`${table.version} > 0`),
+    check(
+      "finance_sources_name_not_blank",
+      sql`length(btrim(${table.name})) > 0`,
+    ),
+    check("finance_sources_amount_non_negative", sql`${table.amount} >= 0`),
+    check("finance_sources_position_non_negative", sql`${table.position} >= 0`),
+    check(
+      "finance_sources_approval_matches_status",
+      sql`(${table.status} = 'approved') = (${table.approvedAt} IS NOT NULL) AND (${table.approvedAt} IS NULL) = (${table.approvedByUserId} IS NULL)`,
+    ),
+  ],
+);
+
+/** Supporting documents (term sheets, letters) attached to a source. */
+export const financeSourceDocuments = pgTable(
+  "finance_source_documents",
+  {
+    financeSourceId: uuid("finance_source_id")
+      .notNull()
+      .references(() => financeSources.id, { onDelete: "restrict" }),
+    ...attachmentColumns,
+  },
+  (table) => [
+    primaryKey({ columns: [table.financeSourceId, table.documentLineageId] }),
+    index("finance_source_documents_lineage_idx").on(table.documentLineageId),
+  ],
+);
+
 export const applicationUsersRelations = relations(
   applicationUsers,
   ({ many }) => ({
@@ -1094,6 +1206,8 @@ export type BudgetRow = typeof budgets.$inferSelect;
 export type BudgetVersionRow = typeof budgetVersions.$inferSelect;
 export type BudgetDepartmentRow = typeof budgetDepartments.$inferSelect;
 export type BudgetLineItemRow = typeof budgetLineItems.$inferSelect;
+export type FinancePlanRow = typeof financePlans.$inferSelect;
+export type FinanceSourceRow = typeof financeSources.$inferSelect;
 export type ProjectPersonDocumentRow =
   typeof projectPersonDocuments.$inferSelect;
 export type ProjectRow = typeof projects.$inferSelect;

@@ -9,6 +9,8 @@ import type { CookiePolicy } from "./modules/auth/session-cookie";
 import { createBudgetRouter } from "./modules/budget/budget-routes";
 import type { BudgetService } from "./modules/budget/budget-service";
 import { createDocumentRouter } from "./modules/documents/document-routes";
+import { createFinancePlanRouter } from "./modules/finance-plan/finance-plan-routes";
+import type { FinancePlanService } from "./modules/finance-plan/finance-plan-service";
 import type { DocumentService } from "./modules/documents/document-service";
 import {
   createEvaluationRouter,
@@ -51,6 +53,7 @@ export interface ApiRouterDependencies {
   legalRecordService: LegalRecordService;
   scriptService: ScriptService;
   budgetService: BudgetService;
+  financePlanService: FinancePlanService;
 }
 
 /** `/api/v1`. Add a domain here by mounting its router behind `requireLocalUser`. */
@@ -128,6 +131,11 @@ export function createApiRouter(deps: ApiRouterDependencies): Router {
     "/projects/:projectId/budget",
     deps.requireLocalUser,
     createBudgetRouter(deps.budgetService),
+  );
+  api.use(
+    "/projects/:projectId/finance-plan",
+    deps.requireLocalUser,
+    createFinancePlanRouter(deps.financePlanService),
   );
   api.use(
     "/projects",

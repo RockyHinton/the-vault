@@ -1,13 +1,13 @@
-import { useState, useRef } from "react";
-import { 
-  Project, 
-  useStore, 
-  FinanceSource, 
-  FinanceSourceType, 
-  FinanceSourceStatus, 
-  FinanceDocument
-} from "@/lib/store";
-import { FormattedNumberInput } from "@/components/ui/formatted-number-input";
+import { useState } from "react";
+import { format } from "date-fns";
+import {
+  formatMoney,
+  type BudgetVersionSummary,
+  type CurrencyCode,
+  type FinancePlan as FinancePlanRecord,
+  type FinanceSource,
+  type FinanceSourceType,
+} from "@shared/contracts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -40,373 +39,213 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { 
-  Plus, 
-  Trash2, 
-  ChevronDown, 
-  ChevronUp, 
-  FileText, 
+import {
+  Plus,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  FileText,
   AlertCircle,
   DollarSign,
   TrendingUp,
   CheckCircle2,
-  Upload,
-  AlertTriangle
+  AlertTriangle,
+  Lock,
 } from "lucide-react";
-import { format } from "date-fns";
-import { nanoid } from 'nanoid';
 import { cn } from "@/lib/utils";
+import { useProjectWorkspace } from "@/features/projects/workspace-context";
+import { useCurrentUser } from "@/features/auth/use-current-user";
+import { useBudget } from "@/features/budget/use-budget";
+import {
+  useApproveFinanceSource,
+  useAttachNewSourceDocument,
+  useChangeFinanceSourceStatus,
+  useCommitFinanceSource,
+  useCreateFinancePlan,
+  useCreateFinanceSource,
+  useDeleteFinanceSource,
+  useDetachSourceDocument,
+  useFinancePlan,
+  useRebaseFinancePlan,
+} from "@/features/finance-plan/use-finance-plan";
+import {
+  editableSourceStatuses,
+  financeSourceStatusClass,
+  financeSourceStatusLabels,
+  financeSourceTypeLabels,
+  financeSourceTypes,
+} from "@/features/finance-plan/labels";
+import { MoneyInput } from "@/components/finance/MoneyInput";
+import { OwnerDocumentList } from "@/components/documents/OwnerDocumentList";
 
-interface FinancePlanProps {
-  project: Project;
+/**
+ * The project's finance plan: a register of funding sources against one exact
+ * locked budget version. Every figure on this screen is the server's
+ * `summary`; the browser never adds money.
+ */
+export default function FinancePlan() {
+  const { project, isStudioAdmin } = useProjectWorkspace();
+  const planQuery = useFinancePlan(project.id);
+  const budgetQuery = useBudget(project.id);
+
+  if (planQuery.isLoading || budgetQuery.isLoading) {
+    return <p className="text-sm text-muted-foreground">Loading finance plan…</p>;
+  }
+  if (planQuery.isError || budgetQuery.isError) {
+    return <p className="text-sm text-destructive">The finance plan could not be loaded.</p>;
+  }
+
+  const budget = budgetQuery.data?.data;
+  const lockedVersions = (budget?.versions ?? []).filter((v) => v.status === "locked");
+  const plan = planQuery.data?.data;
+  if (!plan) {
+    return <EmptyState projectId={project.id} currency={budget?.currency ?? "GBP"} lockedVersions={lockedVersions} />;
+  }
+  return <PlanScreen plan={plan} lockedVersions={lockedVersions} isStudioAdmin={isStudioAdmin} />;
 }
 
-const FINANCE_TYPES: FinanceSourceType[] = [
-  'Equity',
-  'Pre-sale',
-  'Distributor MG',
-  'Grant',
-  'Tax Credit',
-  'Loan / Lender',
-  'Gap Finance',
-  'Other'
-];
+function EmptyState({
+  projectId,
+  currency,
+  lockedVersions,
+}: {
+  projectId: string;
+  currency: CurrencyCode;
+  lockedVersions: BudgetVersionSummary[];
+}) {
+  const create = useCreateFinancePlan();
+  const newest = lockedVersions.reduce<BudgetVersionSummary | undefined>(
+    (latest, v) => (!latest || v.versionNumber > latest.versionNumber ? v : latest),
+    undefined,
+  );
+  const [selectedId, setSelectedId] = useState<string | undefined>(newest?.id);
+  const selected = lockedVersions.find((v) => v.id === selectedId) ?? newest;
 
-const STATUS_OPTIONS: FinanceSourceStatus[] = [
-  'Targeted',
-  'Soft committed',
-  'Approved'
-];
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div>
+        <h2 className="text-xl font-semibold">Finance Plan</h2>
+        <p className="text-sm text-muted-foreground">Funding sources are planned against a locked budget.</p>
+      </div>
+      <Card className="border-dashed">
+        <CardContent className="py-12 flex flex-col items-center text-center gap-4">
+          <div className="p-3 rounded-full bg-primary/10 text-primary">
+            <Lock className="h-6 w-6" />
+          </div>
+          {lockedVersions.length === 0 ? (
+            <>
+              <h3 className="text-lg font-semibold">Lock a budget first</h3>
+              <p className="text-sm text-muted-foreground max-w-md">
+                A finance plan is based on an approved, locked budget version so the funding gap is measured against
+                a fixed baseline. Submit the budget and have a studio administrator lock it.
+              </p>
+            </>
+          ) : (
+            <>
+              <h3 className="text-lg font-semibold">No finance plan yet</h3>
+              <p className="text-sm text-muted-foreground max-w-md">
+                Create the plan against a locked budget version. You can point it at a newer locked version later.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                {lockedVersions.length > 1 && selected && (
+                  <Select value={selected.id} onValueChange={setSelectedId}>
+                    <SelectTrigger className="w-[260px]" aria-label="Budget version">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {lockedVersions.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>
+                          v{v.versionNumber} · locked · {formatMoney(v.total, currency)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {selected && (
+                  <Button
+                    disabled={create.isPending}
+                    onClick={() => create.mutate({ projectId, input: { budgetVersionId: selected.id } })}
+                  >
+                    <Plus className="h-4 w-4 mr-2" /> Create plan against locked budget v{selected.versionNumber}
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
-const DOC_TYPES = [
-  'Term sheet',
-  'Contract / Agreement',
-  'LOI',
-  'Grant letter',
-  'Tax credit opinion',
-  'Bank / lender letter',
-  'Other'
-];
+function PlanScreen({
+  plan,
+  lockedVersions,
+  isStudioAdmin,
+}: {
+  plan: FinancePlanRecord;
+  lockedVersions: BudgetVersionSummary[];
+  isStudioAdmin: boolean;
+}) {
+  const projectId = plan.projectId;
+  const currency = plan.currency;
+  const money = (value: string) => formatMoney(value, currency);
+  const currentUserId = useCurrentUser().data?.data.user.id;
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [addOpen, setAddOpen] = useState(false);
+  const [approveTarget, setApproveTarget] = useState<FinanceSource | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<FinanceSource | null>(null);
+  const [rebaseOpen, setRebaseOpen] = useState(false);
 
-const DOC_STATUS_OPTIONS = [
-  'Reference',
-  'Pending approval',
-  'Approved'
-];
+  const createSource = useCreateFinanceSource();
+  const commit = useCommitFinanceSource(projectId);
+  const changeStatus = useChangeFinanceSourceStatus();
+  const approve = useApproveFinanceSource();
+  const remove = useDeleteFinanceSource();
+  const attachDocument = useAttachNewSourceDocument();
+  const detachDocument = useDetachSourceDocument();
+  const rebase = useRebaseFinancePlan();
 
-export default function FinancePlan({ project }: FinancePlanProps) {
-  const { updateProject } = useStore();
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
-  
-  // UI State for interactions
-  const [confirmApproveId, setConfirmApproveId] = useState<string | null>(null);
-  const [sourceToDelete, setSourceToDelete] = useState<string | null>(null);
-  const [docToDelete, setDocToDelete] = useState<{ sourceId: string; docId: string } | null>(null);
-  const [uploadSourceId, setUploadSourceId] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [draft, setDraft] = useState<{
+    name: string;
+    amount: string;
+    type: FinanceSourceType;
+    status: (typeof editableSourceStatuses)[number];
+    expectedDate: string;
+    notes: string;
+  }>({ name: "", amount: "0.00", type: "equity", status: "targeted", expectedDate: "", notes: "" });
+  const resetDraft = () =>
+    setDraft({ name: "", amount: "0.00", type: "equity", status: "targeted", expectedDate: "", notes: "" });
 
-  // New Source Form State
-  const [newSource, setNewSource] = useState<Partial<FinanceSource>>({
-    name: '',
-    amount: 0,
-    type: 'Equity',
-    status: 'Targeted',
-    isApproved: false,
-    documents: []
-  });
+  const summary = plan.summary;
+  const hasGap = summary.fundingGap !== "0.00";
+  const otherLockedVersions = lockedVersions.filter((v) => v.id !== plan.budgetVersionId);
+  const canRemove = (source: FinanceSource) => isStudioAdmin || source.createdBy.id === currentUserId;
 
-  const sources = project.financePlan?.sources || [];
-  const totalBudget = project.financing?.totalBudget || 0; // Read-only from budget tool
-  const currency = project.financing?.currency || 'USD';
-  
-  const approvedSources = sources.filter(s => s.isApproved);
-  const securedFunding = approvedSources.reduce((sum, s) => sum + s.amount, 0);
-  const fundingGap = Math.max(0, totalBudget - securedFunding);
-
-  const currencySymbols: Record<string, string> = {
-    'USD': '$',
-    'GBP': '£',
-    'EUR': '€'
-  };
-  const currentSymbol = currencySymbols[currency] || '$';
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const toggleExpand = (id: string) => {
-    setExpandedSources(prev => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const handleCreateSource = () => {
-    if (!newSource.name || !newSource.amount || !newSource.type || !newSource.status) {
-      return;
-    }
-
-    const source: FinanceSource = {
-      id: nanoid(),
-      name: newSource.name,
-      amount: Number(newSource.amount),
-      type: newSource.type as FinanceSourceType,
-      status: newSource.status as FinanceSourceStatus,
-      isApproved: newSource.status === 'Approved',
-      expectedDate: newSource.expectedDate,
-      notes: newSource.notes,
-      documents: [],
-      isExpanded: false
-    };
-
-    const updatedSources = [...sources, source];
-    
-    // Update project state
-    updateProjectSources(updatedSources);
-    
-    // Reset form and close modal
-    setNewSource({
-      name: '',
-      amount: 0,
-      type: 'Equity',
-      status: 'Targeted',
-      isApproved: false,
-      documents: []
-    });
-    setIsAddModalOpen(false);
-  };
-
-  const updateSource = (id: string, updates: Partial<FinanceSource>) => {
-    const updatedSources = sources.map(s => {
-      if (s.id === id) {
-        const updatedSource = { ...s, ...updates };
-        
-        // Recalculate status based on documents ONLY if documents are present
-        // If no documents, we respect the manually set status (or the update)
-        // If documents exist, we derive status from documents
-        if (updatedSource.documents && updatedSource.documents.length > 0) {
-            const allApproved = updatedSource.documents.every(d => d.status === 'Approved');
-            const anyPending = updatedSource.documents.some(d => d.status === 'Pending approval');
-            
-            if (allApproved) {
-                updatedSource.status = 'Approved';
-                updatedSource.isApproved = true;
-            } else if (anyPending) {
-                updatedSource.status = 'Soft committed'; // Mapping Pending -> Soft committed as per requirement
-                updatedSource.isApproved = false;
-            } else {
-                // If just Reference or others, maybe default to Targeted or keep current?
-                // Let's assume if not all approved and not pending, it might be Targeted
-                // Or we just leave it alone if it's not one of those states
-                if (!updatedSource.status || updatedSource.status === 'Approved') {
-                     updatedSource.status = 'Targeted';
-                     updatedSource.isApproved = false;
-                }
-            }
-        } else {
-            // No documents - normal manual behavior
-            if (updates.status === 'Approved') {
-              updatedSource.isApproved = true;
-            } else if (updates.status) {
-              updatedSource.isApproved = false;
-            }
-        }
-        
-        return updatedSource;
-      }
-      return s;
-    });
-    updateProjectSources(updatedSources);
-  };
-
-  const deleteSource = (id: string) => {
-    const updatedSources = sources.filter(s => s.id !== id);
-    updateProjectSources(updatedSources);
-  };
-
-  const updateProjectSources = (updatedSources: FinanceSource[]) => {
-    // Update financePlan sources
-    const newFinancePlan = {
-      sources: updatedSources
-    };
-
-    // Calculate new secured funding and breakdown for Financing Overview
-    const newApprovedSources = updatedSources.filter(s => s.isApproved);
-    const newSecured = newApprovedSources.reduce((sum, s) => sum + s.amount, 0);
-    
-    // Create breakdown for chart/overview
-    const totalSecured = newSecured > 0 ? newSecured : 1; // Prevent div by zero
-    const newBreakdown = newApprovedSources.map(s => ({
-      category: s.name,
-      amount: s.amount,
-      percentage: Number(((s.amount / totalSecured) * 100).toFixed(1))
-    }));
-
-    updateProject(project.id, {
-      financePlan: newFinancePlan,
-      financing: {
-        ...project.financing!,
-        secured: newSecured,
-        breakdown: newBreakdown
-      }
-    });
-  };
-
-  // --- Document Handling (Real File Upload Mock) ---
-  
-  const triggerFileUpload = (sourceId: string) => {
-    setUploadSourceId(sourceId);
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0] && uploadSourceId) {
-      const file = e.target.files[0];
-      const newDoc: FinanceDocument = {
-        id: nanoid(),
-        fileName: file.name,
-        docType: 'Term sheet', // Default
-        status: 'Reference',
-        uploadedAt: new Date().toISOString(),
-        fileSize: '1.2 MB' // Mock size
-      };
-      
-      const source = sources.find(s => s.id === uploadSourceId);
-      if (source) {
-        const updatedDocs = [...source.documents, newDoc];
-        
-        // Calculate new source status
-        let newSourceStatus: FinanceSourceStatus = source.status;
-        let newIsApproved = source.isApproved;
-
-        if (updatedDocs.length > 0) {
-            const allApproved = updatedDocs.every(d => d.status === 'Approved');
-            const anyPending = updatedDocs.some(d => d.status === 'Pending approval');
-            
-            if (allApproved) {
-                newSourceStatus = 'Approved';
-                newIsApproved = true;
-            } else if (anyPending) {
-                newSourceStatus = 'Soft committed';
-                newIsApproved = false;
-            } else {
-                newSourceStatus = 'Targeted';
-                newIsApproved = false;
-            }
-        }
-
-        updateSource(uploadSourceId, { 
-            documents: updatedDocs,
-            status: newSourceStatus,
-            isApproved: newIsApproved
-        });
-      }
-      
-      // Reset
-      setUploadSourceId(null);
-      e.target.value = ''; // Allow selecting same file again
-    }
-  };
-
-  const updateDocument = (sourceId: string, docId: string, updates: Partial<FinanceDocument>) => {
-    const source = sources.find(s => s.id === sourceId);
-    if (source) {
-      const updatedDocs = source.documents.map(d => d.id === docId ? { ...d, ...updates } : d);
-      
-      // Calculate new source status based on updated docs
-      let newSourceStatus: FinanceSourceStatus = source.status;
-      let newIsApproved = source.isApproved;
-
-      if (updatedDocs.length > 0) {
-        const allApproved = updatedDocs.every(d => d.status === 'Approved');
-        const anyPending = updatedDocs.some(d => d.status === 'Pending approval');
-        
-        if (allApproved) {
-            newSourceStatus = 'Approved';
-            newIsApproved = true;
-        } else if (anyPending) {
-            newSourceStatus = 'Soft committed';
-            newIsApproved = false;
-        } else {
-            newSourceStatus = 'Targeted';
-            newIsApproved = false;
-        }
-      }
-      
-      updateSource(sourceId, { 
-          documents: updatedDocs,
-          status: newSourceStatus,
-          isApproved: newIsApproved
+  const submitNewSource = async () => {
+    if (!draft.name.trim()) return;
+    try {
+      await createSource.mutateAsync({
+        projectId,
+        input: {
+          name: draft.name.trim(),
+          amount: draft.amount,
+          type: draft.type,
+          status: draft.status,
+          expectedDate: draft.expectedDate || undefined,
+          notes: draft.notes.trim() || undefined,
+        },
       });
-    }
-  };
-
-  const removeDocument = (sourceId: string, docId: string) => {
-    const source = sources.find(s => s.id === sourceId);
-    if (source) {
-      const updatedDocs = source.documents.filter(d => d.id !== docId);
-      
-      // Calculate new source status based on remaining docs
-      let newSourceStatus: FinanceSourceStatus = source.status;
-      let newIsApproved = source.isApproved;
-
-      if (updatedDocs.length > 0) {
-        const allApproved = updatedDocs.every(d => d.status === 'Approved');
-        const anyPending = updatedDocs.some(d => d.status === 'Pending approval');
-        
-        if (allApproved) {
-            newSourceStatus = 'Approved';
-            newIsApproved = true;
-        } else if (anyPending) {
-            newSourceStatus = 'Soft committed';
-            newIsApproved = false;
-        } else {
-            newSourceStatus = 'Targeted';
-            newIsApproved = false;
-        }
-      } else {
-          // Fallback if all docs removed? Maybe keep current or reset to Targeted
-          newSourceStatus = 'Targeted';
-          newIsApproved = false;
-      }
-
-      updateSource(sourceId, { 
-          documents: updatedDocs,
-          status: newSourceStatus,
-          isApproved: newIsApproved
-      });
-    }
-  };
-
-  // --- Approval Workflow ---
-
-  const initiateApproval = (sourceId: string) => {
-    setConfirmApproveId(sourceId);
-  };
-
-  const confirmApproval = () => {
-    if (confirmApproveId) {
-      updateSource(confirmApproveId, { status: 'Approved' });
-      setConfirmApproveId(null);
+      resetDraft();
+      setAddOpen(false);
+    } catch {
+      /* the mutation toast reports the failure; keep the dialog open */
     }
   };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        className="hidden" 
-        onChange={handleFileSelect} 
-      />
-
-      {/* Confirmation Dialog for Approval */}
-      <Dialog open={!!confirmApproveId} onOpenChange={(open) => !open && setConfirmApproveId(null)}>
+      <Dialog open={!!approveTarget} onOpenChange={(open) => !open && setApproveTarget(null)}>
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
             <div className="flex items-center gap-2 text-amber-500 mb-2">
@@ -414,465 +253,508 @@ export default function FinancePlan({ project }: FinancePlanProps) {
               <DialogTitle>Confirm Approval</DialogTitle>
             </div>
             <DialogDescription className="py-2">
-              Are you sure you want to approve this funding source?
-              <br/><br/>
-              Once approved, the source will be <strong>locked (read-only)</strong> and its amount will be added to the secured funding total.
+              Approve <strong>{approveTarget?.name}</strong> for{" "}
+              <strong>{approveTarget ? money(approveTarget.amount) : ""}</strong>?
+              <br />
+              <br />
+              Once approved, the source is <strong>locked (read-only)</strong>, its amount counts toward secured
+              funding, and the approval cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setConfirmApproveId(null)}>Cancel</Button>
-            <Button onClick={confirmApproval} className="bg-green-600 hover:bg-green-700 text-white">
+            <Button variant="outline" onClick={() => setApproveTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white"
+              disabled={approve.isPending}
+              onClick={async () => {
+                if (!approveTarget) return;
+                try {
+                  await approve.mutateAsync({ projectId, sourceId: approveTarget.id, version: approveTarget.version });
+                } catch {
+                  /* toast shown by the mutation */
+                }
+                setApproveTarget(null);
+              }}
+            >
               <CheckCircle2 className="h-4 w-4 mr-2" /> Verify & Approve
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!sourceToDelete} onOpenChange={(open) => !open && setSourceToDelete(null)}>
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Funding Source</AlertDialogTitle>
+            <AlertDialogTitle>Remove funding source</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this funding source? This will remove it from your finance plan and cannot be undone.
+              Remove <strong>{deleteTarget?.name}</strong> from the finance plan? Its attached documents stay in the
+              Documents library.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90"
               onClick={() => {
-                if (sourceToDelete) {
-                  deleteSource(sourceToDelete);
-                  setSourceToDelete(null);
-                }
+                if (deleteTarget)
+                  remove.mutate({ projectId, sourceId: deleteTarget.id, version: deleteTarget.version });
+                setDeleteTarget(null);
               }}
             >
-              Delete
+              Remove
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Document</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this document? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              className="bg-destructive hover:bg-destructive/90"
-              onClick={() => {
-                if (docToDelete) {
-                  removeDocument(docToDelete.sourceId, docToDelete.docId);
-                  setDocToDelete(null);
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <Dialog open={rebaseOpen} onOpenChange={setRebaseOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>Change budget version</DialogTitle>
+            <DialogDescription>
+              Point this plan at another locked budget version. Funding sources are unchanged; the budget total and
+              funding gap are recalculated against the new baseline.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 py-2">
+            {otherLockedVersions.map((v) => (
+              <Button
+                key={v.id}
+                variant="outline"
+                className="justify-between"
+                disabled={rebase.isPending}
+                onClick={async () => {
+                  try {
+                    await rebase.mutateAsync({ projectId, input: { budgetVersionId: v.id, version: plan.version } });
+                    setRebaseOpen(false);
+                  } catch {
+                    /* toast shown by the mutation */
+                  }
+                }}
+              >
+                <span>
+                  v{v.versionNumber} · locked {v.lockedAt ? format(new Date(v.lockedAt), "d MMM yyyy") : ""}
+                </span>
+                <span className="font-mono">{money(v.total)}</span>
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      {/* Top Summary Strip */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-card/50 border-border/50">
-           <CardContent className="p-4 flex items-center justify-between">
-             <div>
-               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Budget</p>
-               <div className="text-2xl font-bold font-mono mt-1">{formatCurrency(totalBudget)}</div>
-             </div>
-             <Badge variant="outline" className="h-8 w-8 rounded-full flex items-center justify-center p-0 border-primary/20 bg-primary/10 text-primary">
-                <DollarSign className="h-4 w-4" />
-             </Badge>
-           </CardContent>
-        </Card>
-        
-        <Card className="bg-card/50 border-border/50">
-           <CardContent className="p-4 flex items-center justify-between">
-             <div>
-               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Secured Funding</p>
-               <div className="text-2xl font-bold font-mono mt-1 text-green-500">{formatCurrency(securedFunding)}</div>
-             </div>
-             <Badge variant="outline" className="h-8 w-8 rounded-full flex items-center justify-center p-0 border-green-500/20 bg-green-500/10 text-green-500">
-                <TrendingUp className="h-4 w-4" />
-             </Badge>
-           </CardContent>
-        </Card>
-
-        <Card className="bg-card/50 border-border/50">
-           <CardContent className="p-4 flex items-center justify-between">
-             <div>
-               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Funding Gap</p>
-               <div className={`text-2xl font-bold font-mono mt-1 ${fundingGap > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}>
-                 {formatCurrency(fundingGap)}
-               </div>
-             </div>
-             <Badge variant="outline" className={`h-8 w-8 rounded-full flex items-center justify-center p-0 ${fundingGap > 0 ? 'border-amber-500/20 bg-amber-500/10 text-amber-500' : 'border-muted bg-muted/50'}`}>
-                <AlertCircle className="h-4 w-4" />
-             </Badge>
-           </CardContent>
-        </Card>
+        <SummaryCard
+          label="Total Budget"
+          value={money(summary.budgetTotal)}
+          testId="finance-total-budget"
+          icon={<DollarSign className="h-4 w-4" />}
+          tone="primary"
+          caption={`Locked budget v${plan.budgetVersionNumber}`}
+        />
+        <SummaryCard
+          label="Secured Funding"
+          value={money(summary.approvedTotal)}
+          testId="finance-secured"
+          icon={<TrendingUp className="h-4 w-4" />}
+          tone="green"
+          caption={`Soft committed ${money(summary.softCommittedTotal)} · targeted ${money(summary.targetedTotal)}`}
+        />
+        <SummaryCard
+          label={summary.overFinancedBy !== "0.00" ? "Over-financed by" : "Funding Gap"}
+          value={money(summary.overFinancedBy !== "0.00" ? summary.overFinancedBy : summary.fundingGap)}
+          testId="finance-gap"
+          icon={<AlertCircle className="h-4 w-4" />}
+          tone={hasGap || summary.overFinancedBy !== "0.00" ? "amber" : "muted"}
+          caption={hasGap ? "Approved sources only count as secured" : "Fully financed by approved sources"}
+        />
       </div>
 
-      {/* Action Bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-semibold">Finance Plan</h2>
-          <p className="text-sm text-muted-foreground">Manage and track your funding sources.</p>
+          <p className="text-sm text-muted-foreground">
+            Against locked budget v{plan.budgetVersionNumber} ({currency}). Created by {plan.createdBy.displayName}.
+            {otherLockedVersions.length > 0 && (
+              <Button variant="link" className="h-auto p-0 ml-2 text-sm" onClick={() => setRebaseOpen(true)}>
+                Change budget version
+              </Button>
+            )}
+          </p>
         </div>
-        <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" /> Add Funding Source
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Add Funding Source</DialogTitle>
-              <DialogDescription>
-                Add a new funding source to your finance plan.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">Name</Label>
-                <Input
-                  id="name"
-                  value={newSource.name}
-                  onChange={(e) => setNewSource({ ...newSource, name: e.target.value })}
-                  className="col-span-3"
-                  placeholder="e.g. Equity Investor A"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="amount" className="text-right">Amount</Label>
-                <div className="col-span-3">
-                  <FormattedNumberInput
-                    id="amount"
-                    value={newSource.amount || 0}
-                    onChange={(val) => setNewSource({ ...newSource, amount: val })}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="type" className="text-right">Type</Label>
-                <Select value={newSource.type} onValueChange={(val) => setNewSource({ ...newSource, type: val as FinanceSourceType })}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FINANCE_TYPES.map(type => (
-                      <SelectItem key={type} value={type}>{type}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="status" className="text-right">Status</Label>
-                <Select value={newSource.status} onValueChange={(val) => setNewSource({ ...newSource, status: val as FinanceSourceStatus })}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map(status => (
-                      <SelectItem key={status} value={status}>{status}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="date" className="text-right">Expected</Label>
-                <Input
-                  id="date"
-                  value={newSource.expectedDate || ''}
-                  onChange={(e) => setNewSource({ ...newSource, expectedDate: e.target.value })}
-                  className="col-span-3"
-                  placeholder="e.g. Q4 2024"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="notes" className="text-right">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={newSource.notes || ''}
-                  onChange={(e) => setNewSource({ ...newSource, notes: e.target.value })}
-                  className="col-span-3"
-                  placeholder="Additional details..."
+        <Button onClick={() => setAddOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" /> Add Funding Source
+        </Button>
+      </div>
+
+      <Dialog
+        open={addOpen}
+        onOpenChange={(open) => {
+          setAddOpen(open);
+          if (!open) resetDraft();
+        }}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add Funding Source</DialogTitle>
+            <DialogDescription>Record a source of financing for this plan.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="source-name" className="text-right">
+                Name
+              </Label>
+              <Input
+                id="source-name"
+                value={draft.name}
+                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                className="col-span-3"
+                placeholder="e.g. Equity Investor A"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="source-amount" className="text-right">
+                Amount
+              </Label>
+              <div className="col-span-3">
+                <MoneyInput
+                  aria-label="Source amount"
+                  value={draft.amount}
+                  onCommit={(amount) => setDraft((d) => ({ ...d, amount }))}
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button onClick={handleCreateSource}>Create Source</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Type</Label>
+              <Select value={draft.type} onValueChange={(type) => setDraft({ ...draft, type: type as FinanceSourceType })}>
+                <SelectTrigger className="col-span-3" aria-label="Source type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {financeSourceTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {financeSourceTypeLabels[type]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Status</Label>
+              <Select
+                value={draft.status}
+                onValueChange={(status) => setDraft({ ...draft, status: status as (typeof editableSourceStatuses)[number] })}
+              >
+                <SelectTrigger className="col-span-3" aria-label="Source status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {editableSourceStatuses.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {financeSourceStatusLabels[status]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="source-expected" className="text-right">
+                Expected
+              </Label>
+              <Input
+                id="source-expected"
+                type="date"
+                value={draft.expectedDate}
+                onChange={(e) => setDraft({ ...draft, expectedDate: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="source-notes" className="text-right">
+                Notes
+              </Label>
+              <Textarea
+                id="source-notes"
+                value={draft.notes}
+                onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
+                className="col-span-3"
+                placeholder="Contact, conditions, next steps…"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={submitNewSource} disabled={createSource.isPending || !draft.name.trim()}>
+              Create Source
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Funding Sources List */}
       <div className="space-y-4">
-        {sources.length === 0 ? (
+        {plan.sources.length === 0 ? (
           <div className="text-center py-12 border border-dashed rounded-lg bg-muted/20">
             <p className="text-muted-foreground">No funding sources added yet.</p>
           </div>
         ) : (
-          sources.map(source => (
-            <Card key={source.id} className={cn("overflow-hidden transition-all duration-200", expandedSources[source.id] ? "ring-1 ring-primary/20" : "")}>
-              {/* Collapsed Header - Refined for premium look and less cramped feel */}
-              <div 
-                className="p-5 flex items-center justify-between cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => toggleExpand(source.id)}
+          plan.sources.map((source) => {
+            const approved = source.status === "approved";
+            const open = expanded[source.id] ?? false;
+            return (
+              <Card
+                key={source.id}
+                data-testid="finance-source"
+                data-source-name={source.name}
+                className={cn("overflow-hidden transition-all duration-200", open && "ring-1 ring-primary/20")}
               >
-                <div className="flex items-center gap-5 flex-1">
-                  <div className="p-3 rounded-full bg-primary/10 text-primary shadow-sm">
-                    <DollarSign className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground tracking-tight">{source.name}</h3>
-                    <div className="flex items-center gap-3 mt-1.5">
-                      <Badge variant="outline" className="text-xs px-2 py-0.5 font-medium">{source.type}</Badge>
-                      <Badge 
-                        variant={source.status === 'Approved' ? 'default' : 'secondary'} 
-                        className={cn(
-                          "text-xs px-2 py-0.5 font-medium",
-                          source.status === 'Approved' ? "bg-green-600 hover:bg-green-700 border-transparent shadow-sm" :
-                          source.status === 'Soft committed' ? "bg-blue-500/10 text-blue-600 border-blue-500/20" :
-                          "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                        )}
-                      >
-                        {source.status}
-                      </Badge>
-                      {source.documents.length > 0 && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1.5 ml-1 px-2 border-l border-border h-4">
-                          <FileText className="h-3.5 w-3.5" /> {source.documents.length} docs
-                        </span>
-                      )}
+                <div
+                  className="p-5 flex items-center justify-between cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => setExpanded((prev) => ({ ...prev, [source.id]: !open }))}
+                >
+                  <div className="flex items-center gap-5 flex-1 min-w-0">
+                    <div className="p-3 rounded-full bg-primary/10 text-primary shadow-sm">
+                      <DollarSign className="h-5 w-5" />
                     </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-8 mr-2">
-                  <div className="text-right">
-                    <div className="text-xl font-mono font-bold tracking-tight">{formatCurrency(source.amount)}</div>
-                    {source.expectedDate && <div className="text-xs font-medium text-muted-foreground mt-0.5">Exp: {source.expectedDate}</div>}
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground">
-                    {expandedSources[source.id] ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Expanded Details - Reordered: Details Top, Docs Bottom */}
-              {expandedSources[source.id] && (
-                <div className="p-8 border-t bg-muted/10 flex flex-col gap-8 animate-in slide-in-from-top-2 duration-300">
-                  
-                  {/* 1) Source Details Section */}
-                  <div className="space-y-5">
-                    <div className="flex items-center justify-between border-b pb-2">
-                       <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                         <DollarSign className="h-4 w-4" /> Source Details
-                       </h4>
-                       {!source.isApproved && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={(e) => {
-                            e.stopPropagation(); 
-                            setSourceToDelete(source.id);
-                          }}
+                    <div className="min-w-0">
+                      <h3 className="text-lg font-semibold text-foreground tracking-tight truncate">{source.name}</h3>
+                      <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                        <Badge variant="outline" className="text-xs px-2 py-0.5 font-medium">
+                          {financeSourceTypeLabels[source.type]}
+                        </Badge>
+                        <Badge
+                          variant={approved ? "default" : "secondary"}
+                          data-testid="finance-source-status"
+                          className={cn("text-xs px-2 py-0.5 font-medium", financeSourceStatusClass[source.status])}
                         >
-                          <Trash2 className="h-4 w-4 mr-2" /> Delete Source
-                        </Button>
+                          {financeSourceStatusLabels[source.status]}
+                        </Badge>
+                        {source.documents.length > 0 && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1.5 ml-1 px-2 border-l border-border h-4">
+                            <FileText className="h-3.5 w-3.5" /> {source.documents.length} doc
+                            {source.documents.length === 1 ? "" : "s"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-8 mr-2">
+                    <div className="text-right">
+                      <div className="text-xl font-mono font-bold tracking-tight" data-testid="finance-source-amount">
+                        {money(source.amount)}
+                      </div>
+                      {source.expectedDate && (
+                        <div className="text-xs font-medium text-muted-foreground mt-0.5">
+                          Exp: {format(new Date(`${source.expectedDate}T00:00:00`), "d MMM yyyy")}
+                        </div>
                       )}
                     </div>
-                    
-                    <div className="grid gap-6">
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="grid gap-2">
-                          <Label>Source Name</Label>
-                          <Input 
-                            value={source.name} 
-                            onChange={(e) => updateSource(source.id, { name: e.target.value })}
-                            disabled={source.isApproved}
-                            className="bg-background"
-                          />
-                        </div>
-                         <div className="grid gap-2">
-                          <Label>Amount</Label>
-                          <FormattedNumberInput
-                            value={source.amount} 
-                            onChange={(val) => updateSource(source.id, { amount: val })}
-                            disabled={source.isApproved}
-                            className="bg-background"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-3 gap-6">
-                        <div className="grid gap-2">
-                          <Label>Type</Label>
-                          <Select 
-                            value={source.type} 
-                            onValueChange={(val) => updateSource(source.id, { type: val as FinanceSourceType })}
-                            disabled={source.isApproved}
+                    <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground" aria-label={`Toggle ${source.name}`}>
+                      {open ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                    </Button>
+                  </div>
+                </div>
+
+                {open && (
+                  <div className="p-8 border-t bg-muted/10 flex flex-col gap-8 animate-in slide-in-from-top-2 duration-300">
+                    <div className="space-y-5">
+                      <div className="flex items-center justify-between border-b pb-2">
+                        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                          <DollarSign className="h-4 w-4" /> Source Details
+                        </h4>
+                        {!approved && canRemove(source) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => setDeleteTarget(source)}
                           >
-                            <SelectTrigger className="bg-background">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {FINANCE_TYPES.map(type => (
-                                <SelectItem key={type} value={type}>{type}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="grid gap-2">
-                          <Label>Status</Label>
-                          {source.isApproved ? (
-                            <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-green-50 text-green-700 border-green-200 text-sm font-medium">
-                              <CheckCircle2 className="h-4 w-4" />
-                              Approved & Locked
-                            </div>
-                          ) : (
-                            <Select 
-                              value={source.status} 
-                              onValueChange={(val) => {
-                                if (val === 'Approved') {
-                                  initiateApproval(source.id);
-                                } else {
-                                  updateSource(source.id, { status: val as FinanceSourceStatus });
-                                }
+                            <Trash2 className="h-4 w-4 mr-2" /> Remove Source
+                          </Button>
+                        )}
+                      </div>
+                      {approved && (
+                        <p className="text-xs text-muted-foreground" data-testid="finance-source-approval">
+                          Approved by {source.approvedBy?.displayName}
+                          {source.approvedAt ? ` on ${format(new Date(source.approvedAt), "d MMM yyyy")}` : ""}. Approved
+                          sources are permanent and read-only.
+                        </p>
+                      )}
+                      <div className="grid gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="grid gap-2">
+                            <Label>Source Name</Label>
+                            <Input
+                              key={`${source.id}-name-${source.version}`}
+                              aria-label="Source name"
+                              defaultValue={source.name}
+                              disabled={approved}
+                              className="bg-background"
+                              onBlur={(e) => {
+                                const name = e.target.value.trim();
+                                if (name && name !== source.name) commit(source.id, { name });
                               }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                              }}
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>Amount ({currency})</Label>
+                            <MoneyInput
+                              aria-label="Source amount"
+                              value={source.amount}
+                              disabled={approved}
+                              className="bg-background"
+                              onCommit={(amount) => commit(source.id, { amount })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          <div className="grid gap-2">
+                            <Label>Type</Label>
+                            <Select
+                              value={source.type}
+                              disabled={approved}
+                              onValueChange={(type) => commit(source.id, { type: type as FinanceSourceType })}
                             >
-                              <SelectTrigger className="bg-background">
+                              <SelectTrigger className="bg-background" aria-label="Source type">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {STATUS_OPTIONS.map(status => (
-                                  <SelectItem key={status} value={status}>{status}</SelectItem>
+                                {financeSourceTypes.map((type) => (
+                                  <SelectItem key={type} value={type}>
+                                    {financeSourceTypeLabels[type]}
+                                  </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
-                          )}
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>Status</Label>
+                            {approved ? (
+                              <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-green-50 text-green-700 border-green-200 text-sm font-medium dark:bg-green-950/40 dark:text-green-300 dark:border-green-900">
+                                <CheckCircle2 className="h-4 w-4" />
+                                Approved & Locked
+                              </div>
+                            ) : (
+                              <Select
+                                value={source.status}
+                                onValueChange={(status) => {
+                                  if (status === "approved") setApproveTarget(source);
+                                  else if (status === "targeted" || status === "soft_committed")
+                                    changeStatus.mutate({ projectId, sourceId: source.id, input: { status, version: source.version } });
+                                }}
+                              >
+                                <SelectTrigger className="bg-background" aria-label="Source status">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {editableSourceStatuses.map((status) => (
+                                    <SelectItem key={status} value={status}>
+                                      {financeSourceStatusLabels[status]}
+                                    </SelectItem>
+                                  ))}
+                                  {isStudioAdmin && <SelectItem value="approved">Approved (verify & lock)</SelectItem>}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>Expected Date</Label>
+                            <Input
+                              key={`${source.id}-date-${source.version}`}
+                              type="date"
+                              aria-label="Expected date"
+                              defaultValue={source.expectedDate ?? ""}
+                              disabled={approved}
+                              className="bg-background"
+                              onBlur={(e) => {
+                                const expectedDate = e.target.value || null;
+                                if (expectedDate !== source.expectedDate) commit(source.id, { expectedDate });
+                              }}
+                            />
+                          </div>
                         </div>
                         <div className="grid gap-2">
-                          <Label>Expected Date</Label>
-                          <Input 
-                            value={source.expectedDate || ''} 
-                            onChange={(e) => updateSource(source.id, { expectedDate: e.target.value })}
-                            disabled={source.isApproved}
-                            placeholder="e.g. Q4 2024"
-                            className="bg-background"
+                          <Label>Notes</Label>
+                          <Textarea
+                            key={`${source.id}-notes-${source.version}`}
+                            aria-label="Source notes"
+                            defaultValue={source.notes ?? ""}
+                            disabled={approved}
+                            className="h-20 bg-background resize-none"
+                            placeholder="Contact points, conditions, next steps…"
+                            onBlur={(e) => {
+                              const notes = e.target.value.trim();
+                              if (notes !== (source.notes ?? "")) commit(source.id, { notes });
+                            }}
                           />
                         </div>
                       </div>
-                      <div className="grid gap-2">
-                        <Label>Notes</Label>
-                        <Textarea 
-                          value={source.notes || ''} 
-                          onChange={(e) => updateSource(source.id, { notes: e.target.value })}
-                          disabled={source.isApproved}
-                          className="h-20 bg-background resize-none"
-                          placeholder="Add details about contact points, conditions, or next steps..."
-                        />
-                      </div>
                     </div>
-                  </div>
 
-                  {/* 2) Documents Section (Moved Bottom) */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b pb-2">
-                      <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                        <FileText className="h-4 w-4" /> Supporting Documents
-                      </h4>
-                      <Button variant="outline" size="sm" onClick={() => triggerFileUpload(source.id)}>
-                        <Upload className="h-3 w-3 mr-2" /> Upload Document
-                      </Button>
-                    </div>
-                    
-                    <div className="bg-card border rounded-md overflow-hidden shadow-sm">
-                      {source.documents.length === 0 ? (
-                        <div className="p-12 flex flex-col items-center justify-center text-muted-foreground gap-2">
-                           <FileText className="h-8 w-8 opacity-20" />
-                           <p className="text-sm">No documents attached.</p>
-                           {!source.isApproved && (
-                             <p className="text-xs text-muted-foreground/60">Upload term sheets, contracts, or letters.</p>
-                           )}
-                        </div>
-                      ) : (
-                        <div className="divide-y">
-                          {source.documents.map(doc => (
-                            <div key={doc.id} className="p-4 text-sm grid gap-3 hover:bg-muted/30 transition-colors">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                   <div className="p-2 bg-primary/10 rounded text-primary">
-                                     <FileText className="h-4 w-4" />
-                                   </div>
-                                   <div>
-                                      <div className="font-medium truncate mr-2 text-foreground">{doc.fileName}</div>
-                                      <div className="text-xs text-muted-foreground">{format(new Date(doc.uploadedAt), 'MMM d, yyyy')} • {doc.fileSize || '250 KB'}</div>
-                                   </div>
-                                </div>
-                                <div>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-8 text-xs text-muted-foreground hover:text-destructive"
-                                    onClick={() => setDocToDelete({ sourceId: source.id, docId: doc.id })}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4 pl-12">
-                                <div className="grid gap-1.5">
-                                  <Label className="text-[10px] uppercase text-muted-foreground font-semibold">Document Type</Label>
-                                  <Select 
-                                    value={doc.docType} 
-                                    onValueChange={(val: any) => updateDocument(source.id, doc.id, { docType: val })}
-                                  >
-                                    <SelectTrigger className="h-8 text-xs bg-background">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {DOC_TYPES.map(t => <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>)}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div className="grid gap-1.5">
-                                  <Label className="text-[10px] uppercase text-muted-foreground font-semibold">Status</Label>
-                                  <Select 
-                                    value={doc.status} 
-                                    onValueChange={(val: any) => updateDocument(source.id, doc.id, { status: val })}
-                                  >
-                                    <SelectTrigger className="h-8 text-xs bg-background">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {DOC_STATUS_OPTIONS.map(s => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b pb-2">
+                        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                          <FileText className="h-4 w-4" /> Supporting Documents
+                        </h4>
+                      </div>
+                      <OwnerDocumentList
+                        ownerLabel={source.name}
+                        documents={source.documents}
+                        canDetach={!approved && canRemove(source)}
+                        rowTestId="finance-source-document"
+                        emptyMessage="No documents attached. Attach a term sheet, LOI or grant letter."
+                        onAttachNew={(input) => attachDocument.mutateAsync({ projectId, sourceId: source.id, input })}
+                        onDetach={(doc) => detachDocument.mutate({ projectId, sourceId: source.id, documentId: doc.id })}
+                      />
                     </div>
                   </div>
-                </div>
-              )}
-            </Card>
-          ))
+                )}
+              </Card>
+            );
+          })
         )}
       </div>
-
     </div>
+  );
+}
+
+function SummaryCard({
+  label,
+  value,
+  caption,
+  icon,
+  tone,
+  testId,
+}: {
+  label: string;
+  value: string;
+  caption: string;
+  icon: React.ReactNode;
+  tone: "primary" | "green" | "amber" | "muted";
+  testId: string;
+}) {
+  const tones = {
+    primary: { value: "", badge: "border-primary/20 bg-primary/10 text-primary" },
+    green: { value: "text-green-500", badge: "border-green-500/20 bg-green-500/10 text-green-500" },
+    amber: { value: "text-amber-500", badge: "border-amber-500/20 bg-amber-500/10 text-amber-500" },
+    muted: { value: "text-muted-foreground", badge: "border-muted bg-muted/50" },
+  }[tone];
+  return (
+    <Card className="bg-card/50 border-border/50">
+      <CardContent className="p-4 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+          <div className={cn("text-2xl font-bold font-mono mt-1 truncate", tones.value)} data-testid={testId}>
+            {value}
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-1 truncate">{caption}</p>
+        </div>
+        <Badge variant="outline" className={cn("h-8 w-8 shrink-0 rounded-full flex items-center justify-center p-0", tones.badge)}>
+          {icon}
+        </Badge>
+      </CardContent>
+    </Card>
   );
 }

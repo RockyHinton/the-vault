@@ -39,3 +39,14 @@ must hold for the later modules.
   totals, explicit lifecycle commands, and a foreign key to the budget version they use.
 - Historical budgets are queryable forever with exact totals and the people who locked them.
 - Concurrency is per line item and per department for edits, per version for lifecycle.
+
+**Amendment (Finance Plan milestone, 2026-09-13).** The Finance Plan applies rule 6 as a hard
+server invariant: a plan (one per project) is created against, and may later be re-pointed to,
+a _locked_ budget version of the same project only; an unlocked version is refused with
+`422 BUDGET_VERSION_NOT_LOCKED` because an editable budget cannot be a financial baseline.
+Financing totals and the funding gap are never stored; `summarizeFinancing` in
+`shared/contracts/finance-plan.ts` is the single calculation, executed on the server for every
+response. Sources do not copy the budget's submit/lock lifecycle: they have three statuses
+(`targeted`, `soft_committed`, `approved`); approval is a studio_admin sign-off that is
+irreversible and freezes the source, and only approved money counts as secured. Approval is
+per source, not per plan, so a plan stays a living register while its baseline is fixed.

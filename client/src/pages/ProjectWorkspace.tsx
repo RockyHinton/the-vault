@@ -26,6 +26,7 @@ import ProducersView from "@/components/stages/ProducersView";
 import CreativesView from "@/components/stages/CreativesView";
 import DocumentationEntityPage from "@/components/features/documentation/DocumentationEntityPage";
 import BudgetTool from "@/components/features/financing/BudgetTool";
+import FinancePlan from "@/components/features/financing/FinancePlan";
 import { legalCategoryForRoute } from "@/features/legal/categories";
 import UnderlyingRightsPage from "@/components/features/UnderlyingRightsPage";
 import DistributionView from "@/components/stages/DistributionView";
@@ -350,6 +351,8 @@ function WorkspaceShell({ categorySlug, subcategorySlug }: { categorySlug?: stri
             <CreativesView />
           ) : categorySlug === "financing" && subcategorySlug === "budget" ? (
             <BudgetTool />
+          ) : categorySlug === "financing" && subcategorySlug === "finance-plan" ? (
+            <FinancePlan />
           ) : categorySlug === "script" ? (
             <ScriptView />
           ) : categorySlug === "underlying-rights" ? (

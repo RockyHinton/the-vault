@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import { 
   Project, 
   useStore, 
-  FinanceSource, 
   OneOffPayment,
   SpendWindow 
 } from "@/lib/store";
@@ -127,6 +126,7 @@ export default function CashFlow({ project }: CashFlowProps) {
 
   /** Prototype shape retained until the Cash Flow milestone reads the real Budget domain. */
 type PrototypeDepartment = { id: string; name: string; lineItems: { amount: number }[] };
+type PrototypeApprovedSource = { id: string; name: string; amount: number; expectedDate?: string };
 
   // -- Data Extraction (Read-Only) --
   
@@ -137,7 +137,9 @@ type PrototypeDepartment = { id: string; name: string; lineItems: { amount: numb
   const currency = project.financing?.currency || 'USD';
 
   // 2. Approved Funding Sources
-  const approvedSources = (project.financePlan?.sources || []).filter(s => s.isApproved);
+  // Approved financing now lives in the Finance Plan backend; the cash-flow
+  // milestone will read it through its own hook. Until then there are no inflows.
+  const approvedSources: PrototypeApprovedSource[] = [];
   const securedFunding = approvedSources.reduce((sum, s) => sum + s.amount, 0);
   const fundingGap = Math.max(0, totalBudget - securedFunding);
 
