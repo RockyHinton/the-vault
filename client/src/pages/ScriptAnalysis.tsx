@@ -24,9 +24,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function ScriptAnalysisPage() {
   const [match, params] = useRoute("/script/:id");
   const [location, setLocation] = useLocation();
-  const { documents, projects, addReview, addAnnotation, getScriptAnnotations } = useStore();
+  const { documents, projects, addAnnotation, getScriptAnnotations } = useStore();
   const [currentPage, setCurrentPage] = useState(1);
-  const [isReviewOpen, setIsReviewOpen] = useState(false);
 
   // New Note State
   const [isCreatingNote, setIsCreatingNote] = useState(false);
@@ -35,32 +34,12 @@ export default function ScriptAnalysisPage() {
   // Selection State
   const [selectedAnnotationIds, setSelectedAnnotationIds] = useState<string[]>([]);
 
-  // Review Form State
-  const [creativeScore, setCreativeScore] = useState(5);
-  const [commercialScore, setCommercialScore] = useState(5);
-  const [budgetScore, setBudgetScore] = useState(5);
-  const [rec, setRec] = useState<"Pass" | "Consider" | "Develop">("Consider");
-  const [summary, setSummary] = useState("");
-
   const scriptId = params?.id;
   const document = documents.find(d => d.id === scriptId);
   const project = document ? projects.find(p => p.id === document.projectId) : null;
   const annotations = document ? getScriptAnnotations(document.id) : [];
 
   if (!document || !project) return <div>Script not found</div>;
-
-  const handleSubmitReview = () => {
-    addReview({
-      projectId: project.id,
-      scriptScore: creativeScore,
-      directorScore: 5, // Default as not captured in this simplified form
-      castScore: 5, // Default
-      financingScore: commercialScore, // Mapping Commercial Score to Financing Score
-      recommendation: rec,
-      summaryNotes: summary,
-    });
-    setIsReviewOpen(false);
-  };
 
   const handleSelection = (x: number, y: number) => {
     // If we're selecting a new area, clear previous selection

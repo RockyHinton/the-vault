@@ -235,10 +235,12 @@ describe("first-party authentication against an isolated PostgreSQL database", (
       NODE_ENV: "production",
       DATABASE_URL: context.env.DATABASE_URL,
       REPLIT_DOMAINS: "vault.example.com",
+      VAULT_STORAGE_PROVIDER: "local",
     });
     const { app } = await createVaultServer({
       env: productionEnv,
       db: context.db,
+      storage: context.storage.storage,
       frontend: "none",
     });
     const host = "vault.example.com";

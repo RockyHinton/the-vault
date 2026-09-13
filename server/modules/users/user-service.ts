@@ -7,6 +7,7 @@ import { appendAuditEvent } from "../audit/audit-repository";
 import { credentialRepository } from "../auth/credential-repository";
 import { hashPassword } from "../auth/password-hashing";
 import { sessionRepository } from "../auth/session-repository";
+import { toUserRef } from "./user-ref";
 import { userRepository, type ApplicationRole } from "./user-repository";
 
 export interface Actor {
@@ -75,6 +76,11 @@ export function createUserService({ db }: { db: Database }) {
   }
 
   return {
+    /** Safe references to every active user; readable by any active user. */
+    async directory() {
+      return (await userRepository.listActive(db)).map(toUserRef);
+    },
+
     async list(input: { status: "active" | "suspended" | "all" }) {
       const rows = await userRepository.list(db, input);
       return rows.map(toVaultUser);

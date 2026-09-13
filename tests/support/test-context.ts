@@ -10,6 +10,7 @@ import {
   createIsolatedPostgresDatabase,
   type IsolatedPostgresDatabase,
 } from "./isolated-postgres";
+import { createTestStorage, type TestStorage } from "./test-storage";
 
 export interface TestCredentials {
   email: string;
@@ -35,6 +36,8 @@ export interface TestContext {
   env: Environment;
   db: Database;
   database: IsolatedPostgresDatabase;
+  /** Isolated temporary file storage, removed on destroy. */
+  storage: TestStorage;
   /** One API-only app shared by the suite. */
   app: Express;
   /** Vault ids of the seeded users. */
@@ -90,13 +93,22 @@ export async function createTestContext(): Promise<TestContext> {
     nodeEnv: env.NODE_ENV,
   });
   const seeded = await seedAccessFixtures(handle.db);
+  const storage = await createTestStorage();
   const newApp = async () =>
-    (await createVaultServer({ env, db: handle.db, frontend: "none" })).app;
+    (
+      await createVaultServer({
+        env,
+        db: handle.db,
+        storage: storage.storage,
+        frontend: "none",
+      })
+    ).app;
   const app = await newApp();
   return {
     env,
     db: handle.db,
     database,
+    storage,
     app,
     seeded,
     newApp,
@@ -115,6 +127,7 @@ export async function createTestContext(): Promise<TestContext> {
     async destroy() {
       await handle.close();
       await database.destroy();
+      await storage.destroy();
     },
   };
 }

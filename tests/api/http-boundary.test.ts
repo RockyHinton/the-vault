@@ -4,25 +4,30 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createVaultServer } from "../../server/app";
 import { createDatabase, type DatabaseHandle } from "../../server/db/client";
 import { testEnvironment } from "../support/test-context";
+import { createTestStorage, type TestStorage } from "../support/test-storage";
 
 // These paths are rejected before any query runs, so the pool never connects.
 const unusedDatabaseUrl = "postgres://u:p@localhost:5432/vault_test_unused";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 let handle: DatabaseHandle;
+let storage: TestStorage;
 let app: Express;
 
 beforeAll(async () => {
   handle = createDatabase({ databaseUrl: unusedDatabaseUrl, nodeEnv: "test" });
+  storage = await createTestStorage();
   ({ app } = await createVaultServer({
     env: testEnvironment({ DATABASE_URL: unusedDatabaseUrl }),
     db: handle.db,
+    storage: storage.storage,
     frontend: "none",
   }));
 });
 
 afterAll(async () => {
   await handle.close();
+  await storage.destroy();
 });
 
 describe("HTTP boundary", () => {

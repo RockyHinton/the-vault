@@ -33,6 +33,12 @@ cross-domain imports.
   logout), `createRequireLocalUser`, `requireStudioAdmin`, and the `/auth` routes.
 - `server/modules/users`: Users & Access commands and the first-admin bootstrap use-case.
 - `server/modules/audit`: the only writer of `audit_events`, plus the admin read endpoint.
+- `server/files`: the `FileStorage` interface, the local adapter and the provider factory.
+- `server/modules/files`, `server/modules/documents`: private bytes and the business records
+  over them (see "Files and documents").
+- `server/modules/evaluation`, `server/modules/notes`, `server/modules/tasks`: the
+  authored-record domains of the Evaluation stage (see "Authored records, actors and
+  assignment").
 - `server/modules/<domain>`: `<domain>-routes.ts`, `<domain>-service.ts`,
   `<domain>-repository.ts`, plus pure domain rules (e.g. `project-lifecycle.ts`).
 - `shared/schema.ts`: PostgreSQL schema only. `shared/contracts`: Zod request/response contracts.
@@ -171,6 +177,50 @@ records where a domain permits; studio_admin manages everything; lifecycle and a
 commands are studio_admin-only unless a domain records a different decision. Services resolve
 actors for display. See ADR 0006.
 
+## Authored records, actors and assignment
+
+Project Notes, Project Tasks and team Reviews are the reference implementations of an
+**authored record**: a row any active user may create, owned by its author, listed for the
+whole team. Mirror these rules when a new domain has the same shape.
+
+- **Authorship comes from the session.** The service takes `actor.userId` from
+  `req.localUser`; a request body never names an author. The column is `author_user_id`
+  (`created_by_user_id` on tasks, where assignment is a separate concept), `NOT NULL`, a
+  foreign key to `application_users` with `ON DELETE RESTRICT`.
+- **Author-or-admin policy** lives in one `assertCanManage(actor, record)` per service:
+  studio_admin may do anything; otherwise the caller must be the author. A refusal is 403
+  before any write. Collaborative commands are explicit exceptions the service documents:
+  any user may complete, reopen or reassign a task; only the creator or an admin edits its text
+  or deletes it.
+- **Actor representation** on the wire is `UserRef = { id, displayName }` from
+  `shared/contracts` (`userRefSchema`), built by `toUserRef` in `server/modules/users/user-ref.ts`.
+  Repositories join `application_users` and select only `id`, `displayName`, `email`
+  (the email is the display-name fallback and never leaves the server unless a contract says so,
+  as `auditActorSchema` does for admins). Never store display names on records.
+- **Assignment is a foreign key**, not a string: `project_tasks.assignee_user_id` references
+  `application_users` (nullable, `ON DELETE RESTRICT`). The service verifies the target is an
+  active user (`422 ASSIGNEE_NOT_ASSIGNABLE`) and the picker reads `GET /users/directory`,
+  the one user endpoint every signed-in user may call; it returns `UserRef`s only.
+- **One review per author per project** is a PostgreSQL unique index on
+  `(project_id, author_user_id)`. The API exposes it as `PUT /projects/:id/reviews/mine`:
+  `version: 0` creates, the current version replaces, and the recommendation is derived on the
+  server (`review-recommendation.ts`) so every stored verdict follows the same rule.
+- **Lifecycle commands, not status fields.** Task status changes only through
+  `POST …/tasks/:id/complete` and `…/reopen`; `PATCH` rejects `status`. The
+  `completed_at`/`status` pair is a CHECK constraint. Each command appends its own audit event
+  (`task.completed`, `task.reopened`) with the actor who ran it.
+- **Deletion.** Notes and tasks are soft-deleted (`deleted_at`) so audit trails keep their
+  subject; reviews are hard-deleted because a withdrawn opinion should not linger. Both require
+  the current `version` and emit `<domain>.deleted`.
+- **The evaluation profile** is a 1:1 aggregate (`project_evaluations`, primary key
+  `project_id`) with its four development gates as typed boolean columns. It is project-level
+  metadata, so `PUT /projects/:id/evaluation` is studio_admin only; `version: 0` creates. Reads
+  for a project with no row return an empty version-0 profile so the client has one shape.
+- **Ordering** is deterministic: `created_at` then `id`, newest first for feeds.
+- **Audit vocabulary:** `evaluation.created|updated`, `review.submitted|updated|deleted`,
+  `note.created|updated|deleted`, `task.created|updated|completed|reopened|deleted`. One event
+  per successful command, inside the command's transaction, never on failure.
+
 ## HTTP boundary
 
 - `requestId` is the first middleware, so every rejection (including untrusted hosts) carries a
@@ -231,17 +281,50 @@ application startup. Changes that update records and audit/stage history use one
 Use optimistic versions for user edits and return `409 VERSION_CONFLICT` rather than losing
 changes.
 
-## Attachments
+## Files and documents
 
-Files are not implemented yet. When they are, one `documents` domain owns every file reference:
-immutable `file_objects` with random non-public keys, an enum-constrained attachment target
-validated by the documents service, and explicit version chains. No domain introduces its own
-document table or stores file paths (ADR 0006).
+Two domains, one boundary (ADR 0008). **Files** (`server/modules/files`, `server/files`)
+own immutable bytes: a `file_objects` row per upload with a random storage key, original
+filename (metadata only), server-detected media type, size, SHA-256, uploader and a lifecycle
+status (`staged` → `available` → `deleted`). **Documents** (`server/modules/documents`) are
+project-scoped business records over a file: folder, title, status, notes, uploader, optimistic
+`version`, and a lineage in which each new version is a new row and a new file.
+
+```
+POST /files                       raw body → inspect (size, magic bytes, sha256) → storage.put(key)
+                                  → file_objects row (staged). Insert failure deletes the object.
+POST /projects/:id/documents      one transaction: claim staged file (→ available), insert
+                                  document, audit. Only the uploader (or an admin) may claim.
+POST …/documents/:id/versions     one transaction: retire current (compare-and-set), claim new
+                                  file, insert version N+1 in the same lineage, audit.
+PATCH …/documents/:id             metadata edit, compare-and-set, author-or-admin, audit.
+DELETE …/documents/:id            soft-delete the lineage, bytes retained, audit.
+GET  /files/:id/content           session check → stream bytes; attachment by default,
+                                  inline only for PDF/images; nosniff, no-store, sandbox CSP.
+```
+
+Storage sits behind `FileStorage` (`put`, `open`, `delete`, `exists`) in
+`server/files/file-storage.ts`; `storage-factory.ts` is the only place provider names appear.
+The `local` adapter is a directory with exclusive-create semantics; `replit` is a bounded
+production milestone that fails closed until implemented. Keys are random and validated by
+pattern before any backend call; nothing produces a URL; no bytes are stored in PostgreSQL.
+
+Object storage and PostgreSQL are not one transaction. The order above guarantees a row never
+points at bytes that were not fully written; unclaimed staged uploads are retired by
+`sweepStagedUploads` after 24 hours; a row is never treated as proof of the object (missing
+bytes answer `502 FILE_UNAVAILABLE`).
+
+**Attachment convention.** A domain that needs documents references `documents.id` with a
+real foreign key: a join table `<owner>_documents(owner_id, document_id)` for many, or a
+nullable `document_id` column for one. There is no polymorphic `attached_to`. No domain stores
+paths, blob URLs or filenames of its own, and no domain calls `FileStorage` directly: it
+creates documents through the Documents service and lets the Files domain own the bytes.
 
 ## Test-environment safety
 
 `createDatabase` refuses to bind the application pool to any database not named `vault_test_*`
-when `NODE_ENV=test`. Test setup creates a disposable `vault_test_<uuid>` database, migrates it
+when `NODE_ENV=test`, and the local file storage adapter refuses any root directory not named
+`vault_test_storage_*`; each suite gets a temporary directory that is removed afterwards. Test setup creates a disposable `vault_test_<uuid>` database, migrates it
 with the checked-in migrations, seeds one studio_admin and one ordinary user through the real
 bootstrap and provisioning use-cases, and drops it afterwards; Playwright drops its database
 from a global teardown because the web server process is killed without hooks. Tests never
@@ -266,12 +349,16 @@ There is no permissive CORS policy: browser access is same-origin.
    `appendAuditEvent` inside it) and `<domain>-routes.ts` (`validate`, role guard, `handle`).
 4. Mount the router in `server/routes.ts` behind `requireLocalUser` and construct the service in
    `server/app.ts`.
-5. Add a typed client API module and React Query hooks built on `useVaultMutation`.
+5. Add a typed client API module and React Query hooks built on `useVaultMutation`. If the
+   domain is per-user authored content, copy the Notes module; if it has assignment or explicit
+   lifecycle commands, copy Tasks; if it is a 1:1 project aggregate, copy Evaluation.
 6. Add tests: unit for pure rules, integration against the disposable database for policy,
    constraints, concurrency, authorization (admin and user) and audit rows, and a browser check
    for the UI path.
 
 Avoid raw `fetch` in components, UI state as a source of truth for server records,
 feature-specific data in the Project core table, repositories that open transactions, audit
-inserts outside `server/modules/audit`, and any authentication path outside
-`server/modules/auth`. Do not reintroduce an external identity provider.
+inserts outside `server/modules/audit`, any authentication path outside
+`server/modules/auth`, and any file handling outside the Files and Documents domains (no new
+document tables, no direct `FileStorage` use, no stored paths or URLs). Do not reintroduce an
+external identity provider.

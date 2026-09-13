@@ -1,3 +1,4 @@
+import type { DocumentFolder } from "@shared/contracts";
 import { Project } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,9 +21,10 @@ interface SchedulesViewProps {
   project: Project;
   currentSubcategory?: string;
   subcategoryId?: string;
+  folder?: DocumentFolder;
 }
 
-export default function SchedulesView({ project, currentSubcategory, subcategoryId }: SchedulesViewProps) {
+export default function SchedulesView({ project, currentSubcategory, subcategoryId, folder }: SchedulesViewProps) {
   
   // Drill-down view for documents
   if (subcategoryId) {
@@ -38,11 +40,7 @@ export default function SchedulesView({ project, currentSubcategory, subcategory
              </p>
           </div>
         </div>
-        <DocumentLibrary 
-           projectId={project.id} 
-           categoryId="c10" // Hardcoded for Schedules category
-           subcategoryId={subcategoryId} 
-         />
+        <DocumentLibrary projectId={project.id} folder={folder} />
       </div>
     );
   }

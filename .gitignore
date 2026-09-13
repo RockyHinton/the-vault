@@ -17,3 +17,6 @@ vite.config.ts.*
 # Playwright output (holds the disposable e2e database name while a run is active)
 test-results
 playwright-report
+
+# Local file storage for development (bytes live in object storage in production)
+.vault-data

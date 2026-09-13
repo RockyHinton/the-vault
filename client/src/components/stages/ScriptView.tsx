@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Project, useStore, Document, ProjectNoteCategory } from "@/lib/store";
+import { Project, useStore, Document } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

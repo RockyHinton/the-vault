@@ -12,6 +12,7 @@ import { createVaultServer } from "../../server/app";
 import { createDatabase } from "../../server/db/client";
 import { createIsolatedPostgresDatabase } from "../support/isolated-postgres";
 import { seedAccessFixtures, testEnvironment } from "../support/test-context";
+import { createTestStorage } from "../support/test-storage";
 
 async function start() {
   process.env.NODE_ENV = "test";
@@ -23,9 +24,13 @@ async function start() {
   // Only the URL is needed here; the app owns its own pool.
   await database.client.end();
   mkdirSync(path.dirname(stateFile), { recursive: true });
+  const storage = await createTestStorage();
   writeFileSync(
     stateFile,
-    JSON.stringify({ databaseName: database.databaseName }),
+    JSON.stringify({
+      databaseName: database.databaseName,
+      storageRoot: storage.rootDirectory,
+    }),
   );
 
   const env = testEnvironment({
@@ -40,6 +45,7 @@ async function start() {
   const { httpServer } = await createVaultServer({
     env,
     db: handle.db,
+    storage: storage.storage,
     frontend: "vite",
   });
   await new Promise<void>((resolve) =>

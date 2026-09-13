@@ -36,6 +36,20 @@
       "when": 1789252622666,
       "tag": "0004_first_party_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789287717411,
+      "tag": "0005_files_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789288965420,
+      "tag": "0006_evaluation_notes_tasks",
+      "breakpoints": true
     }
   ]
 }

@@ -1,134 +1,170 @@
-import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { useEffect, useState } from "react";
+import { financeTypeSchema, type Evaluation, type FinanceType } from "@shared/contracts";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { X, Plus } from "lucide-react";
-import { useStore, Project } from "@/lib/store";
+import {
+  toSaveEvaluationInput,
+  useSaveEvaluation,
+} from "@/features/evaluation/use-evaluation";
+import { financeTypeLabels } from "@/features/evaluation/labels";
 
 interface EditEvaluationDialogProps {
-  project: Project;
-  isOpen: boolean;
-  onClose: () => void;
+  projectId: string;
+  evaluation: Evaluation;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-const FINANCE_OPTIONS = [
-  "Grant", "Subsidy", "Equity", "Loan", "Pre-sale", "Deferral"
-];
+const financeOptions = financeTypeSchema.options;
 
-export function EditEvaluationDialog({ project, isOpen, onClose }: EditEvaluationDialogProps) {
-  const { updateEvaluation } = useStore();
-  
-  const [writer, setWriter] = useState(project.evaluation.writer || "");
-  const [director, setDirector] = useState(project.evaluation.director || "");
-  const [plannedBudget, setPlannedBudget] = useState(project.evaluation.plannedBudget || "");
-  
-  // Handle migration from single financeType to financeTypes array
-  const [selectedFinanceTypes, setSelectedFinanceTypes] = useState<string[]>([]);
+/** studio_admin edits the evaluation profile; the gates are edited on the overview. */
+export function EditEvaluationDialog({
+  projectId,
+  evaluation,
+  open,
+  onOpenChange,
+}: EditEvaluationDialogProps) {
+  const save = useSaveEvaluation();
+  const [writer, setWriter] = useState(evaluation.writer ?? "");
+  const [director, setDirector] = useState(evaluation.director ?? "");
+  const [plannedBudget, setPlannedBudget] = useState(
+    evaluation.plannedBudget ?? "",
+  );
+  const [financeTypes, setFinanceTypes] = useState<FinanceType[]>(
+    evaluation.financeTypes,
+  );
 
+  // Reset the draft from the server copy each time the dialog opens.
   useEffect(() => {
-    if (isOpen) {
-      setWriter(project.evaluation.writer || "");
-      setDirector(project.evaluation.director || "");
-      setPlannedBudget(project.evaluation.plannedBudget || "");
-      
-      let initialTypes: string[] = [];
-      if (project.evaluation.financeTypes && project.evaluation.financeTypes.length > 0) {
-        initialTypes = project.evaluation.financeTypes;
-      } else if (project.evaluation.financeType) {
-        initialTypes = [project.evaluation.financeType];
-      }
-      setSelectedFinanceTypes(initialTypes);
-    }
-  }, [isOpen, project]);
+    if (!open) return;
+    setWriter(evaluation.writer ?? "");
+    setDirector(evaluation.director ?? "");
+    setPlannedBudget(evaluation.plannedBudget ?? "");
+    setFinanceTypes(evaluation.financeTypes);
+  }, [open, evaluation]);
 
-  const handleToggleFinance = (type: string) => {
-    if (selectedFinanceTypes.includes(type)) {
-      setSelectedFinanceTypes(prev => prev.filter(t => t !== type));
-    } else {
-      setSelectedFinanceTypes(prev => [...prev, type]);
-    }
-  };
+  const toggleFinanceType = (type: FinanceType) =>
+    setFinanceTypes((current) =>
+      current.includes(type)
+        ? current.filter((candidate) => candidate !== type)
+        : [...current, type],
+    );
 
-  const handleSave = () => {
-    updateEvaluation(project.id, {
-      writer,
-      director,
-      plannedBudget,
-      financeTypes: selectedFinanceTypes,
-      financeType: selectedFinanceTypes[0] // Keep legacy field in sync with first option for backward compat if needed
-    });
-    onClose();
+  const handleSave = async () => {
+    try {
+      await save.mutateAsync({
+        projectId,
+        input: toSaveEvaluationInput(evaluation, {
+          writer: writer.trim() || null,
+          director: director.trim() || null,
+          plannedBudget: plannedBudget.trim() || null,
+          financeTypes,
+        }),
+      });
+      onOpenChange(false);
+    } catch {
+      // The mutation hook already reported the failure; keep the dialog open.
+    }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Edit Project Details</DialogTitle>
-          <DialogDescription>Update the core project information and financing structure.</DialogDescription>
+          <DialogDescription>
+            Update the core project information and financing structure.
+          </DialogDescription>
         </DialogHeader>
-        
+
         <div className="grid gap-6 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="writer">Writer</Label>
-            <Input 
-              id="writer" 
-              value={writer} 
-              onChange={(e) => setWriter(e.target.value)} 
-              placeholder="Screenwriter Name"
+            <Label htmlFor="evaluation-writer">Writer</Label>
+            <Input
+              id="evaluation-writer"
+              value={writer}
+              maxLength={200}
+              onChange={(event) => setWriter(event.target.value)}
+              placeholder="Screenwriter name"
             />
           </div>
-          
           <div className="grid gap-2">
-            <Label htmlFor="director">Director</Label>
-            <Input 
-              id="director" 
-              value={director} 
-              onChange={(e) => setDirector(e.target.value)} 
-              placeholder="Director Name"
+            <Label htmlFor="evaluation-director">Director</Label>
+            <Input
+              id="evaluation-director"
+              value={director}
+              maxLength={200}
+              onChange={(event) => setDirector(event.target.value)}
+              placeholder="Director name"
             />
           </div>
-          
           <div className="grid gap-2">
-            <Label htmlFor="budget">Est. Budget</Label>
-            <Input 
-              id="budget" 
-              value={plannedBudget} 
-              onChange={(e) => setPlannedBudget(e.target.value)} 
+            <Label htmlFor="evaluation-budget">Est. Budget</Label>
+            <Input
+              id="evaluation-budget"
+              value={plannedBudget}
+              maxLength={80}
+              onChange={(event) => setPlannedBudget(event.target.value)}
               placeholder="$5M"
             />
           </div>
-
           <div className="grid gap-3">
             <Label>Finance Structure</Label>
-            <div className="flex flex-wrap gap-2">
-              {FINANCE_OPTIONS.map((type) => {
-                const isSelected = selectedFinanceTypes.includes(type);
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Finance structure">
+              {financeOptions.map((type) => {
+                const selected = financeTypes.includes(type);
                 return (
-                  <Badge 
+                  <Badge
                     key={type}
-                    variant={isSelected ? "default" : "outline"}
+                    role="checkbox"
+                    aria-checked={selected}
+                    tabIndex={0}
+                    variant={selected ? "default" : "outline"}
                     className="cursor-pointer hover:bg-primary/90 transition-colors"
-                    onClick={() => handleToggleFinance(type)}
+                    onClick={() => toggleFinanceType(type)}
+                    onKeyDown={(event) => {
+                      if (event.key === " " || event.key === "Enter") {
+                        event.preventDefault();
+                        toggleFinanceType(type);
+                      }
+                    }}
                   >
-                    {type}
-                    {isSelected && <X className="ml-1 h-3 w-3" />}
-                    {!isSelected && <Plus className="ml-1 h-3 w-3 opacity-50" />}
+                    {financeTypeLabels[type]}
+                    {selected ? (
+                      <X className="ml-1 h-3 w-3" />
+                    ) : (
+                      <Plus className="ml-1 h-3 w-3 opacity-50" />
+                    )}
                   </Badge>
                 );
               })}
             </div>
-            {selectedFinanceTypes.length === 0 && (
-              <p className="text-xs text-muted-foreground italic">Select at least one financing source.</p>
+            {financeTypes.length === 0 && (
+              <p className="text-xs text-muted-foreground italic">
+                No financing source selected yet.
+              </p>
             )}
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave}>Save Changes</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={save.isPending}>
+            {save.isPending ? "Saving…" : "Save Changes"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

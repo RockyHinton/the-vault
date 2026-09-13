@@ -3,6 +3,7 @@ import type { ApplicationRole, ProvisionUserInput } from "@shared/contracts";
 import { useVaultMutation } from "@/lib/mutations";
 import {
   changeUserRole,
+  listUserDirectory,
   listUsers,
   provisionUser,
   reinstateUser,
@@ -11,6 +12,16 @@ import {
 
 const usersKey = ["users"] as const;
 const auditKey = ["audit-events"] as const;
+export const userDirectoryKey = ["users", "directory"] as const;
+
+/** Assignment and mention pickers read this; it never carries email or role. */
+export function useUserDirectory() {
+  return useQuery({
+    queryKey: userDirectoryKey,
+    queryFn: listUserDirectory,
+    staleTime: 60_000,
+  });
+}
 
 export function useUsers(status: "active" | "suspended" | "all" = "all") {
   return useQuery({

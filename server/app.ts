@@ -5,6 +5,7 @@ import rateLimit from "express-rate-limit";
 import { allowedHosts, type Environment } from "./config/env";
 import type { Database } from "./db/client";
 import { errorHandler } from "./http/errors";
+import type { FileStorage } from "./files/file-storage";
 import { requestId, requestLogger } from "./http/middleware";
 import { hostAllowlist, mutationOriginGuard } from "./http/request-guards";
 import {
@@ -12,6 +13,11 @@ import {
   createRequireLocalUser,
 } from "./modules/auth/auth-service";
 import type { CookiePolicy } from "./modules/auth/session-cookie";
+import { createDocumentService } from "./modules/documents/document-service";
+import { createEvaluationService } from "./modules/evaluation/evaluation-service";
+import { createNoteService } from "./modules/notes/note-service";
+import { createTaskService } from "./modules/tasks/task-service";
+import { createFileService } from "./modules/files/file-service";
 import { createProjectService } from "./modules/projects/project-service";
 import { createUserService } from "./modules/users/user-service";
 import { createApiRouter } from "./routes";
@@ -20,6 +26,8 @@ import { serveStatic } from "./static";
 export interface VaultServerOptions {
   env: Environment;
   db: Database;
+  /** Where file bytes live; chosen by `createFileStorage(env)` in the entrypoint. */
+  storage: FileStorage;
   /** `static` serves the built client, `vite` runs the dev server, `none` is API only. */
   frontend: "none" | "static" | "vite";
 }
@@ -75,7 +83,7 @@ const isWrite = (req: express.Request) => !isRead(req);
 export async function createVaultServer(
   options: VaultServerOptions,
 ): Promise<VaultServer> {
-  const { env, db } = options;
+  const { env, db, storage } = options;
   const production = env.NODE_ENV === "production";
   const app = express();
   const httpServer = createServer(app);
@@ -122,6 +130,15 @@ export async function createVaultServer(
       requireLocalUser,
       projectService: createProjectService({ db }),
       userService: createUserService({ db }),
+      fileService: createFileService({
+        db,
+        storage,
+        maxUploadBytes: env.VAULT_MAX_UPLOAD_BYTES,
+      }),
+      documentService: createDocumentService({ db }),
+      evaluationService: createEvaluationService({ db }),
+      noteService: createNoteService({ db }),
+      taskService: createTaskService({ db }),
     }),
   );
 

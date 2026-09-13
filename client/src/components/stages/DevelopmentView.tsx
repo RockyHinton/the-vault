@@ -88,14 +88,8 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
     talentStatus = 'Partial';
     talentReason = "Some key roles filled, others pending.";
   } else {
-    // Check evaluation data as fallback
-    if (project.evaluation.castAttached && project.evaluation.castAttached.length > 0) {
-        talentStatus = 'Partial';
-        talentReason = "Talent attached in evaluation but not confirmed.";
-    } else {
-        talentStatus = 'Incomplete';
-        talentReason = "Talent confirmation not set up yet.";
-    }
+    talentStatus = 'Incomplete';
+    talentReason = "Talent confirmation not set up yet.";
   }
 
   // C. LEGAL READINESS

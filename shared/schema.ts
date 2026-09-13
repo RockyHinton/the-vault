@@ -1,5 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
+  bigint,
   boolean,
   check,
   index,
@@ -38,6 +40,46 @@ export const revisitDisposition = pgEnum("revisit_disposition", [
   "maybe",
   "no",
 ]);
+/** staged: bytes stored, not yet claimed by a document. available: referenced. deleted: swept/retired. */
+export const fileObjectStatus = pgEnum("file_object_status", [
+  "staged",
+  "available",
+  "deleted",
+]);
+export const documentStatus = pgEnum("document_status", [
+  "draft",
+  "under_review",
+  "final",
+  "signed",
+]);
+export const financeType = pgEnum("finance_type", [
+  "grant",
+  "subsidy",
+  "equity",
+  "loan",
+  "pre_sale",
+  "deferral",
+]);
+export const reviewRecommendation = pgEnum("review_recommendation", [
+  "pass",
+  "consider",
+  "develop",
+]);
+export const noteCategory = pgEnum("note_category", [
+  "script",
+  "financing",
+  "cast",
+  "other",
+]);
+export const taskCategory = pgEnum("task_category", [
+  "finance",
+  "talent",
+  "legal",
+  "production",
+  "general",
+]);
+export const taskPriority = pgEnum("task_priority", ["low", "medium", "high"]);
+export const taskStatus = pgEnum("task_status", ["open", "done"]);
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -224,6 +266,233 @@ export const auditEvents = pgTable(
   ],
 );
 
+/**
+ * Immutable file bytes live in object storage under a random key; this row is
+ * the only place the key is known. Bytes are never rewritten: a new upload is
+ * a new row. Rows are inserted only after the bytes are fully stored.
+ */
+export const fileObjects = pgTable(
+  "file_objects",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    storageKey: text("storage_key").notNull(),
+    originalFilename: text("original_filename").notNull(),
+    mediaType: text("media_type").notNull(),
+    byteSize: bigint("byte_size", { mode: "number" }).notNull(),
+    sha256: text("sha256").notNull(),
+    status: fileObjectStatus("status").notNull().default("staged"),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    availableAt: timestamp("available_at", { withTimezone: true }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("file_objects_storage_key_unique").on(table.storageKey),
+    index("file_objects_status_created_idx").on(table.status, table.createdAt),
+    index("file_objects_created_by_user_id_idx").on(table.createdByUserId),
+    check("file_objects_byte_size_positive", sql`${table.byteSize} > 0`),
+    check("file_objects_sha256_shape", sql`${table.sha256} ~ '^[a-f0-9]{64}$'`),
+  ],
+);
+
+/**
+ * A document is a business record over one immutable file. Versions share a
+ * lineage; exactly one live version per lineage is current. Folders mirror
+ * the workspace sections and are validated by the contracts.
+ */
+export const documents = pgTable(
+  "documents",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "restrict" }),
+    lineageId: uuid("lineage_id")
+      .notNull()
+      .references((): AnyPgColumn => documents.id, { onDelete: "restrict" }),
+    versionNumber: integer("version_number").notNull().default(1),
+    isCurrent: boolean("is_current").notNull().default(true),
+    fileObjectId: uuid("file_object_id")
+      .notNull()
+      .references(() => fileObjects.id, { onDelete: "restrict" }),
+    folder: text("folder").notNull(),
+    title: text("title").notNull(),
+    status: documentStatus("status").notNull().default("draft"),
+    notes: text("notes"),
+    version: integer("version").notNull().default(1),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("documents_file_object_id_unique").on(table.fileObjectId),
+    uniqueIndex("documents_lineage_version_unique").on(
+      table.lineageId,
+      table.versionNumber,
+    ),
+    uniqueIndex("documents_lineage_current_unique")
+      .on(table.lineageId)
+      .where(sql`${table.isCurrent} = true AND ${table.deletedAt} IS NULL`),
+    index("documents_project_folder_idx").on(table.projectId, table.folder),
+    index("documents_lineage_idx").on(table.lineageId),
+    check("documents_version_positive", sql`${table.version} > 0`),
+    check("documents_version_number_positive", sql`${table.versionNumber} > 0`),
+  ],
+);
+
+/** One evaluation profile per project, including the four development gates. */
+export const projectEvaluations = pgTable(
+  "project_evaluations",
+  {
+    projectId: uuid("project_id")
+      .primaryKey()
+      .references(() => projects.id, { onDelete: "restrict" }),
+    writer: text("writer"),
+    director: text("director"),
+    plannedBudget: text("planned_budget"),
+    financeTypes: financeType("finance_types").array().notNull().default([]),
+    scriptApproved: boolean("script_approved").notNull().default(false),
+    budgetApproved: boolean("budget_approved").notNull().default(false),
+    financeApproved: boolean("finance_approved").notNull().default(false),
+    talentAttached: boolean("talent_attached").notNull().default(false),
+    version: integer("version").notNull().default(1),
+    updatedByUserId: uuid("updated_by_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    ...timestamps,
+  },
+  (table) => [
+    check("project_evaluations_version_positive", sql`${table.version} > 0`),
+  ],
+);
+
+const score = (name: string) => integer(name).notNull();
+
+/** One review per project and author; PostgreSQL enforces the pair. */
+export const projectReviews = pgTable(
+  "project_reviews",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "restrict" }),
+    authorUserId: uuid("author_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    scriptScore: score("script_score"),
+    directorScore: score("director_score"),
+    castScore: score("cast_score"),
+    financingScore: score("financing_score"),
+    recommendation: reviewRecommendation("recommendation").notNull(),
+    summaryNotes: text("summary_notes").notNull(),
+    version: integer("version").notNull().default(1),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("project_reviews_project_author_unique").on(
+      table.projectId,
+      table.authorUserId,
+    ),
+    check("project_reviews_version_positive", sql`${table.version} > 0`),
+    check(
+      "project_reviews_scores_in_range",
+      sql`${table.scriptScore} BETWEEN 0 AND 10 AND ${table.directorScore} BETWEEN 0 AND 10 AND ${table.castScore} BETWEEN 0 AND 10 AND ${table.financingScore} BETWEEN 0 AND 10`,
+    ),
+    check(
+      "project_reviews_summary_not_blank",
+      sql`length(btrim(${table.summaryNotes})) > 0`,
+    ),
+  ],
+);
+
+export const projectNotes = pgTable(
+  "project_notes",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "restrict" }),
+    authorUserId: uuid("author_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    body: text("body").notNull(),
+    category: noteCategory("category").notNull(),
+    version: integer("version").notNull().default(1),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    index("project_notes_project_created_idx").on(
+      table.projectId,
+      table.createdAt,
+    ),
+    check("project_notes_version_positive", sql`${table.version} > 0`),
+    check(
+      "project_notes_body_not_blank",
+      sql`length(btrim(${table.body})) > 0`,
+    ),
+  ],
+);
+
+export const projectTasks = pgTable(
+  "project_tasks",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "restrict" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    category: taskCategory("category").notNull().default("general"),
+    priority: taskPriority("priority").notNull().default("medium"),
+    status: taskStatus("status").notNull().default("open"),
+    assigneeUserId: uuid("assignee_user_id").references(
+      () => applicationUsers.id,
+      { onDelete: "restrict" },
+    ),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    version: integer("version").notNull().default(1),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    index("project_tasks_project_status_created_idx").on(
+      table.projectId,
+      table.status,
+      table.createdAt,
+    ),
+    index("project_tasks_assignee_idx").on(table.assigneeUserId),
+    check("project_tasks_version_positive", sql`${table.version} > 0`),
+    check(
+      "project_tasks_title_not_blank",
+      sql`length(btrim(${table.title})) > 0`,
+    ),
+    check(
+      "project_tasks_completed_at_matches_status",
+      sql`(${table.status} = 'done' AND ${table.completedAt} IS NOT NULL) OR (${table.status} = 'open' AND ${table.completedAt} IS NULL)`,
+    ),
+  ],
+);
+
 export const applicationUsersRelations = relations(
   applicationUsers,
   ({ many }) => ({
@@ -242,4 +511,10 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
 export type ApplicationUserRow = typeof applicationUsers.$inferSelect;
 export type UserCredentialRow = typeof userCredentials.$inferSelect;
 export type AuthSessionRow = typeof authSessions.$inferSelect;
+export type FileObjectRow = typeof fileObjects.$inferSelect;
+export type DocumentRow = typeof documents.$inferSelect;
+export type ProjectEvaluationRow = typeof projectEvaluations.$inferSelect;
+export type ProjectReviewRow = typeof projectReviews.$inferSelect;
+export type ProjectNoteRow = typeof projectNotes.$inferSelect;
+export type ProjectTaskRow = typeof projectTasks.$inferSelect;
 export type ProjectRow = typeof projects.$inferSelect;

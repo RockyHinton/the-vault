@@ -13,6 +13,7 @@ import {
 } from "@/features/projects/workspace-navigation";
 import { Shell } from "@/components/layout/Shell";
 import DocumentLibrary from "@/pages/DocumentLibrary";
+import { folderForWorkspacePath } from "@/features/documents/folders";
 import EvaluationView from "@/components/stages/EvaluationView";
 import DevelopmentView from "@/components/stages/DevelopmentView";
 import ProductionView from "@/components/stages/ProductionView";
@@ -24,7 +25,6 @@ import ProjectNotesView from "@/components/stages/ProjectNotesView";
 import ProducersView from "@/components/stages/ProducersView";
 import CreativesView from "@/components/stages/CreativesView";
 import DocumentationEntityPage from "@/components/features/documentation/DocumentationEntityPage";
-import { UploadDocumentDialog } from "@/components/features/UploadDocumentDialog";
 import UnderlyingRightsPage from "@/components/features/UnderlyingRightsPage";
 import DistributionView from "@/components/stages/DistributionView";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,6 @@ import {
   Users,
   CircleDollarSign,
   Globe,
-  Plus,
   Eye,
   Briefcase,
   Clapperboard,
@@ -209,7 +208,8 @@ function ProjectSidebar({
 /**
  * Bridge for screens that have not been migrated yet: they still read the
  * prototype workspace shape and their fixture state from the store. Each
- * domain migration removes its screen from here.
+ * domain migration removes its screen from here. Documents, Evaluation and
+ * Project Notes are served from server state in WorkspaceShell.
  */
 function PrototypeContent({
   categorySlug,
@@ -231,39 +231,10 @@ function PrototypeContent({
   const project = toWorkspaceProject(apiProject, transientFeatureState);
   const currentCategory = findWorkspaceCategory(categorySlug);
   const currentSubcategory = currentCategory?.subcategories.find((s) => s.slug === subcategorySlug);
-  // The prototype document store still keys folders by its own fixture ids.
-  const legacyCategoryId: Record<string, string> = {
-    script: "c1",
-    producers: "c2",
-    creatives: "c8",
-    "underlying-rights": "c11",
-    financing: "c3",
-    legal: "c9",
-    distribution: "c6",
-    schedules: "c10",
-  };
-  const legacySubcategoryId: Record<string, string> = {
-    budget: "sc4",
-    "finance-plan": "sc6",
-    cashflow: "sc5",
-    "chain-of-title": "sc20",
-    "writer-agreements": "sc21",
-    "investment-agreements": "sc9",
-    "co-production": "sc10",
-    "producers-agreements": "sc11",
-    "director-agreements": "sc12",
-    "cast-agreements": "sc13",
-    "banking-docs": "sc14",
-    "funding-tax-credit": "sc15",
-    "sales-agency": "sc16",
-    cama: "sc17",
-    "shooting-schedule": "sc18",
-    "call-sheets": "sc19",
-  };
-  const subcategoryId = currentSubcategory ? legacySubcategoryId[currentSubcategory.slug] : undefined;
+  const folder = folderForWorkspacePath(categorySlug, subcategorySlug);
 
   if (currentCategory?.slug === "financing") {
-    return <FinancingView project={project} currentSubcategory={currentSubcategory?.name} subcategoryId={subcategoryId} />;
+    return <FinancingView project={project} currentSubcategory={currentSubcategory?.name} subcategoryId={currentSubcategory?.slug} folder={folder} />;
   }
   if (currentCategory?.slug === "legal") {
     if (currentSubcategory) {
@@ -283,19 +254,17 @@ function PrototypeContent({
     return <LegalView project={project} />;
   }
   if (currentCategory?.slug === "schedules") {
-    return <SchedulesView project={project} currentSubcategory={currentSubcategory?.name} subcategoryId={subcategoryId} />;
+    return <SchedulesView project={project} currentSubcategory={currentSubcategory?.name} subcategoryId={currentSubcategory?.slug} folder={folder} />;
   }
   if (currentCategory?.slug === "script") return <ScriptView project={project} />;
   if (currentCategory?.slug === "producers") return <ProducersView project={project} />;
   if (currentCategory?.slug === "creatives") return <CreativesView project={project} />;
-  if (categorySlug === "project-notes") return <ProjectNotesView project={project} />;
   if (currentCategory?.slug === "distribution") return <DistributionView project={project} />;
   if (currentCategory?.slug === "underlying-rights") {
     const stage = project.stage === "Development" ? "Development" : project.stage === "Production" ? "Production" : "Evaluation";
     return <UnderlyingRightsPage project={project} stage={stage} />;
   }
   if (currentCategory) {
-    const categoryId = legacyCategoryId[currentCategory.slug];
     return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="flex items-end justify-between border-b border-border pb-6">
@@ -303,27 +272,15 @@ function PrototypeContent({
             <h2 className="text-3xl font-display font-bold text-foreground tracking-tight">
               {currentSubcategory?.name || currentCategory.name}
             </h2>
-            <p className="text-muted-foreground mt-1">
-              {currentSubcategory ? `Manage documents and records for ${currentSubcategory.name}.` : `Folder content for ${currentCategory.name}.`}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <UploadDocumentDialog projectId={project.id} defaultCategoryId={categoryId} defaultSubcategoryId={subcategoryId}>
-              <Button size="sm" className="shadow-lg shadow-primary/20">
-                <Plus className="mr-2 h-4 w-4" />
-                Upload Document
-              </Button>
-            </UploadDocumentDialog>
+            <p className="text-muted-foreground mt-1">Documents and records for {currentSubcategory?.name || currentCategory.name}.</p>
           </div>
         </div>
-        <DocumentLibrary projectId={project.id} categoryId={categoryId} subcategoryId={subcategoryId} />
+        <DocumentLibrary projectId={project.id} folder={folder} />
       </div>
     );
   }
 
   switch (project.stage) {
-    case "Evaluation":
-      return <EvaluationView project={project} />;
     case "Development":
       return <DevelopmentView project={project} />;
     case "Production":
@@ -406,7 +363,21 @@ function WorkspaceShell({ categorySlug, subcategorySlug }: { categorySlug?: stri
         )}
 
         <div className="min-h-[500px]">
-          <PrototypeContent categorySlug={categorySlug} subcategorySlug={subcategorySlug} />
+          {categorySlug === "project-notes" ? (
+            <ProjectNotesView />
+          ) : !categorySlug && project.stage === "evaluation" && !project.archivedAt ? (
+            <EvaluationView />
+          ) : categorySlug === "documents" ? (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="border-b border-border pb-6">
+                <h2 className="text-3xl font-display font-bold text-foreground tracking-tight">Documents</h2>
+                <p className="text-muted-foreground mt-1">Every file stored for this project, across all folders.</p>
+              </div>
+              <DocumentLibrary projectId={project.id} />
+            </div>
+          ) : (
+            <PrototypeContent categorySlug={categorySlug} subcategorySlug={subcategorySlug} />
+          )}
         </div>
       </div>
     </Shell>

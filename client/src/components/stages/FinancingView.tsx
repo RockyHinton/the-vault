@@ -1,3 +1,4 @@
+import type { DocumentFolder } from "@shared/contracts";
 import { useState } from "react";
 import { Link } from "wouter";
 import { Project, useStore } from "@/lib/store";
@@ -40,11 +41,12 @@ interface FinancingViewProps {
   project: Project;
   currentSubcategory?: string;
   subcategoryId?: string;
+  folder?: DocumentFolder;
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
-export default function FinancingView({ project, currentSubcategory, subcategoryId }: FinancingViewProps) {
+export default function FinancingView({ project, currentSubcategory, subcategoryId, folder }: FinancingViewProps) {
   const { updateFinancing } = useStore();
 
   // If we are drilled down into a subcategory (like "Banking Docs"), just show the docs
@@ -73,11 +75,7 @@ export default function FinancingView({ project, currentSubcategory, subcategory
              </p>
           </div>
         </div>
-        <DocumentLibrary 
-           projectId={project.id} 
-           categoryId="c3" // Hardcoded for Financing category ID from store mock
-           subcategoryId={subcategoryId} 
-         />
+        <DocumentLibrary projectId={project.id} folder={folder} />
       </div>
     );
   }

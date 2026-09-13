@@ -199,3 +199,342 @@ export const auditListQuerySchema = z.object({
   entityType: z.string().trim().min(1).max(60).optional(),
   entityId: z.string().uuid().optional(),
 });
+
+// --- Files & Documents ---
+
+/** Upload limits shared by client and server. */
+export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+export const MAX_FILENAME_LENGTH = 255;
+
+/**
+ * Folders mirror the workspace sections. They are configuration, not data:
+ * adding a folder is a contract change, validated on both sides.
+ */
+export const documentFolderSchema = z.enum([
+  "general",
+  "script",
+  "script/reader-analysis",
+  "script/cast-wishlist",
+  "producers",
+  "creatives",
+  "underlying-rights",
+  "financing/budget",
+  "financing/finance-plan",
+  "financing/cashflow",
+  "legal/chain-of-title",
+  "legal/writer-agreements",
+  "legal/investment-agreements",
+  "legal/co-production",
+  "legal/producers-agreements",
+  "legal/director-agreements",
+  "legal/cast-agreements",
+  "legal/banking-docs",
+  "legal/funding-tax-credit",
+  "legal/sales-agency",
+  "legal/cama",
+  "distribution",
+  "schedules/shooting-schedule",
+  "schedules/call-sheets",
+]);
+export type DocumentFolder = z.infer<typeof documentFolderSchema>;
+
+export const documentStatusSchema = z.enum([
+  "draft",
+  "under_review",
+  "final",
+  "signed",
+]);
+export type DocumentStatus = z.infer<typeof documentStatusSchema>;
+
+/** Immutable stored bytes. Never carries a storage key or URL. */
+export const fileObjectSchema = z.object({
+  id: z.string().uuid(),
+  originalFilename: z.string(),
+  mediaType: z.string(),
+  byteSize: z.number().int().positive(),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  createdAt: z.string().datetime(),
+});
+export type FileObject = z.infer<typeof fileObjectSchema>;
+
+export const documentSchema = z.object({
+  id: z.string().uuid(),
+  projectId: z.string().uuid(),
+  /** Shared by every version of one document; equals the first version's id. */
+  lineageId: z.string().uuid(),
+  versionNumber: z.number().int().positive(),
+  isCurrent: z.boolean(),
+  folder: documentFolderSchema,
+  title: z.string(),
+  status: documentStatusSchema,
+  notes: z.string().nullable(),
+  file: fileObjectSchema,
+  createdBy: auditActorSchema,
+  /** Optimistic concurrency for metadata edits and version/delete commands. */
+  version: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type Document = z.infer<typeof documentSchema>;
+
+export const documentListQuerySchema = z.object({
+  folder: documentFolderSchema.optional(),
+});
+export const documentIdParamSchema = z.object({
+  projectId: z.string().uuid(),
+  documentId: z.string().uuid(),
+});
+export const fileIdParamSchema = z.object({ fileId: z.string().uuid() });
+export const fileContentQuerySchema = z.object({
+  disposition: z.enum(["attachment", "inline"]).default("attachment"),
+});
+
+export const createDocumentSchema = z.object({
+  fileObjectId: z.string().uuid(),
+  folder: documentFolderSchema,
+  title: z.string().trim().min(1).max(200),
+  status: documentStatusSchema.default("draft"),
+  notes: z.string().trim().max(4_000).optional(),
+});
+export type CreateDocumentInput = z.infer<typeof createDocumentSchema>;
+
+export const updateDocumentSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200).optional(),
+    folder: documentFolderSchema.optional(),
+    status: documentStatusSchema.optional(),
+    notes: z.string().trim().max(4_000).nullable().optional(),
+    version: z.number().int().positive(),
+  })
+  .refine((value) => Object.keys(value).some((key) => key !== "version"), {
+    message: "At least one document field must be supplied.",
+  });
+export type UpdateDocumentInput = z.infer<typeof updateDocumentSchema>;
+
+export const addDocumentVersionSchema = z.object({
+  fileObjectId: z.string().uuid(),
+  status: documentStatusSchema.default("draft"),
+  notes: z.string().trim().max(4_000).optional(),
+  /** The current version's `version` field. */
+  version: z.number().int().positive(),
+});
+export type AddDocumentVersionInput = z.infer<typeof addDocumentVersionSchema>;
+
+export const deleteDocumentSchema = z.object({
+  version: z.number().int().positive(),
+});
+
+// --- Shared identity reference for authored and assigned records ---
+
+/** Safe human identity for authorship and assignment. Never carries email or role. */
+export const userRefSchema = z.object({
+  id: z.string().uuid(),
+  displayName: z.string(),
+});
+export type UserRef = z.infer<typeof userRefSchema>;
+
+/** Active users an ordinary user may assign or address. */
+export const userDirectorySchema = z.object({ items: z.array(userRefSchema) });
+
+// --- Evaluation ---
+
+export const financeTypeSchema = z.enum([
+  "grant",
+  "subsidy",
+  "equity",
+  "loan",
+  "pre_sale",
+  "deferral",
+]);
+export type FinanceType = z.infer<typeof financeTypeSchema>;
+
+/** The four go/no-go gates checked before a project is approved for development. */
+export const evaluationGatesSchema = z.object({
+  scriptApproved: z.boolean(),
+  budgetApproved: z.boolean(),
+  financeApproved: z.boolean(),
+  talentAttached: z.boolean(),
+});
+export type EvaluationGates = z.infer<typeof evaluationGatesSchema>;
+
+/** One per project. `version: 0` means no evaluation has been saved yet. */
+export const evaluationSchema = z.object({
+  projectId: z.string().uuid(),
+  writer: z.string().nullable(),
+  director: z.string().nullable(),
+  /** A free-text estimate such as "$5M"; not accounting money (see ADR 0006). */
+  plannedBudget: z.string().nullable(),
+  financeTypes: z.array(financeTypeSchema),
+  gates: evaluationGatesSchema,
+  version: z.number().int().nonnegative(),
+  updatedBy: userRefSchema.nullable(),
+  updatedAt: z.string().datetime().nullable(),
+});
+export type Evaluation = z.infer<typeof evaluationSchema>;
+
+export const saveEvaluationSchema = z.object({
+  writer: z.string().trim().max(200).nullable(),
+  director: z.string().trim().max(200).nullable(),
+  plannedBudget: z.string().trim().max(80).nullable(),
+  financeTypes: z
+    .array(financeTypeSchema)
+    .max(6)
+    .refine((types) => new Set(types).size === types.length, {
+      message: "Finance types must be unique.",
+    }),
+  gates: evaluationGatesSchema,
+  /** 0 to create the first evaluation; the current version to update it. */
+  version: z.number().int().nonnegative(),
+});
+export type SaveEvaluationInput = z.infer<typeof saveEvaluationSchema>;
+
+export const reviewRecommendationSchema = z.enum([
+  "pass",
+  "consider",
+  "develop",
+]);
+export type ReviewRecommendation = z.infer<typeof reviewRecommendationSchema>;
+
+const scoreSchema = z.number().int().min(0).max(10);
+export const reviewScoresSchema = z.object({
+  script: scoreSchema,
+  director: scoreSchema,
+  cast: scoreSchema,
+  financing: scoreSchema,
+});
+export type ReviewScores = z.infer<typeof reviewScoresSchema>;
+
+/** One review per project and author; resubmitting replaces the author's own. */
+export const reviewSchema = z.object({
+  id: z.string().uuid(),
+  projectId: z.string().uuid(),
+  author: userRefSchema,
+  scores: reviewScoresSchema,
+  recommendation: reviewRecommendationSchema,
+  summaryNotes: z.string(),
+  version: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type Review = z.infer<typeof reviewSchema>;
+
+export const submitReviewSchema = z.object({
+  scores: reviewScoresSchema,
+  summaryNotes: z.string().trim().min(1).max(4_000),
+  /** 0 when the author has no review yet; the current version to replace it. */
+  version: z.number().int().nonnegative(),
+});
+export type SubmitReviewInput = z.infer<typeof submitReviewSchema>;
+export const deleteReviewSchema = z.object({
+  version: z.number().int().positive(),
+});
+export const reviewIdParamSchema = z.object({
+  projectId: z.string().uuid(),
+  reviewId: z.string().uuid(),
+});
+
+// --- Project notes ---
+
+export const noteCategorySchema = z.enum([
+  "script",
+  "financing",
+  "cast",
+  "other",
+]);
+export type NoteCategory = z.infer<typeof noteCategorySchema>;
+
+export const noteSchema = z.object({
+  id: z.string().uuid(),
+  projectId: z.string().uuid(),
+  author: userRefSchema,
+  body: z.string(),
+  category: noteCategorySchema,
+  version: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type Note = z.infer<typeof noteSchema>;
+
+export const createNoteSchema = z.object({
+  body: z.string().trim().min(1).max(4_000),
+  category: noteCategorySchema,
+});
+export type CreateNoteInput = z.infer<typeof createNoteSchema>;
+export const updateNoteSchema = z
+  .object({
+    body: z.string().trim().min(1).max(4_000).optional(),
+    category: noteCategorySchema.optional(),
+    version: z.number().int().positive(),
+  })
+  .refine((value) => value.body !== undefined || value.category !== undefined, {
+    message: "At least one note field must be supplied.",
+  });
+export type UpdateNoteInput = z.infer<typeof updateNoteSchema>;
+export const deleteNoteSchema = z.object({
+  version: z.number().int().positive(),
+});
+export const noteIdParamSchema = z.object({
+  projectId: z.string().uuid(),
+  noteId: z.string().uuid(),
+});
+
+// --- Project tasks ---
+
+export const taskCategorySchema = z.enum([
+  "finance",
+  "talent",
+  "legal",
+  "production",
+  "general",
+]);
+export type TaskCategory = z.infer<typeof taskCategorySchema>;
+export const taskPrioritySchema = z.enum(["low", "medium", "high"]);
+export type TaskPriority = z.infer<typeof taskPrioritySchema>;
+export const taskStatusSchema = z.enum(["open", "done"]);
+export type TaskStatus = z.infer<typeof taskStatusSchema>;
+
+export const taskSchema = z.object({
+  id: z.string().uuid(),
+  projectId: z.string().uuid(),
+  title: z.string(),
+  description: z.string().nullable(),
+  category: taskCategorySchema,
+  priority: taskPrioritySchema,
+  status: taskStatusSchema,
+  assignee: userRefSchema.nullable(),
+  createdBy: userRefSchema,
+  completedAt: z.string().datetime().nullable(),
+  version: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type Task = z.infer<typeof taskSchema>;
+
+export const createTaskSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(4_000).optional(),
+  category: taskCategorySchema.default("general"),
+  priority: taskPrioritySchema.default("medium"),
+  assigneeUserId: z.string().uuid().nullable().optional(),
+});
+export type CreateTaskInput = z.infer<typeof createTaskSchema>;
+export const updateTaskSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200).optional(),
+    description: z.string().trim().max(4_000).nullable().optional(),
+    category: taskCategorySchema.optional(),
+    priority: taskPrioritySchema.optional(),
+    assigneeUserId: z.string().uuid().nullable().optional(),
+    version: z.number().int().positive(),
+  })
+  .refine((value) => Object.keys(value).some((key) => key !== "version"), {
+    message: "At least one task field must be supplied.",
+  });
+export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+export const taskVersionSchema = z.object({
+  version: z.number().int().positive(),
+});
+export const taskIdParamSchema = z.object({
+  projectId: z.string().uuid(),
+  taskId: z.string().uuid(),
+});

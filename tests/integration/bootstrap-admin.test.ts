@@ -12,6 +12,7 @@ import {
   type IsolatedPostgresDatabase,
 } from "../support/isolated-postgres";
 import { testEnvironment } from "../support/test-context";
+import { createTestStorage } from "../support/test-storage";
 
 // A fresh database with no users at all, exactly like a first deployment.
 let database: IsolatedPostgresDatabase;
@@ -85,16 +86,22 @@ describe("first-admin bootstrap", () => {
     ).toBe(1);
 
     // The bootstrapped admin can sign in with the bootstrap password.
-    const { app } = await createVaultServer({
-      env: testEnvironment({ DATABASE_URL: database.databaseUrl }),
-      db: handle.db,
-      frontend: "none",
-    });
-    const login = await request(app)
-      .post("/api/v1/auth/login")
-      .send({ email: "operator@vault.test", password });
-    expect(login.status).toBe(200);
-    expect(login.body.data.user.role).toBe("studio_admin");
+    const storage = await createTestStorage();
+    try {
+      const { app } = await createVaultServer({
+        env: testEnvironment({ DATABASE_URL: database.databaseUrl }),
+        db: handle.db,
+        storage: storage.storage,
+        frontend: "none",
+      });
+      const login = await request(app)
+        .post("/api/v1/auth/login")
+        .send({ email: "operator@vault.test", password });
+      expect(login.status).toBe(200);
+      expect(login.body.data.user.role).toBe("studio_admin");
+    } finally {
+      await storage.destroy();
+    }
   });
 
   it("refuses to overwrite a user that exists with another role or status", async () => {

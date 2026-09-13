@@ -61,6 +61,21 @@ export const userRepository = {
       .orderBy(asc(applicationUsers.createdAt), asc(applicationUsers.id));
   },
 
+  /** Active users, for assignment pickers; ordered by name for stable UI. */
+  async listActive(
+    executor: DatabaseExecutor,
+  ): Promise<Pick<ApplicationUserRow, "id" | "displayName" | "email">[]> {
+    return executor
+      .select({
+        id: applicationUsers.id,
+        displayName: applicationUsers.displayName,
+        email: applicationUsers.email,
+      })
+      .from(applicationUsers)
+      .where(eq(applicationUsers.status, "active"))
+      .orderBy(asc(applicationUsers.displayName), asc(applicationUsers.email));
+  },
+
   async findById(
     executor: DatabaseExecutor,
     id: string,

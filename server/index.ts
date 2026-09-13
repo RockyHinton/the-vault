@@ -1,6 +1,7 @@
 import "./config/load-env";
 import { readEnvironment } from "./config/env";
 import { createDatabase } from "./db/client";
+import { createFileStorage } from "./files/storage-factory";
 import { createVaultServer } from "./app";
 import { log } from "./observability/logger";
 
@@ -18,6 +19,7 @@ async function start() {
   const { httpServer } = await createVaultServer({
     env,
     db: database.db,
+    storage: createFileStorage(env),
     frontend: env.NODE_ENV === "production" ? "static" : "vite",
   });
 

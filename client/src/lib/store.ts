@@ -16,37 +16,6 @@ export interface User {
 export type ProjectStage = 'Evaluation' | 'Development' | 'Production' | 'Archived';
 export type ProjectStatus = 'Active' | 'On Hold' | 'Completed'; // Kept for backward compatibility, but Stage is primary now
 
-export interface EvaluationData {
-  writer?: string;
-  writerNotes?: string;
-  director?: string;
-  directorImdb?: string;
-  castAttached?: { name: string; role: string; imdb?: string }[];
-  producers?: { name: string; notes?: string }[];
-  financeType?: 'Grant' | 'Subsidy' | 'Tax Credit' | 'Private' | string; // Kept string for flexibility or multi-select rendering
-  financeTypes?: string[]; // Added for multiple selection support
-  financeStatus?: 'Committed' | 'Speculative';
-  plannedBudget?: string; // e.g. "$5M"
-  scores?: { creative: number; financial: number }; // 1-10
-}
-
-export type TaskCategory = 'Finance' | 'Talent' | 'Legal' | 'Production' | 'General';
-
-export interface Task {
-  id: string;
-  projectId: string;
-  title: string;
-  description?: string; // Added for detailed notes
-  category: TaskCategory; // Added for filtering
-  assignedTo?: string; // User ID or Name
-  authorId: string; // Added for ownership
-  authorName: string; // Added for display
-  status: 'Open' | 'In Progress' | 'Done';
-  dueDate?: string;
-  priority: 'Low' | 'Medium' | 'High';
-  createdAt: string; // Added for timestamp
-}
-
 export interface Project {
   id: string;
   /** Present only when the project is supplied by the server-core adapter. */
@@ -81,9 +50,6 @@ export interface Project {
     expiryDate: string;
     notes: string;
   };
-
-  // Evaluation Data
-  evaluation: EvaluationData;
 
   // Development Data
   closingChecklist?: {
@@ -341,35 +307,6 @@ export interface ScriptAnnotation {
   timestamp: string;
 }
 
-export interface ScriptReview {
-  id: string;
-  projectId: string; // Changed from scriptVersionId to generic project association
-  authorId: string;
-  authorName: string;
-  scriptScore: number;   // 1-10
-  directorScore: number; // 1-10
-  castScore: number;     // 1-10
-  financingScore: number; // 1-10
-  creativeScore?: number;
-  commercialScore?: number;
-  budgetScore?: number;
-  recommendation: 'Pass' | 'Consider' | 'Develop';
-  summaryNotes: string;
-  timestamp: string;
-}
-
-export type ProjectNoteCategory = 'Script' | 'Financing' | 'Cast' | 'Other';
-
-export interface ProjectNote {
-  id: string;
-  projectId: string;
-  authorId: string;
-  authorName: string;
-  text: string;
-  category: ProjectNoteCategory;
-  timestamp: string;
-}
-
 // --- Producer Profile Types ---
 
 export interface ContactDetail {
@@ -485,12 +422,6 @@ const MOCK_USER: User = {
   avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80',
 };
 
-const MOCK_TASKS: Task[] = [
-  { id: 't1', projectId: 'p1', title: 'Finalize Cast Contracts', category: 'Legal', description: 'Need to get signatures from lead actors agents.', status: 'In Progress', priority: 'High', assignedTo: 'Sarah Producer', dueDate: '2023-12-25', authorId: 'u1', authorName: 'Sarah Producer', createdAt: '2023-12-01T10:00:00Z' },
-  { id: 't2', projectId: 'p1', title: 'Location Scout - Tokyo', category: 'Production', description: 'Coordinate with local fixers for Shibuya crossing permits.', status: 'Open', priority: 'Medium', assignedTo: 'Mike Finance', authorId: 'u2', authorName: 'Mike Finance', createdAt: '2023-12-05T14:30:00Z' },
-  { id: 't3', projectId: 'p2', title: 'Script Polish', category: 'General', description: 'Implement notes from the studio coverage.', status: 'Open', priority: 'High', assignedTo: 'Sarah Producer', authorId: 'u1', authorName: 'Sarah Producer', createdAt: '2023-11-25T09:15:00Z' },
-];
-
 const MOCK_PROJECTS: Project[] = [
   {
     id: 'p1',
@@ -502,16 +433,6 @@ const MOCK_PROJECTS: Project[] = [
     genre: 'Thriller / Drama',
     createdAt: '2023-10-15T10:00:00Z',
     updatedAt: '2023-12-10T14:30:00Z',
-    evaluation: {
-      writer: 'Kenji Sato',
-      director: 'Ridley Scott Jr.',
-      plannedBudget: '$45M',
-      financeType: 'Private',
-      financeStatus: 'Committed',
-      castAttached: [
-        { name: 'Hiroyuki Sanada', role: 'Lead' }
-      ]
-    },
     financing: {
       totalBudget: 45000000,
       secured: 38000000,
@@ -551,13 +472,6 @@ const MOCK_PROJECTS: Project[] = [
     genre: 'Sci-Fi / Horror',
     createdAt: '2023-11-01T09:00:00Z',
     updatedAt: '2023-11-20T11:15:00Z',
-    evaluation: {
-      writer: 'Sarah Jenkins',
-      financeType: 'Grant',
-      financeStatus: 'Speculative',
-      plannedBudget: '$12M',
-      scores: { creative: 8.5, financial: 6.0 }
-    },
     financing: {
       totalBudget: 12000000,
       secured: 0,
@@ -577,13 +491,6 @@ const MOCK_PROJECTS: Project[] = [
     genre: 'Drama / Music',
     createdAt: '2023-09-01T08:00:00Z',
     updatedAt: '2023-12-05T16:45:00Z',
-    evaluation: {
-      writer: 'Maria Santos',
-      director: 'Carlos Gomez',
-      plannedBudget: '$8M',
-      financeType: 'Tax Credit',
-      financeStatus: 'Committed'
-    },
     financing: {
       totalBudget: 8000000,
       secured: 8000000,
@@ -610,11 +517,6 @@ const MOCK_PROJECTS: Project[] = [
     genre: 'Action / Sci-Fi',
     createdAt: '2022-01-01T00:00:00Z',
     updatedAt: '2022-06-01T00:00:00Z',
-    evaluation: {
-      writer: 'Alan Smithee',
-      plannedBudget: '$100M',
-      scores: { creative: 4.0, financial: 2.0 }
-    },
     archiveDetails: {
       reason: 'Financing not secured',
       revisit: 'Maybe',
@@ -741,29 +643,6 @@ const MOCK_ANNOTATIONS: ScriptAnnotation[] = [
   }
 ];
 
-const MOCK_REVIEWS: ScriptReview[] = [];
-
-const MOCK_PROJECT_NOTES: ProjectNote[] = [
-  {
-    id: 'pn1',
-    projectId: 'p1',
-    authorId: 'u1',
-    authorName: 'Sarah Producer',
-    text: 'We need to make sure the third act twist lands harder. Currently feels a bit rushed.',
-    category: 'Script',
-    timestamp: '2023-12-12T09:00:00Z',
-  },
-  {
-    id: 'pn2',
-    projectId: 'p1',
-    authorId: 'u2',
-    authorName: 'Mike Finance',
-    text: 'Budget concerns around the Tokyo location shoot. Can we look at alternatives?',
-    category: 'Financing',
-    timestamp: '2023-12-12T10:30:00Z',
-  }
-];
-
 const MOCK_PRODUCER_PROFILES: ProducerProfile[] = [
   {
     id: 'pp1',
@@ -840,10 +719,7 @@ interface AppState {
   categories: Category[];
   subcategories: Subcategory[];
   documents: Document[];
-  tasks: Task[];
   annotations: ScriptAnnotation[];
-  reviews: ScriptReview[];
-  projectNotes: ProjectNote[];
   producerProfiles: ProducerProfile[];
   creativeProfiles: CreativeProfile[];
   currentProjectId: string | null;
@@ -870,28 +746,14 @@ interface AppState {
   // Budget Actions
   updateBudgetState: (projectId: string, updates: Partial<ProjectFinanceState>) => void;
   updateBudgetDraft: (projectId: string, updates: Partial<BudgetVersion>) => void;
-  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'authorId' | 'authorName'>) => void;
-  deleteTask: (taskId: string) => void;
-  toggleTaskStatus: (taskId: string) => void;
-  getProjectTasks: (projectId: string) => Task[];
 
   // Evaluation Actions
   updateDocumentationChecklist: (projectId: string, checklist: Record<string, boolean>) => void;
-  updateEvaluation: (projectId: string, data: Partial<EvaluationData>) => void;
   updateFinancing: (projectId: string, data: Partial<Project['financing']>) => void;
   getScriptAnnotations: (scriptId: string) => ScriptAnnotation[];
   addAnnotation: (annotation: Omit<ScriptAnnotation, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
   deleteAnnotation: (annotationId: string) => void;
-  getProjectReviews: (projectId: string) => ScriptReview[];
-  getScriptReviews: (scriptId: string) => ScriptReview[];
-  addReview: (review: Omit<ScriptReview, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
-  deleteReview: (reviewId: string) => void;
   deleteProject: (projectId: string) => void;
-
-  // Project Notes Actions
-  getProjectNotes: (projectId: string) => ProjectNote[];
-  addProjectNote: (note: Omit<ProjectNote, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
-  deleteProjectNote: (noteId: string) => void;
 
   // Producer Profile Actions
   getProducerProfiles: (projectId: string) => ProducerProfile[];
@@ -928,10 +790,7 @@ export const useStore = create<AppState>()((set, get) => ({
   categories: MOCK_CATEGORIES,
   subcategories: MOCK_SUBCATEGORIES,
   documents: MOCK_DOCUMENTS,
-  tasks: MOCK_TASKS,
   annotations: MOCK_ANNOTATIONS,
-  reviews: MOCK_REVIEWS,
-  projectNotes: MOCK_PROJECT_NOTES,
   producerProfiles: MOCK_PRODUCER_PROFILES,
   creativeProfiles: MOCK_CREATIVE_PROFILES,
   currentProjectId: null,
@@ -947,10 +806,7 @@ export const useStore = create<AppState>()((set, get) => ({
       fixtureActor: MOCK_USER,
       projects: MOCK_PROJECTS,
       documents: MOCK_DOCUMENTS,
-      tasks: MOCK_TASKS,
       annotations: MOCK_ANNOTATIONS,
-      reviews: MOCK_REVIEWS,
-      projectNotes: MOCK_PROJECT_NOTES,
       producerProfiles: MOCK_PRODUCER_PROFILES,
       creativeProfiles: MOCK_CREATIVE_PROFILES,
       territories: [],
@@ -963,7 +819,6 @@ export const useStore = create<AppState>()((set, get) => ({
         ...data,
         id: `p${Date.now()}`,
         stage: 'Evaluation', // Default new projects to Evaluation
-        evaluation: data.evaluation || {}, // Use provided evaluation data or default to empty
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -974,34 +829,7 @@ export const useStore = create<AppState>()((set, get) => ({
   deleteProject: (projectId) => set((state) => ({
     projects: state.projects.filter(p => p.id !== projectId),
     // Cleanup related data
-    tasks: state.tasks.filter(t => t.projectId !== projectId),
     documents: state.documents.filter(d => d.projectId !== projectId),
-    // We could clean up categories/reviews too if they were fully dynamic per project
-    reviews: state.reviews.filter(r => r.projectId !== projectId),
-    projectNotes: state.projectNotes.filter(n => n.projectId !== projectId),
-  })),
-
-  // Project Notes Actions
-  getProjectNotes: (projectId) => {
-    const { projectNotes } = get();
-    return projectNotes.filter(n => n.projectId === projectId).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  },
-
-  addProjectNote: (note) => set((state) => ({
-    projectNotes: [
-      {
-        ...note,
-        id: `pn${Date.now()}`,
-        authorId: state.fixtureActor.id,
-        authorName: state.fixtureActor.name,
-        timestamp: new Date().toISOString(),
-      },
-      ...state.projectNotes
-    ]
-  })),
-
-  deleteProjectNote: (noteId) => set((state) => ({
-    projectNotes: state.projectNotes.filter(n => n.id !== noteId)
   })),
 
   // Producer Profile Actions
@@ -1224,44 +1052,12 @@ export const useStore = create<AppState>()((set, get) => ({
     })
   })),
 
-  addTask: (task) => set((state) => ({
-    tasks: [...state.tasks, { 
-      ...task, 
-      id: `t${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      authorId: state.fixtureActor.id,
-      authorName: state.fixtureActor.name
-    }]
-  })),
-
-  deleteTask: (taskId) => set((state) => ({
-    tasks: state.tasks.filter(t => t.id !== taskId)
-  })),
-
-  toggleTaskStatus: (taskId) => set((state) => ({
-    tasks: state.tasks.map(t => 
-      t.id === taskId ? { ...t, status: t.status === 'Done' ? 'Open' : 'Done' } : t
-    )
-  })),
-
-  getProjectTasks: (projectId) => {
-    const { tasks } = get();
-    return tasks.filter(t => t.projectId === projectId);
-  },
-
   updateDocumentationChecklist: (projectId, checklist) => set((state) => ({
     projects: state.projects.map(p => 
       p.id === projectId ? { 
         ...p, 
         documentationChecklist: { ...p.documentationChecklist, ...checklist } 
       } : p
-    )
-  })),
-
-  // Evaluation Actions
-  updateEvaluation: (projectId, data) => set((state) => ({
-    projects: state.projects.map(p => 
-      p.id === projectId ? { ...p, evaluation: { ...p.evaluation, ...data } } : p
     )
   })),
 
@@ -1299,57 +1095,6 @@ export const useStore = create<AppState>()((set, get) => ({
 
   deleteAnnotation: (annotationId) => set((state) => ({
     annotations: state.annotations.filter(a => a.id !== annotationId)
-  })),
-
-  getProjectReviews: (projectId) => {
-    const { reviews } = get();
-    return reviews.filter(r => r.projectId === projectId);
-  },
-
-  getScriptReviews: (scriptId) => {
-    const { documents, reviews } = get();
-    const doc = documents.find(d => d.id === scriptId);
-    if (!doc) return [];
-    return reviews.filter(r => r.projectId === doc.projectId);
-  },
-
-  addReview: (review) => set((state) => {
-    // Check if user already submitted a review for this project
-    const currentUserId = state.fixtureActor.id;
-    const existingReviewIndex = state.reviews.findIndex(
-      r => r.projectId === review.projectId && r.authorId === currentUserId
-    );
-
-    if (existingReviewIndex >= 0) {
-      // Replace existing review
-      const updatedReviews = [...state.reviews];
-      updatedReviews[existingReviewIndex] = {
-        ...review,
-        id: updatedReviews[existingReviewIndex].id, // Keep same ID
-        timestamp: new Date().toISOString(),
-        authorId: state.fixtureActor.id,
-        authorName: state.fixtureActor.name
-      };
-      return { reviews: updatedReviews };
-    } else {
-      // Add new review
-      return {
-        reviews: [
-          { 
-            ...review, 
-            id: `r${Date.now()}`,
-            timestamp: new Date().toISOString(),
-            authorId: state.fixtureActor.id,
-            authorName: state.fixtureActor.name
-          },
-          ...state.reviews
-        ]
-      };
-    }
-  }),
-
-  deleteReview: (reviewId) => set((state) => ({
-    reviews: state.reviews.filter(r => r.id !== reviewId)
   })),
 
   // Territory / Distribution Actions

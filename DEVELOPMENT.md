@@ -34,6 +34,9 @@ CI and shell exports override the file. Production never reads the file.
 | --- | --- | --- |
 | `DATABASE_URL` | yes | PostgreSQL connection string. |
 | `PORT` | no | Default 5000. Replit sets it in `.replit`; macOS reserves 5000, so `.env.local` uses 5001. |
+| `VAULT_STORAGE_PROVIDER` | production | `local` (default outside production) or `replit`. Production must set it explicitly. |
+| `VAULT_STORAGE_LOCAL_DIR` | no | Directory for `local` storage; default `.vault-data/files` (git-ignored). |
+| `VAULT_MAX_UPLOAD_BYTES` | no | Upload limit, default 50 MiB. |
 | `VAULT_BOOTSTRAP_ADMIN_EMAIL`, `_PASSWORD`, `_NAME` | bootstrap only | Read only by `npm run bootstrap:admin`. Never set them on a running web server. Remove the password after use. |
 | `REPLIT_DOMAINS` | production | Comma-separated allowed hostnames (Replit sets it). |
 | `REPLIT_DEV_DOMAIN` | no | Extra allowed host in development (Replit sets it). |
@@ -111,6 +114,17 @@ HTTPS (Replit does). Locally the app runs over plain HTTP on localhost and the c
 `Secure`; everything else is identical. Mutations must arrive with an `Origin` header naming the
 deployment in production; in development a missing `Origin` is tolerated for command-line tools.
 
+## File storage
+
+Uploaded bytes never enter PostgreSQL. Locally they live under `.vault-data/files` (ignored by
+git) through the `local` storage adapter; the database holds only metadata and a random key.
+To reset local files, stop the app and delete that directory together with the `file_objects`
+and `documents` rows, or leave them: a missing object is reported as unavailable, never as
+missing metadata. Tests use a temporary `vault_test_storage_*` directory that is removed
+afterwards; the adapter refuses any other root under `NODE_ENV=test`, so tests cannot touch
+your real uploads. Unclaimed uploads (staged but never attached to a document) are retired by
+`sweepStagedUploads` after 24 hours; nothing schedules it yet.
+
 ## Database workflow
 
 1. Modify `shared/schema.ts`.
@@ -165,7 +179,9 @@ No `any`, no hidden state transitions, explicit error handling.
 
 Replit remains the deployment target. Its build and run commands are `npm run build` and
 `npm start` (see `.replit`). Replit provides `DATABASE_URL`, `REPLIT_DOMAINS` and `PORT` as
-environment variables and terminates HTTPS; `.env.local` plays no part. Release steps: migrate
+environment variables and terminates HTTPS; `.env.local` plays no part. File storage must be
+configured explicitly: `VAULT_STORAGE_PROVIDER=replit` once the object storage adapter ships
+(ADR 0008), never the deployment filesystem, which is ephemeral. Release steps: migrate
 (explicit, above), build, start, then run `npm run bootstrap:admin` once with the three
 bootstrap variables set as protected secrets, and delete the password secret. This repository
 does not claim that a production deployment has been executed since the authentication change;

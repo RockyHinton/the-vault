@@ -1,3 +1,4 @@
+import type { DocumentFolder } from "@shared/contracts";
 import { useState } from "react";
 import { Link } from "wouter";
 import { Project, useStore } from "@/lib/store";
@@ -19,6 +20,7 @@ interface LegalViewProps {
   project: Project;
   currentSubcategory?: string;
   subcategoryId?: string;
+  folder?: DocumentFolder;
 }
 
 // --- CONFIGURATION ---
@@ -37,7 +39,7 @@ const DOC_TYPES = [
   { name: 'CAMA', key: 'cama', route: 'cama' },
 ];
 
-export default function LegalView({ project, currentSubcategory, subcategoryId }: LegalViewProps) {
+export default function LegalView({ project, currentSubcategory, subcategoryId, folder }: LegalViewProps) {
   const { getCategorySubcategories } = useStore();
   const [filterStatus, setFilterStatus] = useState<'All' | 'Completed' | 'In Progress' | 'Empty'>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,11 +58,7 @@ export default function LegalView({ project, currentSubcategory, subcategoryId }
              </p>
           </div>
         </div>
-        <DocumentLibrary 
-           projectId={project.id} 
-           categoryId="c9" // Hardcoded for Documentation/Legal category
-           subcategoryId={subcategoryId} 
-         />
+        <DocumentLibrary projectId={project.id} folder={folder} />
       </div>
     );
   }

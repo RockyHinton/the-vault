@@ -24,6 +24,7 @@ export interface WorkspaceCategory {
 }
 
 const categories: WorkspaceCategory[] = [
+  { slug: "documents", name: "Documents", icon: "FileText", subcategories: [] },
   { slug: "script", name: "Script", icon: "FileText", subcategories: [] },
   { slug: "producers", name: "Producers", icon: "Users", subcategories: [] },
   { slug: "creatives", name: "Creatives", icon: "User", subcategories: [] },
@@ -83,6 +84,7 @@ export function workspaceCategoriesFor(project: Project): WorkspaceCategory[] {
   const archived = Boolean(project.archivedAt);
   const stage = project.stage;
   const visible = new Set<string>([
+    "documents",
     "script",
     "financing",
     "producers",

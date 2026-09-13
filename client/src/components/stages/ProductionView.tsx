@@ -1,4 +1,5 @@
-import { Project, useStore } from "@/lib/store";
+import { Project } from "@/lib/store";
+import { useTasks } from "@/features/tasks/use-tasks";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +32,7 @@ interface ProductionViewProps {
 }
 
 export default function ProductionView({ project }: ProductionViewProps) {
-  const { tasks } = useStore();
+  const tasksQuery = useTasks(project.id);
 
   // --- Data Extraction & Mock Logic ---
   const schedule = project.schedule || {
@@ -62,9 +63,8 @@ export default function ProductionView({ project }: ProductionViewProps) {
   const StatusIcon = isDelayed ? AlertCircle : isAtRisk ? AlertTriangle : CheckCircle2;
 
   // Task Filtering
-  const projectTasks = tasks.filter(t => t.projectId === project.id && t.status !== 'Done');
-  const highPriorityTasks = projectTasks.filter(t => t.priority === 'High');
-  const otherTasks = projectTasks.filter(t => t.priority !== 'High').slice(0, 3);
+  const projectTasks = (tasksQuery.data?.data.items ?? []).filter(t => t.status === 'open');
+  const highPriorityTasks = projectTasks.filter(t => t.priority === 'high');
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 w-full px-4 lg:px-8 py-6">
@@ -232,16 +232,14 @@ export default function ProductionView({ project }: ProductionViewProps) {
                           <Badge variant="outline" className="text-[10px] text-red-500 border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-900/30 whitespace-nowrap">High Priority</Badge>
                         </div>
                         <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                           {task.assignedTo && (
+                           {task.assignee && (
                              <div className="flex items-center gap-1.5">
                                <div className="h-5 w-5 rounded-full bg-secondary flex items-center justify-center text-[9px] font-bold">
-                                 {task.assignedTo.charAt(0)}
+                                 {task.assignee.displayName.charAt(0)}
                                </div>
-                               <span>{task.assignedTo}</span>
+                               <span>{task.assignee.displayName}</span>
                              </div>
                            )}
-                           <span>•</span>
-                           <span className="text-orange-500 font-medium">Due Today</span>
                         </div>
                      </div>
                    </div>

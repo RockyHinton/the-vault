@@ -9,6 +9,7 @@ const production = {
   ...base,
   NODE_ENV: "production",
   REPLIT_DOMAINS: "vault.example.com",
+  VAULT_STORAGE_PROVIDER: "local",
 };
 
 describe("environment validation", () => {
@@ -32,6 +33,17 @@ describe("environment validation", () => {
       readEnvironment({ ...production, REPLIT_DOMAINS: "https://bad.example" }),
     ).toThrow("bare HTTPS hostnames");
     expect(readEnvironment(production).NODE_ENV).toBe("production");
+  });
+
+  it("requires an explicit storage provider in production and defaults it elsewhere", () => {
+    expect(() =>
+      readEnvironment({ ...production, VAULT_STORAGE_PROVIDER: undefined }),
+    ).toThrow("VAULT_STORAGE_PROVIDER");
+    expect(readEnvironment(base).VAULT_STORAGE_PROVIDER).toBe("local");
+    expect(readEnvironment(base).VAULT_MAX_UPLOAD_BYTES).toBe(50 * 1024 * 1024);
+    expect(() =>
+      readEnvironment({ ...base, VAULT_MAX_UPLOAD_BYTES: "10" }),
+    ).toThrow("VAULT_MAX_UPLOAD_BYTES");
   });
 
   it("derives allowed hosts strictly in production and with loopback elsewhere", () => {

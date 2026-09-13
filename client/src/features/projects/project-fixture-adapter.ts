@@ -39,7 +39,6 @@ export function toWorkspaceProject(
     genre: project.genre ?? "",
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
-    evaluation: transientFeatureState?.evaluation ?? {},
     archiveDetails: project.archive
       ? {
           reason: reasonForWorkspace[project.archive.reason],

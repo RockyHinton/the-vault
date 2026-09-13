@@ -14,9 +14,19 @@ import type { Actor, UserService } from "./user-service";
 
 const userIdParamSchema = z.object({ userId: z.string().uuid() });
 
-/** `/api/v1/users`. Every route is studio_admin only; mounted behind requireLocalUser. */
+/** `/api/v1/users`. Mounted behind requireLocalUser; everything except the directory is studio_admin only. */
 export function createUserRouter(service: UserService): Router {
   const router = Router();
+
+  // Any active user may see who can be assigned or addressed; nothing else.
+  router.get(
+    "/directory",
+    handle(async (req, res) => {
+      const items = await service.directory();
+      res.json({ data: { items }, requestId: req.requestId });
+    }),
+  );
+
   router.use(requireStudioAdmin);
   const userId = (req: Request) =>
     validate(userIdParamSchema, req.params).userId;
