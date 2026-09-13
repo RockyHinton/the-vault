@@ -11,6 +11,7 @@ import type {
 } from "@shared/contracts";
 import { ApiClientError } from "@/lib/api-client";
 import { useVaultMutation } from "@/lib/mutations";
+import { financingOverviewKey } from "@/features/financing-overview/use-financing-overview";
 import { documentsKey } from "@/features/documents/use-documents";
 import {
   approveFinanceSource,
@@ -28,8 +29,11 @@ import {
 export const financePlanKey = (projectId: string) =>
   ["finance-plan", projectId] as const;
 const auditKey = ["audit-events"] as const;
+/** Plan changes move the cash flow's inflows and the overview's totals too. */
 const afterChange = ({ projectId }: { projectId: string }) => [
   financePlanKey(projectId),
+  ["cash-flow", projectId],
+  financingOverviewKey(projectId),
   auditKey,
 ];
 const afterDocumentChange = ({ projectId }: { projectId: string }) => [

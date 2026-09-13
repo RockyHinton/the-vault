@@ -27,6 +27,7 @@ import CreativesView from "@/components/stages/CreativesView";
 import DocumentationEntityPage from "@/components/features/documentation/DocumentationEntityPage";
 import BudgetTool from "@/components/features/financing/BudgetTool";
 import FinancePlan from "@/components/features/financing/FinancePlan";
+import CashFlow from "@/components/features/financing/CashFlow";
 import { legalCategoryForRoute } from "@/features/legal/categories";
 import UnderlyingRightsPage from "@/components/features/UnderlyingRightsPage";
 import DistributionView from "@/components/stages/DistributionView";
@@ -237,9 +238,6 @@ function PrototypeContent({
   const currentSubcategory = currentCategory?.subcategories.find((s) => s.slug === subcategorySlug);
   const folder = folderForWorkspacePath(categorySlug, subcategorySlug);
 
-  if (currentCategory?.slug === "financing") {
-    return <FinancingView project={project} currentSubcategory={currentSubcategory?.name} subcategoryId={currentSubcategory?.slug} folder={folder} />;
-  }
   if (currentCategory?.slug === "schedules") {
     return <SchedulesView project={project} currentSubcategory={currentSubcategory?.name} subcategoryId={currentSubcategory?.slug} folder={folder} />;
   }
@@ -353,6 +351,10 @@ function WorkspaceShell({ categorySlug, subcategorySlug }: { categorySlug?: stri
             <BudgetTool />
           ) : categorySlug === "financing" && subcategorySlug === "finance-plan" ? (
             <FinancePlan />
+          ) : categorySlug === "financing" && subcategorySlug === "cashflow" ? (
+            <CashFlow />
+          ) : categorySlug === "financing" && !subcategorySlug ? (
+            <FinancingView />
           ) : categorySlug === "script" ? (
             <ScriptView />
           ) : categorySlug === "underlying-rights" ? (

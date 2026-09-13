@@ -95,6 +95,20 @@ function assertNotApproved(record: FinanceSourceRecord): void {
     );
 }
 
+/**
+ * Re-pointing the plan at another locked budget version changes the financial
+ * baseline of the plan and of the cash flow built on it, the same class of
+ * decision as locking a budget: studio administrators only.
+ */
+function assertCanRebase(actor: FinanceActor): void {
+  if (actor.role !== "studio_admin")
+    throw new ApiError(
+      403,
+      "FORBIDDEN",
+      "Only a studio administrator can change the budget version a finance plan is based on.",
+    );
+}
+
 /** Approving financing is a sign-off: studio administrators only. */
 function assertCanApprove(actor: FinanceActor): void {
   if (actor.role !== "studio_admin")
@@ -305,6 +319,7 @@ export function createFinancePlanService({ db }: { db: Database }) {
       input: RebaseFinancePlanInput,
       actor: FinanceActor,
     ): Promise<FinancePlan> {
+      assertCanRebase(actor);
       await withTransaction(db, async (tx) => {
         const plan = requirePlan(
           await financePlanRepository.findByProject(tx, projectId),

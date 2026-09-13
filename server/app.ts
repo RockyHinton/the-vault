@@ -16,6 +16,8 @@ import type { CookiePolicy } from "./modules/auth/session-cookie";
 import { createBudgetService } from "./modules/budget/budget-service";
 import { createDocumentService } from "./modules/documents/document-service";
 import { createFinancePlanService } from "./modules/finance-plan/finance-plan-service";
+import { createCashFlowService } from "./modules/cash-flow/cash-flow-service";
+import { createFinancingOverviewService } from "./modules/financing-overview/financing-overview-service";
 import { createEvaluationService } from "./modules/evaluation/evaluation-service";
 import { createNoteService } from "./modules/notes/note-service";
 import { createLegalRecordService } from "./modules/legal/legal-record-service";
@@ -127,6 +129,9 @@ export async function createVaultServer(
 
   const auth = createAuthService({ db });
   const requireLocalUser = createRequireLocalUser({ auth, cookiePolicy });
+  const budgetService = createBudgetService({ db });
+  const financePlanService = createFinancePlanService({ db });
+  const cashFlowService = createCashFlowService({ db });
   app.use(
     "/api/v1",
     createApiRouter({
@@ -148,8 +153,15 @@ export async function createVaultServer(
       rightService: createRightService({ db }),
       legalRecordService: createLegalRecordService({ db }),
       scriptService: createScriptService({ db }),
-      budgetService: createBudgetService({ db }),
-      financePlanService: createFinancePlanService({ db }),
+      budgetService,
+      financePlanService,
+      cashFlowService,
+      financingOverviewService: createFinancingOverviewService({
+        db,
+        budgetService,
+        financePlanService,
+        cashFlowService,
+      }),
       taskService: createTaskService({ db }),
     }),
   );

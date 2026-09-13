@@ -172,6 +172,14 @@ export const financeSourceStatus = pgEnum("finance_source_status", [
   "soft_committed",
   "approved",
 ]);
+export const cashFlowTimeframe = pgEnum("cash_flow_timeframe", [
+  "monthly",
+  "weekly",
+]);
+export const cashFlowDirection = pgEnum("cash_flow_direction", [
+  "inflow",
+  "outflow",
+]);
 export const contractStatus = pgEnum("contract_status", [
   "not_sent",
   "sent",
@@ -1173,6 +1181,141 @@ export const financeSourceDocuments = pgTable(
   ],
 );
 
+/**
+ * One cash-flow schedule per project. It references the finance plan, and
+ * through it the exact locked budget version; it stores only authored timing
+ * and the opening balance. Every balance is derived on read.
+ */
+export const cashFlows = pgTable(
+  "cash_flows",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "restrict" }),
+    financePlanId: uuid("finance_plan_id")
+      .notNull()
+      .references(() => financePlans.id, { onDelete: "restrict" }),
+    timeframe: cashFlowTimeframe("timeframe").notNull().default("monthly"),
+    openingBalance: numeric("opening_balance", { precision: 14, scale: 2 })
+      .notNull()
+      .default("0.00"),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    version: integer("version").notNull().default(1),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("cash_flows_project_unique").on(table.projectId),
+    check("cash_flows_version_positive", sql`${table.version} > 0`),
+    check(
+      "cash_flows_opening_balance_non_negative",
+      sql`${table.openingBalance} >= 0`,
+    ),
+  ],
+);
+
+/** The inclusive spend window of one budget department of the referenced version. */
+export const cashFlowDepartmentWindows = pgTable(
+  "cash_flow_department_windows",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    cashFlowId: uuid("cash_flow_id")
+      .notNull()
+      .references(() => cashFlows.id, { onDelete: "cascade" }),
+    budgetDepartmentId: uuid("budget_department_id")
+      .notNull()
+      .references(() => budgetDepartments.id, { onDelete: "restrict" }),
+    startDate: date("start_date").notNull(),
+    endDate: date("end_date").notNull(),
+    version: integer("version").notNull().default(1),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("cash_flow_department_windows_department_unique").on(
+      table.cashFlowId,
+      table.budgetDepartmentId,
+    ),
+    check(
+      "cash_flow_department_windows_version_positive",
+      sql`${table.version} > 0`,
+    ),
+    check(
+      "cash_flow_department_windows_end_after_start",
+      sql`${table.endDate} >= ${table.startDate}`,
+    ),
+  ],
+);
+
+/** A dated one-off payment or receipt authored against a department. */
+export const cashFlowPayments = pgTable(
+  "cash_flow_payments",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    cashFlowId: uuid("cash_flow_id")
+      .notNull()
+      .references(() => cashFlows.id, { onDelete: "cascade" }),
+    budgetDepartmentId: uuid("budget_department_id")
+      .notNull()
+      .references(() => budgetDepartments.id, { onDelete: "restrict" }),
+    name: text("name").notNull(),
+    amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+    direction: cashFlowDirection("direction").notNull(),
+    date: date("date").notNull(),
+    note: text("note"),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    version: integer("version").notNull().default(1),
+    ...timestamps,
+  },
+  (table) => [
+    index("cash_flow_payments_cash_flow_idx").on(table.cashFlowId, table.date),
+    check("cash_flow_payments_version_positive", sql`${table.version} > 0`),
+    check(
+      "cash_flow_payments_name_not_blank",
+      sql`length(btrim(${table.name})) > 0`,
+    ),
+    check("cash_flow_payments_amount_positive", sql`${table.amount} > 0`),
+  ],
+);
+
+/** A cash-flow-only expected date for an approved source; the source is never changed. */
+export const cashFlowSourceTimings = pgTable(
+  "cash_flow_source_timings",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    cashFlowId: uuid("cash_flow_id")
+      .notNull()
+      .references(() => cashFlows.id, { onDelete: "cascade" }),
+    financeSourceId: uuid("finance_source_id")
+      .notNull()
+      .references(() => financeSources.id, { onDelete: "restrict" }),
+    expectedDate: date("expected_date").notNull(),
+    version: integer("version").notNull().default(1),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("cash_flow_source_timings_source_unique").on(
+      table.cashFlowId,
+      table.financeSourceId,
+    ),
+    check(
+      "cash_flow_source_timings_version_positive",
+      sql`${table.version} > 0`,
+    ),
+  ],
+);
+
 export const applicationUsersRelations = relations(
   applicationUsers,
   ({ many }) => ({
@@ -1211,3 +1354,8 @@ export type FinanceSourceRow = typeof financeSources.$inferSelect;
 export type ProjectPersonDocumentRow =
   typeof projectPersonDocuments.$inferSelect;
 export type ProjectRow = typeof projects.$inferSelect;
+export type CashFlowRow = typeof cashFlows.$inferSelect;
+export type CashFlowDepartmentWindowRow =
+  typeof cashFlowDepartmentWindows.$inferSelect;
+export type CashFlowPaymentRow = typeof cashFlowPayments.$inferSelect;
+export type CashFlowSourceTimingRow = typeof cashFlowSourceTimings.$inferSelect;

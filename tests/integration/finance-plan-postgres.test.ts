@@ -209,23 +209,30 @@ describe("finance plan: provenance", () => {
     expect(columns.rows).toEqual([]);
   });
 
-  it("rebasing requires a locked version of this project and is versioned", async () => {
+  it("rebasing is studio_admin-only and requires a locked version of this project", async () => {
     const before = await current();
-    const draft = await member
+    const forbidden = await member
+      .post(`${plan()}/budget-version`)
+      .send({ budgetVersionId: draftVersionId, version: before.version });
+    expect(forbidden.status).toBe(403);
+    const draft = await admin
       .post(`${plan()}/budget-version`)
       .send({ budgetVersionId: draftVersionId, version: before.version });
     expect(draft.status).toBe(422);
-    const foreign = await member.post(`${plan()}/budget-version`).send({
+    const foreign = await admin.post(`${plan()}/budget-version`).send({
       budgetVersionId: foreignLockedVersionId,
       version: before.version,
     });
     expect(foreign.status).toBe(404);
-    const same = await member
+    const same = await admin
       .post(`${plan()}/budget-version`)
       .send({ budgetVersionId: lockedVersionId, version: before.version });
     expect(same.status).toBe(409);
     expect(same.body.error.code).toBe("BUDGET_VERSION_UNCHANGED");
     expect((await current()).budgetVersionId).toBe(lockedVersionId);
+    expect(
+      (await auditActions("finance_plan", before.id)).map((r) => r.action),
+    ).toEqual(["finance_plan.created"]);
   });
 });
 

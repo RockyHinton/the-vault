@@ -12,6 +12,7 @@ import type {
 } from "@shared/contracts";
 import { ApiClientError } from "@/lib/api-client";
 import { useVaultMutation } from "@/lib/mutations";
+import { financingOverviewKey } from "@/features/financing-overview/use-financing-overview";
 import { documentsKey } from "@/features/documents/use-documents";
 import {
   createBudget,
@@ -37,6 +38,7 @@ const auditKey = ["audit-events"] as const;
 /** Every content command returns the affected version; the budget and its history refetch too. */
 const afterChange = ({ projectId }: { projectId: string }) => [
   budgetKey(projectId),
+  financingOverviewKey(projectId),
   auditKey,
 ];
 const afterDocumentChange = ({ projectId }: { projectId: string }) => [

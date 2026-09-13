@@ -5,6 +5,8 @@ import {
   archiveReasonSchema,
   budgetVersionStatusSchema,
   currencyCodeSchema,
+  cashFlowDirectionSchema,
+  cashFlowTimeframeSchema,
   financeSourceStatusSchema,
   financeSourceTypeSchema,
   contractStatusSchema,
@@ -32,6 +34,8 @@ import {
   archiveReason,
   budgetVersionStatus,
   currencyCode,
+  cashFlowDirection,
+  cashFlowTimeframe,
   financeSourceStatus,
   financeSourceType,
   contractStatus,
@@ -103,6 +107,12 @@ describe("contract and schema enum parity", () => {
     expect(currencyCodeSchema.options).toEqual(currencyCode.enumValues);
     expect(financeSourceTypeSchema.options).toEqual(
       financeSourceType.enumValues,
+    );
+    expect(cashFlowTimeframeSchema.options).toEqual(
+      cashFlowTimeframe.enumValues,
+    );
+    expect(cashFlowDirectionSchema.options).toEqual(
+      cashFlowDirection.enumValues,
     );
     expect(financeSourceStatusSchema.options).toEqual(
       financeSourceStatus.enumValues,

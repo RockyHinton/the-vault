@@ -29,16 +29,6 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
 
-  // Financing Data (New)
-  financing?: {
-    totalBudget: number;
-    secured: number;
-    currency: string;
-    breakdown: { category: string; amount: number; percentage: number }[];
-    cashflow: { month: string; in: number; out: number }[];
-    approvals: { item: string; status: 'Approved' | 'Pending' | 'Rejected'; date?: string }[];
-  };
-
   // Production Schedule Data (New)
   schedule?: {
     startDate: string;
@@ -67,39 +57,6 @@ export interface Project {
     archivedFromStage?: ProjectStage;
     archivedBy?: string;
   };
-
-
-  // Cash Flow Data (New)
-  cashFlow?: CashFlowState;
-
-}
-
-// --- Cash Flow Types ---
-
-export interface SpendWindow {
-  startDate: string; // ISO or YYYY-MM
-  endDate: string; // ISO or YYYY-MM
-}
-
-export interface OneOffPayment {
-  id: string;
-  name: string;
-  departmentId: string; // Link to department
-  departmentName: string; // Fallback
-  amount: number;
-  date: string;
-  direction: 'outflow' | 'inflow';
-  note?: string;
-}
-
-export interface CashFlowState {
-  timeframe: 'monthly' | 'weekly';
-  openingBalance: number;
-  departmentTimings: Record<string, SpendWindow>; // Keyed by department ID
-  oneOffPayments: OneOffPayment[];
-  sourceAdjustments: Record<string, {
-    expectedDate?: string;
-  }>;
 }
 
 export interface Category {
@@ -200,23 +157,6 @@ const MOCK_PROJECTS: Project[] = [
     genre: 'Thriller / Drama',
     createdAt: '2023-10-15T10:00:00Z',
     updatedAt: '2023-12-10T14:30:00Z',
-    financing: {
-      totalBudget: 45000000,
-      secured: 38000000,
-      currency: 'USD',
-      breakdown: [
-        { category: 'Equity - Investor A', amount: 12000000, percentage: 26.6 },
-        { category: 'Pre-sale - Territory B', amount: 18000000, percentage: 40.0 },
-        { category: 'Tax Credit - UK', amount: 8000000, percentage: 17.7 },
-      ],
-      cashflow: [
-        { month: 'Jan', in: 5000000, out: 2000000 },
-        { month: 'Feb', in: 0, out: 4000000 },
-      ],
-      approvals: [
-        { item: 'Top Sheet Budget v4', status: 'Approved', date: '2023-12-01' },
-      ]
-    },
   },
   {
     id: 'p2',
@@ -228,14 +168,6 @@ const MOCK_PROJECTS: Project[] = [
     genre: 'Sci-Fi / Horror',
     createdAt: '2023-11-01T09:00:00Z',
     updatedAt: '2023-11-20T11:15:00Z',
-    financing: {
-      totalBudget: 12000000,
-      secured: 0,
-      currency: 'USD',
-      breakdown: [],
-      cashflow: [],
-      approvals: []
-    }
   },
   {
     id: 'p3',
@@ -247,16 +179,6 @@ const MOCK_PROJECTS: Project[] = [
     genre: 'Drama / Music',
     createdAt: '2023-09-01T08:00:00Z',
     updatedAt: '2023-12-05T16:45:00Z',
-    financing: {
-      totalBudget: 8000000,
-      secured: 8000000,
-      currency: 'EUR',
-      breakdown: [
-        { category: 'Tax Credit', amount: 8000000, percentage: 100 }
-      ],
-      cashflow: [],
-      approvals: []
-    },
   },
   {
     id: 'p4',
@@ -398,7 +320,6 @@ interface AppState {
   
 
   // Evaluation Actions
-  updateFinancing: (projectId: string, data: Partial<Project['financing']>) => void;
   deleteProject: (projectId: string) => void;
 
 
@@ -599,23 +520,6 @@ export const useStore = create<AppState>()((set, get) => ({
         updatedAt: new Date().toISOString()
       };
     })
-  })),
-
-  updateFinancing: (projectId, data) => set((state) => ({
-    projects: state.projects.map(p => 
-      p.id === projectId ? { 
-        ...p, 
-        financing: p.financing ? { ...p.financing, ...data } : {
-          totalBudget: 0,
-          secured: 0,
-          currency: 'USD',
-          breakdown: [],
-          cashflow: [],
-          approvals: [],
-          ...data
-        }
-      } : p
-    )
   })),
 
   // Territory / Distribution Actions

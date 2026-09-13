@@ -30,8 +30,7 @@ import { cn } from "@/lib/utils";
 import { useTransitionProjectStage } from "@/features/projects/use-projects";
 import { usePeople } from "@/features/people/use-people";
 import { useLegalRecords } from "@/features/legal/use-legal-records";
-import { useBudget } from "@/features/budget/use-budget";
-import { useFinancePlan } from "@/features/finance-plan/use-finance-plan";
+import { useFinancingOverview } from "@/features/financing-overview/use-financing-overview";
 import { formatMoney, summarizeLegalCategory } from "@shared/contracts";
 import { toast } from "sonner";
 
@@ -42,26 +41,22 @@ interface DevelopmentViewProps {
 export default function DevelopmentView({ project }: DevelopmentViewProps) {
   const creativesQuery = usePeople(project.id, "creative");
   const legalRecordsQuery = useLegalRecords(project.id);
-  const budgetQuery = useBudget(project.id);
-  const financePlanQuery = useFinancePlan(project.id);
+  const overviewQuery = useFinancingOverview(project.id);
   const transition = useTransitionProjectStage();
   const [showPromoteDialog, setShowPromoteDialog] = useState(false);
   const [, setLocation] = useLocation();
 
   // --- 1. DERIVED READINESS LOGIC ---
 
-  // A. FINANCE READINESS
-  // The budget and finance plan are server-derived: the gap is the plan's
-  // exact summary (approved sources against the locked budget version).
-  const budgetLocked = Boolean(budgetQuery.data?.data?.latestLockedVersionId);
-  const financePlan = financePlanQuery.data?.data;
-  const fundingGapLabel = financePlan
-    ? formatMoney(financePlan.summary.fundingGap, financePlan.currency)
-    : undefined;
-  const fullyFunded = financePlan ? financePlan.summary.fundingGap === "0.00" : false;
-  
-  // Mock cashflow check (since we might not have deep cashflow data populated yet)
-  const hasCashflowIssues = project.financing?.cashflow?.some(m => (m.out > m.in + 1000)); // Arbitrary check for demo
+  // A. FINANCE READINESS: every signal is the server-derived Financing Overview
+  // (locked budget, finance plan summary, cash flow projection). No fixtures.
+  const overview = overviewQuery.data?.data;
+  const budgetLocked = Boolean(overview?.budget?.lockedVersion);
+  const financeSummary = overview?.financePlan?.summary;
+  const fundingGapLabel =
+    financeSummary && overview?.currency ? formatMoney(financeSummary.fundingGap, overview.currency) : undefined;
+  const fullyFunded = financeSummary ? financeSummary.fundingGap === "0.00" : false;
+  const hasCashflowIssues = Boolean(overview?.cashFlow?.firstShortfallPeriodLabel);
 
   let financeStatus: 'Ready' | 'At Risk' | 'Incomplete' = 'Incomplete';
   let financeReason = "Budget not locked or funding pending.";
@@ -70,7 +65,7 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
     if (fullyFunded) {
       if (hasCashflowIssues) {
         financeStatus = 'At Risk';
-        financeReason = "Cashflow shortfall projected in upcoming months.";
+        financeReason = `Cash flow shortfall projected in ${overview?.cashFlow?.firstShortfallPeriodLabel}.`;
       } else {
         financeStatus = 'Ready';
         financeReason = "Budget locked and fully funded.";

@@ -50,3 +50,17 @@ response. Sources do not copy the budget's submit/lock lifecycle: they have thre
 (`targeted`, `soft_committed`, `approved`); approval is a studio_admin sign-off that is
 irreversible and freezes the source, and only approved money counts as secured. Approval is
 per source, not per plan, so a plan stays a living register while its baseline is fixed.
+
+**Amendment (Cash Flow + Financing Overview milestone, 2026-09-13).** Cash Flow completes the
+chain: it references the finance plan and therefore the plan's exact locked budget version, its
+inflows are the plan's approved sources with their immutable amounts, and it stores only
+authored timing (department spend windows, dated one-off payments, per-source expected-date
+overrides), the timeframe and the opening balance. Every period total and balance is
+`projectCashFlow` in `shared/contracts/cash-flow.ts`, computed on the server for each read
+with BigInt cents and UTC day numbers; nothing derived is persisted, and there is no separate
+cash-flow version or snapshot because its inputs are already immutable. The Financing Overview
+is a read model composed from the three services with no table. Two policies are recorded:
+re-pointing a finance plan at another locked budget version (`rebase`) is studio_admin-only,
+because it changes the baseline of the plan and the cash flow, the same class of decision as
+locking a budget; and cash-flow editing is collaborative with creator-or-admin removal of
+payments, matching budget line items.

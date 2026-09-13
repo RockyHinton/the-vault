@@ -50,6 +50,9 @@ cross-domain imports.
   it.
 - `server/modules/finance-plan`: funding sources against one exact locked budget version
   (see "Finance: finance plan").
+- `server/modules/cash-flow`: the schedule over the plan's locked version and approved
+  sources (see "Finance: cash flow"). `server/modules/financing-overview`: a read-only
+  composition of the three, with no table (see "Finance: financing overview").
 - `server/modules/<domain>`: `<domain>-routes.ts`, `<domain>-service.ts`,
   `<domain>-repository.ts`, plus pure domain rules (e.g. `project-lifecycle.ts`).
 - `shared/schema.ts`: PostgreSQL schema only. `shared/contracts`: Zod request/response contracts.
@@ -358,6 +361,66 @@ later Cash Flow module reads for inflows.
 - **Audit vocabulary:** `finance_plan.created|rebased`,
   `finance_source.created|updated|status_changed|approved|deleted|document_attached|document_detached`
   (amount changes record from and to; approval records the prior status and amount).
+
+## Finance: cash flow
+
+Cash Flow is the third Finance subdomain and a planning tool, not a ledger. One `cash_flows`
+row per project references the finance plan and, through it, the exact locked budget version.
+
+```
+Locked Budget Version ──▶ Finance Plan ──▶ Approved Finance Sources ──▶ Cash Flow schedule ──▶ Financing Overview
+```
+
+- **What is authored.** Only timing and the starting point: `timeframe` (`monthly` or
+  `weekly`, a shared view of the same schedule), `opening_balance` (non-negative), one spend
+  window per department (`cash_flow_department_windows`, FK to the exact
+  `budget_departments` row, `end_date >= start_date`), dated one-off payments or receipts
+  against a department (`cash_flow_payments`, amount `> 0`, `direction`), and a per-source
+  expected-date override (`cash_flow_source_timings`, FK to `finance_sources`). Nothing else
+  is stored: no period totals, no balances.
+- **What is derived.** Departments and their exact totals come from the plan's referenced
+  version; inflows are the plan's approved sources with their immutable amounts and the
+  plan's `expectedDate` unless a timing override exists. `projectCashFlow` in
+  `shared/contracts/cash-flow.ts` is the only calculation: BigInt cents, `YYYY-MM-DD` dates
+  as UTC day numbers, monthly periods keyed `YYYY-MM` or Monday-start weeks keyed by their
+  date, a range from the earliest dated entry (or today) to three months past the latest, a
+  department total spread evenly by day with floor-of-cumulative allocation so the periods sum
+  to the total exactly, inflow, outflow, net and closing balance per period (balances may be
+  negative), the low point, the first shortfall, per-department scheduled outflow, and the
+  unscheduled inflow and outflow (approved money without a date, departments without a
+  window). The server runs it on every read; the client renders the strings and converts to
+  `Number` only for chart geometry.
+- **Provenance rules.** Creating a cash flow needs the finance plan
+  (`422 FINANCE_PLAN_REQUIRED`); a window or payment may reference only a department of the
+  version the plan references (`422 DEPARTMENT_NOT_IN_REFERENCED_VERSION`, 404 outside the
+  project); a timing override only an approved source of the plan
+  (`422 FINANCE_SOURCE_NOT_APPROVED`). After a rebase, rows that reference departments of the
+  previous version stay in the table for provenance and are not part of the schedule. Edits to
+  a draft budget revision never reach the schedule.
+- **No allocation caps.** The product spreads a department's whole total across its window and
+  treats payments as additional movements; there is no rule that allocations must equal or
+  may not exceed the budget, so none is enforced.
+- **Authorization and concurrency.** Any active user creates and edits the schedule
+  (collaborative); removing a payment is creator-or-admin. Windows, payments and timings carry
+  their own `version` (`version: 0` creates a window or timing; the current version replaces
+  it); opening balance and timeframe use the cash flow's `version`. Each command runs in one
+  transaction that takes the cash flow's row lock so upserts serialise; a stale write is
+  `409 VERSION_CONFLICT` with no side effects.
+- **Audit vocabulary:** `cash_flow.created|updated`,
+  `cash_flow_department_window.set|cleared`, `cash_flow_payment.created|updated|deleted`,
+  `cash_flow_source_timing.set|cleared` (from/to values where they change).
+
+## Finance: financing overview
+
+`GET /projects/:id/financing-overview` is a read model with no table and no writes:
+`createFinancingOverviewService` composes the Budget, Finance Plan and Cash Flow services at
+request time. It returns the latest locked budget version and its exact total (plus whether a
+revision is open), the plan's `summarizeFinancing` result with its sources, and the cash flow's
+`projectCashFlow` totals (opening, inflow, outflow, closing, low point, first shortfall,
+unscheduled amounts). Each section is `null` where that domain has nothing yet, so the client
+shows real empty states rather than placeholder figures. Development readiness reads the same
+overview: budget locked, funding gap, first shortfall. Copy this shape for any future
+dashboard: compose services, never persist copied totals.
 
 ## HTTP boundary
 

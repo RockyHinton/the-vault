@@ -5,6 +5,12 @@ import {
   financeSourceStatusValues,
   financingSummarySchema,
 } from "./finance-plan";
+import {
+  cashFlowDirectionValues,
+  cashFlowProjectionSchema,
+  cashFlowTimeframeValues,
+  signedMoneyValueSchema,
+} from "./cash-flow";
 
 export const apiErrorSchema = z.object({
   error: z.object({
@@ -1403,3 +1409,233 @@ export const financeSourceDocumentParamSchema = financeSourceParamSchema.extend(
     documentId: z.string().uuid(),
   },
 );
+
+// --- Finance: Cash Flow ---
+
+export const cashFlowTimeframeSchema = z.enum(cashFlowTimeframeValues);
+export const cashFlowDirectionSchema = z.enum(cashFlowDirectionValues);
+
+/** A dated payment or receipt authored against a department, outside the window spread. */
+export const cashFlowPaymentSchema = z.object({
+  id: z.string().uuid(),
+  cashFlowId: z.string().uuid(),
+  departmentId: z.string().uuid(),
+  name: z.string(),
+  amount: moneyValueSchema,
+  direction: cashFlowDirectionSchema,
+  date: isoDate,
+  note: z.string().nullable(),
+  createdBy: userRefSchema,
+  version: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type CashFlowPayment = z.infer<typeof cashFlowPaymentSchema>;
+
+export const cashFlowDepartmentWindowSchema = z.object({
+  startDate: isoDate,
+  endDate: isoDate,
+  version: z.number().int().positive(),
+  updatedAt: z.string().datetime(),
+});
+export type CashFlowDepartmentWindow = z.infer<
+  typeof cashFlowDepartmentWindowSchema
+>;
+
+/** A department of the referenced locked budget version with its scheduling state. */
+export const cashFlowDepartmentSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  position: z.number().int().nonnegative(),
+  /** Exact department total in the locked version, never authored here. */
+  total: moneyValueSchema,
+  window: cashFlowDepartmentWindowSchema.nullable(),
+  payments: z.array(cashFlowPaymentSchema),
+});
+export type CashFlowDepartment = z.infer<typeof cashFlowDepartmentSchema>;
+
+/** An approved financing source as a scheduled inflow. */
+export const cashFlowSourceSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  type: financeSourceTypeSchema,
+  amount: moneyValueSchema,
+  /** The Finance Plan's expected date. */
+  expectedDate: isoDate.nullable(),
+  /** A cash-flow-only override; the source itself is never changed. */
+  timing: z
+    .object({
+      expectedDate: isoDate,
+      version: z.number().int().positive(),
+      updatedAt: z.string().datetime(),
+    })
+    .nullable(),
+  /** The date the projection uses: the override when set, else the plan's date. */
+  scheduledDate: isoDate.nullable(),
+});
+export type CashFlowSource = z.infer<typeof cashFlowSourceSchema>;
+
+export const cashFlowSchema = z.object({
+  id: z.string().uuid(),
+  projectId: z.string().uuid(),
+  financePlanId: z.string().uuid(),
+  /** Resolved through the finance plan: the exact locked version outflows derive from. */
+  budgetVersionId: z.string().uuid(),
+  budgetVersionNumber: z.number().int().positive(),
+  currency: currencyCodeSchema,
+  timeframe: cashFlowTimeframeSchema,
+  openingBalance: moneyValueSchema,
+  departments: z.array(cashFlowDepartmentSchema),
+  sources: z.array(cashFlowSourceSchema),
+  projection: cashFlowProjectionSchema,
+  createdBy: userRefSchema,
+  /** Optimistic concurrency for the cash flow's own fields (opening balance, timeframe). */
+  version: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type CashFlow = z.infer<typeof cashFlowSchema>;
+
+export const updateCashFlowSchema = z
+  .object({
+    openingBalance: moneySchema.optional(),
+    timeframe: cashFlowTimeframeSchema.optional(),
+    version: z.number().int().positive(),
+  })
+  .refine(
+    (value) =>
+      value.openingBalance !== undefined || value.timeframe !== undefined,
+    { message: "Nothing to change." },
+  );
+export type UpdateCashFlowInput = z.infer<typeof updateCashFlowSchema>;
+
+/** `version: 0` creates the window; the current version replaces it. */
+export const setCashFlowDepartmentWindowSchema = z
+  .object({
+    startDate: isoDate,
+    endDate: isoDate,
+    version: z.number().int().nonnegative(),
+  })
+  .refine((value) => value.endDate >= value.startDate, {
+    message: "The window must end on or after it starts.",
+    path: ["endDate"],
+  });
+export type SetCashFlowDepartmentWindowInput = z.infer<
+  typeof setCashFlowDepartmentWindowSchema
+>;
+
+const positiveMoneySchema = moneySchema.refine((value) => value !== "0.00", {
+  message: "Enter an amount greater than zero.",
+});
+
+export const createCashFlowPaymentSchema = z.object({
+  departmentId: z.string().uuid(),
+  name: z.string().trim().min(1).max(180),
+  amount: positiveMoneySchema,
+  direction: cashFlowDirectionSchema,
+  date: isoDate,
+  note: z.string().trim().max(2_000).optional(),
+});
+export type CreateCashFlowPaymentInput = z.infer<
+  typeof createCashFlowPaymentSchema
+>;
+
+export const updateCashFlowPaymentSchema = z
+  .object({
+    departmentId: z.string().uuid().optional(),
+    name: z.string().trim().min(1).max(180).optional(),
+    amount: positiveMoneySchema.optional(),
+    direction: cashFlowDirectionSchema.optional(),
+    date: isoDate.optional(),
+    note: z.string().trim().max(2_000).nullable().optional(),
+    version: z.number().int().positive(),
+  })
+  .refine(
+    (value) =>
+      Object.entries(value).some(
+        ([key, v]) => key !== "version" && v !== undefined,
+      ),
+    { message: "Nothing to change." },
+  );
+export type UpdateCashFlowPaymentInput = z.infer<
+  typeof updateCashFlowPaymentSchema
+>;
+
+/** `version: 0` creates the override; the current version replaces it. */
+export const setCashFlowSourceTimingSchema = z.object({
+  expectedDate: isoDate,
+  version: z.number().int().nonnegative(),
+});
+export type SetCashFlowSourceTimingInput = z.infer<
+  typeof setCashFlowSourceTimingSchema
+>;
+
+export const cashFlowDepartmentParamSchema = z.object({
+  projectId: z.string().uuid(),
+  departmentId: z.string().uuid(),
+});
+export const cashFlowPaymentParamSchema = z.object({
+  projectId: z.string().uuid(),
+  paymentId: z.string().uuid(),
+});
+
+// --- Finance: Financing Overview (read-only, derived) ---
+
+/**
+ * Everything the overview shows is computed from Budget, Finance Plan and
+ * Cash Flow at read time. Nothing here is stored.
+ */
+export const financingOverviewSchema = z.object({
+  currency: currencyCodeSchema.nullable(),
+  budget: z
+    .object({
+      id: z.string().uuid(),
+      /** The latest locked version, or null while nothing has been locked. */
+      lockedVersion: z
+        .object({
+          id: z.string().uuid(),
+          versionNumber: z.number().int().positive(),
+          total: moneyValueSchema,
+          lockedBy: userRefSchema.nullable(),
+          lockedAt: z.string().datetime().nullable(),
+        })
+        .nullable(),
+      /** Status of the open (unlocked) version, if any. */
+      openVersionStatus: budgetVersionStatusSchema.nullable(),
+    })
+    .nullable(),
+  financePlan: z
+    .object({
+      id: z.string().uuid(),
+      budgetVersionId: z.string().uuid(),
+      budgetVersionNumber: z.number().int().positive(),
+      summary: financingSummarySchema,
+      sources: z.array(
+        z.object({
+          id: z.string().uuid(),
+          name: z.string(),
+          type: financeSourceTypeSchema,
+          status: financeSourceStatusSchema,
+          amount: moneyValueSchema,
+        }),
+      ),
+    })
+    .nullable(),
+  cashFlow: z
+    .object({
+      id: z.string().uuid(),
+      timeframe: cashFlowTimeframeSchema,
+      openingBalance: moneyValueSchema,
+      totalInflow: signedMoneyValueSchema,
+      totalOutflow: signedMoneyValueSchema,
+      closingBalance: signedMoneyValueSchema,
+      lowestBalance: signedMoneyValueSchema,
+      lowestBalancePeriodLabel: z.string().nullable(),
+      firstShortfallPeriodLabel: z.string().nullable(),
+      periodCount: z.number().int().nonnegative(),
+      unscheduledInflow: signedMoneyValueSchema,
+      unscheduledOutflow: signedMoneyValueSchema,
+    })
+    .nullable(),
+});
+export type FinancingOverview = z.infer<typeof financingOverviewSchema>;
