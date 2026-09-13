@@ -4,3 +4,4 @@ export * from "./legal-completion";
 export * from "./money";
 export * from "./finance-plan";
 export * from "./cash-flow";
+export * from "./dates";

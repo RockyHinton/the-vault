@@ -7,6 +7,7 @@ import type {
   DocumentStatus,
   UpdateDocumentInput,
 } from "@shared/contracts";
+import type { FileObjectRow } from "@shared/schema";
 import type { Database } from "../../db/client";
 import { withTransaction, type Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
@@ -14,6 +15,8 @@ import { appendAuditEvent } from "../audit/audit-repository";
 import { fileRepository } from "../files/file-repository";
 import { toFileObjectContract } from "../files/file-service";
 import { projectRepository } from "../projects/project-repository";
+import { scriptRepository } from "../scripts/script-repository";
+import { toUserRef } from "../users/user-ref";
 import {
   documentRepository,
   type DocumentEditableFields,
@@ -40,7 +43,7 @@ export function toDocumentContract(record: DocumentRecord): Document {
     status: document.status as DocumentStatus,
     notes: document.notes,
     file: toFileObjectContract(file),
-    createdBy,
+    createdBy: toUserRef(createdBy),
     version: document.version,
     createdAt: document.createdAt.toISOString(),
     updatedAt: document.updatedAt.toISOString(),
@@ -79,14 +82,28 @@ function assertCanManage(actor: DocumentActor, record: DocumentRecord): void {
 }
 
 /**
- * Claims a staged upload for a document inside the caller's transaction.
- * Only the uploader (or an admin) may claim; only staged files can be claimed.
+ * Superseded versions are history. Their metadata (title, folder, status,
+ * notes) defines the record as it was and is never rewritten; only the
+ * current version of a lineage is edited, versioned or deleted.
  */
-async function claimStagedFile(
+function assertCurrent(record: DocumentRecord, message: string): void {
+  if (!record.document.isCurrent)
+    throw new ApiError(409, "NOT_CURRENT_VERSION", message);
+}
+
+/**
+ * The staged upload a document command may claim: it must exist, still be
+ * staged, and belong to the caller (or the caller is an admin). Any other
+ * case is one uniform answer, so a file id never reveals whether it exists,
+ * whose it is, or what it contains. Owning domains that need to inspect the
+ * file before creating a document (Scripts checks the media type) call this
+ * first, so the ownership answer always comes before any format answer.
+ */
+export async function requireClaimableStagedFile(
   tx: Transaction,
   fileObjectId: string,
   actor: DocumentActor,
-) {
+): Promise<FileObjectRow> {
   const file = await fileRepository.findById(tx, fileObjectId);
   if (
     !file ||
@@ -99,13 +116,26 @@ async function claimStagedFile(
       "Upload the file first, then attach it; a file can back only one document version.",
     );
   }
+  return file;
+}
+
+/** Claims a staged upload for a document inside the caller's transaction. */
+async function claimStagedFile(
+  tx: Transaction,
+  fileObjectId: string,
+  actor: DocumentActor,
+) {
+  const file = await requireClaimableStagedFile(tx, fileObjectId, actor);
   return requireFresh(
     await fileRepository.markAvailable(tx, file.id, new Date()),
   );
 }
 
-async function requireProject(tx: Transaction, projectId: string) {
-  const project = await projectRepository.findById(tx, projectId);
+async function requireProject(
+  executor: Transaction | Database,
+  projectId: string,
+) {
+  const project = await projectRepository.findById(executor, projectId);
   if (!project)
     throw new ApiError(404, "PROJECT_NOT_FOUND", "The project was not found.");
   return project;
@@ -166,8 +196,10 @@ export async function createDocumentInTransaction(
  * Adds version N+1 to a lineage inside the caller's transaction: retires the
  * current row (compare-and-set on its version), claims the new file, inserts
  * the new row, appends `document.version_added`. The HTTP command and owning
- * domains (Scripts) both go through here. The old version and bytes are
- * untouched.
+ * domains (Scripts) both go through here, so one rule holds everywhere: only
+ * the current version's uploader or a studio administrator may add a version,
+ * the same ownership that governs metadata edits and deletion. The old
+ * version and bytes are untouched.
  */
 export async function addDocumentVersionInTransaction(
   tx: Transaction,
@@ -183,13 +215,11 @@ export async function addDocumentVersionInTransaction(
   const current = requireDocument(
     await documentRepository.findById(tx, { projectId, documentId }),
   );
-  if (!current.document.isCurrent) {
-    throw new ApiError(
-      409,
-      "NOT_CURRENT_VERSION",
-      "New versions are added to the current version of a document.",
-    );
-  }
+  assertCurrent(
+    current,
+    "New versions are added to the current version of a document.",
+  );
+  assertCanManage(actor, current);
   requireFresh(
     await documentRepository.retireCurrent(tx, {
       id: current.document.id,
@@ -239,6 +269,7 @@ export async function addDocumentVersionInTransaction(
 export function createDocumentService({ db }: { db: Database }) {
   return {
     async list(projectId: string, input: { folder?: DocumentFolder }) {
+      await requireProject(db, projectId);
       const rows = await documentRepository.listCurrent(db, {
         projectId,
         folder: input.folder,
@@ -248,6 +279,7 @@ export function createDocumentService({ db }: { db: Database }) {
 
     /** The requested version plus every live version of its lineage. */
     async get(projectId: string, documentId: string) {
+      await requireProject(db, projectId);
       const record = requireDocument(
         await documentRepository.findById(db, { projectId, documentId }),
       );
@@ -307,6 +339,10 @@ export function createDocumentService({ db }: { db: Database }) {
         const existing = requireDocument(
           await documentRepository.findById(tx, { projectId, documentId }),
         );
+        assertCurrent(
+          existing,
+          "Superseded versions are history; edit the current version.",
+        );
         assertCanManage(actor, existing);
         requireFresh(
           await documentRepository.updateFields(tx, {
@@ -330,7 +366,12 @@ export function createDocumentService({ db }: { db: Database }) {
       return toDocumentContract(record);
     },
 
-    /** Soft-deletes the whole lineage. Bytes are retained (no byte deletion yet). */
+    /**
+     * Soft-deletes the whole lineage. Bytes are retained (no byte deletion
+     * yet). A lineage that is the identity of a live Script is refused: the
+     * Script domain owns that removal (`DELETE …/scripts/:id`, creator-or-admin,
+     * `script.deleted`), and a generic library command must not perform it.
+     */
     async delete(
       projectId: string,
       documentId: string,
@@ -341,7 +382,22 @@ export function createDocumentService({ db }: { db: Database }) {
         const existing = requireDocument(
           await documentRepository.findById(tx, { projectId, documentId }),
         );
+        assertCurrent(
+          existing,
+          "Superseded versions are history; delete the document from its current version.",
+        );
         assertCanManage(actor, existing);
+        if (
+          await scriptRepository.findLiveByLineage(
+            tx,
+            existing.document.lineageId,
+          )
+        )
+          throw new ApiError(
+            409,
+            "DOCUMENT_BACKS_SCRIPT",
+            "This document is the project's script. Remove the script from the Script page first.",
+          );
         const deletedAt = new Date();
         requireFresh(
           await documentRepository.softDeleteCurrent(tx, {

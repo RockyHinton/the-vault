@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { rightsStatusValues } from "./rights-status";
+import { isoDateSchema } from "./dates";
 import { currencyCodeSchema, moneySchema, moneyValueSchema } from "./money";
 import {
   financeSourceStatusValues,
@@ -269,6 +270,13 @@ export const fileObjectSchema = z.object({
 });
 export type FileObject = z.infer<typeof fileObjectSchema>;
 
+/** Safe human identity for authorship and assignment. Never carries email or role. */
+export const userRefSchema = z.object({
+  id: z.string().uuid(),
+  displayName: z.string(),
+});
+export type UserRef = z.infer<typeof userRefSchema>;
+
 export const documentSchema = z.object({
   id: z.string().uuid(),
   projectId: z.string().uuid(),
@@ -281,7 +289,8 @@ export const documentSchema = z.object({
   status: documentStatusSchema,
   notes: z.string().nullable(),
   file: fileObjectSchema,
-  createdBy: auditActorSchema,
+  /** The uploader of this version; the actor who may edit, version or delete it (or an admin). */
+  createdBy: userRefSchema,
   /** Optimistic concurrency for metadata edits and version/delete commands. */
   version: z.number().int().positive(),
   createdAt: z.string().datetime(),
@@ -337,13 +346,6 @@ export const deleteDocumentSchema = z.object({
 });
 
 // --- Shared identity reference for authored and assigned records ---
-
-/** Safe human identity for authorship and assignment. Never carries email or role. */
-export const userRefSchema = z.object({
-  id: z.string().uuid(),
-  displayName: z.string(),
-});
-export type UserRef = z.infer<typeof userRefSchema>;
 
 /** Active users an ordinary user may assign or address. */
 export const userDirectorySchema = z.object({ items: z.array(userRefSchema) });
@@ -614,10 +616,6 @@ export const personLinkSchema = z.object({
 });
 export type PersonLink = z.infer<typeof personLinkSchema>;
 
-const isoDateSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.");
-
 /** Project-specific hiring information; the status itself moves by command. */
 export const personEngagementSchema = z.object({
   status: engagementStatusSchema.nullable(),
@@ -760,10 +758,7 @@ export const rightSchema = z.object({
   rightsType: rightsTypeSchema,
   status: rightsStatusSchema,
   rightsHolder: z.string().nullable(),
-  expiryDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullable(),
+  expiryDate: isoDateSchema.nullable(),
   notes: z.string().nullable(),
   documents: z.array(documentSchema),
   createdBy: userRefSchema,
@@ -773,9 +768,7 @@ export const rightSchema = z.object({
 });
 export type Right = z.infer<typeof rightSchema>;
 
-const rightsDateSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.");
+const rightsDateSchema = isoDateSchema;
 
 export const createRightSchema = z.object({
   rightsType: rightsTypeSchema,
@@ -849,11 +842,7 @@ export type LegalCategory = z.infer<typeof legalCategorySchema>;
 const optionalText = (max: number) =>
   z.string().trim().max(max).nullable().optional();
 const optionalEmail = z.string().trim().email().max(200).nullable().optional();
-const optionalDate = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.")
-  .nullable()
-  .optional();
+const optionalDate = isoDateSchema.nullable().optional();
 /** Money inside legal details is a decimal string; Finance will own real ledgers later. */
 const decimalAmount = z
   .string()
@@ -1307,7 +1296,7 @@ export const financeSourceTypeSchema = z.enum([
 export type FinanceSourceType = z.infer<typeof financeSourceTypeSchema>;
 export const financeSourceStatusSchema = z.enum(financeSourceStatusValues);
 
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.");
+const isoDate = isoDateSchema;
 
 /**
  * One source of financing. An approved source is a permanent financial fact:

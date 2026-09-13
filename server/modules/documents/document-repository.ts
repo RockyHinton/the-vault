@@ -48,8 +48,15 @@ async function updateIfVersionMatches(
     expectedVersion: number;
     set: DocumentEditableFields &
       Partial<Pick<DocumentRow, "isCurrent" | "deletedAt">>;
+    onlyCurrent?: boolean;
   },
 ): Promise<DocumentRow | undefined> {
+  const filters = [
+    eq(documents.id, input.id),
+    eq(documents.version, input.expectedVersion),
+    isNull(documents.deletedAt),
+  ];
+  if (input.onlyCurrent) filters.push(eq(documents.isCurrent, true));
   const [row] = await tx
     .update(documents)
     .set({
@@ -57,13 +64,7 @@ async function updateIfVersionMatches(
       version: input.expectedVersion + 1,
       updatedAt: new Date(),
     })
-    .where(
-      and(
-        eq(documents.id, input.id),
-        eq(documents.version, input.expectedVersion),
-        isNull(documents.deletedAt),
-      ),
-    )
+    .where(and(...filters))
     .returning();
   return row;
 }
@@ -154,6 +155,7 @@ export const documentRepository = {
     return row;
   },
 
+  /** Metadata edits apply to the current version only; a superseded row is never rewritten. */
   updateFields(
     tx: Transaction,
     input: {
@@ -166,6 +168,7 @@ export const documentRepository = {
       id: input.id,
       expectedVersion: input.expectedVersion,
       set: input.values,
+      onlyCurrent: true,
     });
   },
 

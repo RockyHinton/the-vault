@@ -16,10 +16,10 @@ import {
   documentRepository,
   type DocumentRecord,
 } from "../documents/document-repository";
-import { fileRepository } from "../files/file-repository";
 import {
   addDocumentVersionInTransaction,
   createDocumentInTransaction,
+  requireClaimableStagedFile,
   toDocumentContract,
 } from "../documents/document-service";
 import { projectRepository } from "../projects/project-repository";
@@ -59,13 +59,12 @@ const SUPPORTED_SCRIPT_MEDIA_TYPES: ReadonlySet<string> = new Set([
 async function assertReadableScriptFile(
   tx: Transaction,
   fileObjectId: string,
+  actor: ScriptActor,
 ): Promise<void> {
-  const file = await fileRepository.findById(tx, fileObjectId);
-  if (
-    file &&
-    file.status === "staged" &&
-    !SUPPORTED_SCRIPT_MEDIA_TYPES.has(file.mediaType)
-  ) {
+  // Ownership first: a file id must not reveal another user's upload, so the
+  // Documents claimability answer comes before any format answer.
+  const file = await requireClaimableStagedFile(tx, fileObjectId, actor);
+  if (!SUPPORTED_SCRIPT_MEDIA_TYPES.has(file.mediaType)) {
     throw new ApiError(
       422,
       "SCRIPT_FORMAT_UNSUPPORTED",
@@ -279,7 +278,7 @@ export function createScriptService({ db }: { db: Database }) {
     ): Promise<ScriptDetail> {
       const scriptId = await withTransaction(db, async (tx) => {
         await requireProject(tx, projectId);
-        await assertReadableScriptFile(tx, input.fileObjectId);
+        await assertReadableScriptFile(tx, input.fileObjectId, actor);
         const document = await createDocumentInTransaction(tx, {
           projectId,
           document: {
@@ -336,7 +335,7 @@ export function createScriptService({ db }: { db: Database }) {
             "SCRIPT_NOT_FOUND",
             "The script's documents were deleted from the library.",
           );
-        await assertReadableScriptFile(tx, input.fileObjectId);
+        await assertReadableScriptFile(tx, input.fileObjectId, actor);
         const next = await addDocumentVersionInTransaction(tx, {
           projectId,
           documentId: current.document.id,
@@ -378,10 +377,20 @@ export function createScriptService({ db }: { db: Database }) {
           await scriptRepository.findById(tx, { projectId, scriptId }),
         );
         assertCanRemoveScript(actor, record);
-        await scriptRepository.softDelete(tx, {
-          id: scriptId,
-          deletedAt: new Date(),
-        });
+        // The `deleted_at IS NULL` predicate is the concurrency contract: a
+        // script has no mutable field, so a concurrent or repeated removal
+        // updates zero rows and must not append a second `script.deleted`.
+        if (
+          !(await scriptRepository.softDelete(tx, {
+            id: scriptId,
+            deletedAt: new Date(),
+          }))
+        )
+          throw new ApiError(
+            409,
+            "VERSION_CONFLICT",
+            "The script was already removed. Refresh and try again.",
+          );
         await appendAuditEvent(tx, {
           actorUserId: actor.userId,
           action: "script.deleted",

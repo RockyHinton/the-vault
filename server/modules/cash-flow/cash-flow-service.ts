@@ -13,6 +13,7 @@ import {
 import type { Database } from "../../db/client";
 import { withTransaction, type Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
+import { withUniqueViolationAsConflict } from "../../db/unique-violation";
 import { appendAuditEvent } from "../audit/audit-repository";
 import {
   budgetDepartmentRepository,
@@ -304,39 +305,46 @@ export function createCashFlowService({ db }: { db: Database }) {
     },
 
     async create(projectId: string, actor: CashFlowActor): Promise<CashFlow> {
-      await withTransaction(db, async (tx) => {
-        const project = await projectRepository.findById(tx, projectId);
-        if (!project)
-          throw new ApiError(
-            404,
-            "PROJECT_NOT_FOUND",
-            "The project was not found.",
-          );
-        if (await cashFlowRepository.findByProject(tx, projectId))
-          throw new ApiError(
-            409,
-            "CASH_FLOW_EXISTS",
-            "This project already has a cash flow.",
-          );
-        const plan = await requirePlan(tx, projectId);
-        const created = await cashFlowRepository.insert(tx, {
-          projectId,
-          financePlanId: plan.plan.id,
-          createdByUserId: actor.userId,
-        });
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "cash_flow.created",
-          entityType: "cash_flow",
-          entityId: created.id,
-          requestId: actor.requestId,
-          metadata: {
-            projectId,
-            financePlanId: plan.plan.id,
-            budgetVersionId: plan.plan.budgetVersionId,
-          },
-        });
-      });
+      const cashFlowExists = () =>
+        new ApiError(
+          409,
+          "CASH_FLOW_EXISTS",
+          "This project already has a cash flow.",
+        );
+      await withUniqueViolationAsConflict(
+        "cash_flows_project_unique",
+        cashFlowExists,
+        () =>
+          withTransaction(db, async (tx) => {
+            const project = await projectRepository.findById(tx, projectId);
+            if (!project)
+              throw new ApiError(
+                404,
+                "PROJECT_NOT_FOUND",
+                "The project was not found.",
+              );
+            if (await cashFlowRepository.findByProject(tx, projectId))
+              throw cashFlowExists();
+            const plan = await requirePlan(tx, projectId);
+            const created = await cashFlowRepository.insert(tx, {
+              projectId,
+              financePlanId: plan.plan.id,
+              createdByUserId: actor.userId,
+            });
+            await appendAuditEvent(tx, {
+              actorUserId: actor.userId,
+              action: "cash_flow.created",
+              entityType: "cash_flow",
+              entityId: created.id,
+              requestId: actor.requestId,
+              metadata: {
+                projectId,
+                financePlanId: plan.plan.id,
+                budgetVersionId: plan.plan.budgetVersionId,
+              },
+            });
+          }),
+      );
       return load(db, projectId);
     },
 

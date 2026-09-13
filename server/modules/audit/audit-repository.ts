@@ -1,6 +1,7 @@
 import { and, desc, eq, sql, type SQL } from "drizzle-orm";
 import { applicationUsers, auditEvents } from "@shared/schema";
 import type { DatabaseExecutor } from "../../db/transaction";
+import type { AuditAction } from "./audit-actions";
 
 /**
  * Append-only audit trail. This is the only code path that writes
@@ -10,8 +11,8 @@ import type { DatabaseExecutor } from "../../db/transaction";
 export interface AuditEventInput {
   /** Local application user performing the action; null for system actions. */
   actorUserId: string | null;
-  /** Dot-namespaced verb, e.g. `project.archived`, `user.provisioned`. */
-  action: string;
+  /** One of the canonical names in `audit-actions.ts`, e.g. `project.archived`. */
+  action: AuditAction;
   entityType: string;
   entityId: string | null;
   requestId: string;

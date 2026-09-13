@@ -12,6 +12,7 @@ import type {
 import type { Database } from "../../db/client";
 import { withTransaction, type Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
+import { withUniqueViolationAsConflict } from "../../db/unique-violation";
 import { appendAuditEvent } from "../audit/audit-repository";
 import { documentRepository } from "../documents/document-repository";
 import { createDocumentInTransaction } from "../documents/document-service";
@@ -196,13 +197,22 @@ export function createDistributionService({ db }: { db: Database }) {
       projectId,
       name,
     });
-    if (existing && existing.id !== exceptId)
-      throw new ApiError(
-        409,
-        "TERRITORY_NAME_TAKEN",
-        "This project already has a territory with that name.",
-      );
+    if (existing && existing.id !== exceptId) throw nameTaken();
   }
+
+  const nameTaken = () =>
+    new ApiError(
+      409,
+      "TERRITORY_NAME_TAKEN",
+      "This project already has a territory with that name.",
+    );
+  /** Creation and rename both race on the case-insensitive unique index. */
+  const guardingName = <T>(work: () => Promise<T>) =>
+    withUniqueViolationAsConflict(
+      "distribution_territories_project_name_unique",
+      nameTaken,
+      work,
+    );
 
   async function attach(
     tx: Transaction,
@@ -257,24 +267,26 @@ export function createDistributionService({ db }: { db: Database }) {
       input: CreateDistributionTerritoryInput,
       actor: DistributionActor,
     ): Promise<DistributionTerritory> {
-      const id = await withTransaction(db, async (tx) => {
-        await requireProject(tx, projectId);
-        await assertNameFree(tx, projectId, input.name);
-        const created = await territoryRepository.insert(tx, {
-          projectId,
-          name: input.name,
-          createdByUserId: actor.userId,
-        });
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "distribution_territory.created",
-          entityType: "distribution_territory",
-          entityId: created.id,
-          requestId: actor.requestId,
-          metadata: { projectId, name: input.name },
-        });
-        return created.id;
-      });
+      const id = await guardingName(() =>
+        withTransaction(db, async (tx) => {
+          await requireProject(tx, projectId);
+          await assertNameFree(tx, projectId, input.name);
+          const created = await territoryRepository.insert(tx, {
+            projectId,
+            name: input.name,
+            createdByUserId: actor.userId,
+          });
+          await appendAuditEvent(tx, {
+            actorUserId: actor.userId,
+            action: "distribution_territory.created",
+            entityType: "distribution_territory",
+            entityId: created.id,
+            requestId: actor.requestId,
+            metadata: { projectId, name: input.name },
+          });
+          return created.id;
+        }),
+      );
       return load(db, projectId, id);
     },
 
@@ -296,35 +308,37 @@ export function createDistributionService({ db }: { db: Database }) {
       const changedFields = (
         Object.keys(values) as (keyof TerritoryEditableFields)[]
       ).filter((k) => values[k] !== undefined);
-      await withTransaction(db, async (tx) => {
-        const existing = requireTerritory(
-          await territoryRepository.findById(tx, { projectId, territoryId }),
-        );
-        if (input.name !== undefined)
-          await assertNameFree(tx, projectId, input.name, territoryId);
-        requireFresh(
-          await territoryRepository.updateFields(tx, {
-            id: territoryId,
-            expectedVersion: input.version,
-            values,
-          }),
-        );
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "distribution_territory.updated",
-          entityType: "distribution_territory",
-          entityId: territoryId,
-          requestId: actor.requestId,
-          metadata: {
-            projectId,
-            changedFields,
-            ...(input.name !== undefined &&
-            input.name !== existing.territory.name
-              ? { fromName: existing.territory.name, toName: input.name }
-              : {}),
-          },
-        });
-      });
+      await guardingName(() =>
+        withTransaction(db, async (tx) => {
+          const existing = requireTerritory(
+            await territoryRepository.findById(tx, { projectId, territoryId }),
+          );
+          if (input.name !== undefined)
+            await assertNameFree(tx, projectId, input.name, territoryId);
+          requireFresh(
+            await territoryRepository.updateFields(tx, {
+              id: territoryId,
+              expectedVersion: input.version,
+              values,
+            }),
+          );
+          await appendAuditEvent(tx, {
+            actorUserId: actor.userId,
+            action: "distribution_territory.updated",
+            entityType: "distribution_territory",
+            entityId: territoryId,
+            requestId: actor.requestId,
+            metadata: {
+              projectId,
+              changedFields,
+              ...(input.name !== undefined &&
+              input.name !== existing.territory.name
+                ? { fromName: existing.territory.name, toName: input.name }
+                : {}),
+            },
+          });
+        }),
+      );
       return load(db, projectId, territoryId);
     },
 

@@ -7,6 +7,7 @@ import type {
 import type { Database } from "../../db/client";
 import { withTransaction, type Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
+import { withUniqueViolationAsConflict } from "../../db/unique-violation";
 import { appendAuditEvent } from "../audit/audit-repository";
 import { projectRepository } from "../projects/project-repository";
 import { toUserRef } from "../users/user-ref";
@@ -85,12 +86,16 @@ function toReviewContract(record: ReviewRecord): Review {
   };
 }
 
-function conflict(): never {
-  throw new ApiError(
+function conflictError(): ApiError {
+  return new ApiError(
     409,
     "VERSION_CONFLICT",
     "This changed while you were editing. Refresh and try again.",
   );
+}
+
+function conflict(): never {
+  throw conflictError();
 }
 
 async function requireProject(
@@ -134,59 +139,69 @@ export function createEvaluationService({ db }: { db: Database }) {
         financeApproved: input.gates.financeApproved,
         talentAttached: input.gates.talentAttached,
       };
-      const record = await withTransaction(db, async (tx) => {
-        await requireProject(tx, projectId);
-        const existing = await evaluationRepository.findByProjectId(
-          tx,
-          projectId,
-        );
-        if (input.version === 0) {
-          if (existing) conflict();
-          await evaluationRepository.insert(tx, {
-            ...values,
-            projectId,
-            updatedByUserId: actor.userId,
-          });
-          await appendAuditEvent(tx, {
-            actorUserId: actor.userId,
-            action: "evaluation.created",
-            entityType: "project_evaluation",
-            entityId: projectId,
-            requestId: actor.requestId,
-          });
-        } else {
-          if (!existing) conflict();
-          const updated = await evaluationRepository.updateIfVersionMatches(
-            tx,
-            {
+      const record = await withUniqueViolationAsConflict(
+        "project_evaluations_pkey",
+        () => conflictError(),
+        () =>
+          withTransaction(db, async (tx) => {
+            await requireProject(tx, projectId);
+            const existing = await evaluationRepository.findByProjectId(
+              tx,
               projectId,
-              expectedVersion: input.version,
-              values,
-              updatedByUserId: actor.userId,
-            },
-          );
-          if (!updated) conflict();
-          const changedFields = (
-            Object.keys(values) as (keyof EvaluationFields)[]
-          ).filter(
-            (key) =>
-              JSON.stringify(values[key]) !==
-              JSON.stringify(existing.evaluation[key]),
-          );
-          await appendAuditEvent(tx, {
-            actorUserId: actor.userId,
-            action: "evaluation.updated",
-            entityType: "project_evaluation",
-            entityId: projectId,
-            requestId: actor.requestId,
-            metadata: { changedFields },
-          });
-        }
-        const saved = await evaluationRepository.findByProjectId(tx, projectId);
-        if (!saved)
-          throw new Error("Evaluation vanished inside its own transaction.");
-        return saved;
-      });
+            );
+            if (input.version === 0) {
+              if (existing) conflict();
+              await evaluationRepository.insert(tx, {
+                ...values,
+                projectId,
+                updatedByUserId: actor.userId,
+              });
+              await appendAuditEvent(tx, {
+                actorUserId: actor.userId,
+                action: "evaluation.created",
+                entityType: "project_evaluation",
+                entityId: projectId,
+                requestId: actor.requestId,
+              });
+            } else {
+              if (!existing) conflict();
+              const updated = await evaluationRepository.updateIfVersionMatches(
+                tx,
+                {
+                  projectId,
+                  expectedVersion: input.version,
+                  values,
+                  updatedByUserId: actor.userId,
+                },
+              );
+              if (!updated) conflict();
+              const changedFields = (
+                Object.keys(values) as (keyof EvaluationFields)[]
+              ).filter(
+                (key) =>
+                  JSON.stringify(values[key]) !==
+                  JSON.stringify(existing.evaluation[key]),
+              );
+              await appendAuditEvent(tx, {
+                actorUserId: actor.userId,
+                action: "evaluation.updated",
+                entityType: "project_evaluation",
+                entityId: projectId,
+                requestId: actor.requestId,
+                metadata: { changedFields },
+              });
+            }
+            const saved = await evaluationRepository.findByProjectId(
+              tx,
+              projectId,
+            );
+            if (!saved)
+              throw new Error(
+                "Evaluation vanished inside its own transaction.",
+              );
+            return saved;
+          }),
+      );
       return toEvaluationContract(record);
     },
 
@@ -214,46 +229,51 @@ export function createEvaluationService({ db }: { db: Database }) {
         recommendation: recommendationFor(input.scores),
         summaryNotes: input.summaryNotes,
       };
-      const id = await withTransaction(db, async (tx) => {
-        await requireProject(tx, projectId);
-        const existing = await reviewRepository.findByAuthor(tx, {
-          projectId,
-          authorUserId: actor.userId,
-        });
-        if (input.version === 0) {
-          if (existing) conflict();
-          const created = await reviewRepository.insert(tx, {
-            ...values,
-            projectId,
-            authorUserId: actor.userId,
-          });
-          await appendAuditEvent(tx, {
-            actorUserId: actor.userId,
-            action: "review.submitted",
-            entityType: "project_review",
-            entityId: created.id,
-            requestId: actor.requestId,
-            metadata: { projectId, recommendation: values.recommendation },
-          });
-          return created.id;
-        }
-        if (!existing) conflict();
-        const updated = await reviewRepository.updateIfVersionMatches(tx, {
-          id: existing.id,
-          expectedVersion: input.version,
-          values,
-        });
-        if (!updated) conflict();
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "review.updated",
-          entityType: "project_review",
-          entityId: updated.id,
-          requestId: actor.requestId,
-          metadata: { projectId, recommendation: values.recommendation },
-        });
-        return updated.id;
-      });
+      const id = await withUniqueViolationAsConflict(
+        "project_reviews_project_author_unique",
+        () => conflictError(),
+        () =>
+          withTransaction(db, async (tx) => {
+            await requireProject(tx, projectId);
+            const existing = await reviewRepository.findByAuthor(tx, {
+              projectId,
+              authorUserId: actor.userId,
+            });
+            if (input.version === 0) {
+              if (existing) conflict();
+              const created = await reviewRepository.insert(tx, {
+                ...values,
+                projectId,
+                authorUserId: actor.userId,
+              });
+              await appendAuditEvent(tx, {
+                actorUserId: actor.userId,
+                action: "review.submitted",
+                entityType: "project_review",
+                entityId: created.id,
+                requestId: actor.requestId,
+                metadata: { projectId, recommendation: values.recommendation },
+              });
+              return created.id;
+            }
+            if (!existing) conflict();
+            const updated = await reviewRepository.updateIfVersionMatches(tx, {
+              id: existing.id,
+              expectedVersion: input.version,
+              values,
+            });
+            if (!updated) conflict();
+            await appendAuditEvent(tx, {
+              actorUserId: actor.userId,
+              action: "review.updated",
+              entityType: "project_review",
+              entityId: updated.id,
+              requestId: actor.requestId,
+              metadata: { projectId, recommendation: values.recommendation },
+            });
+            return updated.id;
+          }),
+      );
       const record = await reviewRepository.findById(db, {
         projectId,
         reviewId: id,

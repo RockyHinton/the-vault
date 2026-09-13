@@ -12,6 +12,7 @@ import {
 import type { Database } from "../../db/client";
 import { withTransaction, type Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
+import { withUniqueViolationAsConflict } from "../../db/unique-violation";
 import { appendAuditEvent } from "../audit/audit-repository";
 import {
   budgetLineItemRepository,
@@ -279,37 +280,44 @@ export function createFinancePlanService({ db }: { db: Database }) {
       input: CreateFinancePlanInput,
       actor: FinanceActor,
     ): Promise<FinancePlan> {
-      await withTransaction(db, async (tx) => {
-        await requireProject(tx, projectId);
-        if (await financePlanRepository.findByProject(tx, projectId))
-          throw new ApiError(
-            409,
-            "FINANCE_PLAN_EXISTS",
-            "This project already has a finance plan.",
-          );
-        const budgetVersion = await requireLockedBudgetVersion(
-          tx,
-          projectId,
-          input.budgetVersionId,
+      const planExists = () =>
+        new ApiError(
+          409,
+          "FINANCE_PLAN_EXISTS",
+          "This project already has a finance plan.",
         );
-        const plan = await financePlanRepository.insert(tx, {
-          projectId,
-          budgetVersionId: input.budgetVersionId,
-          createdByUserId: actor.userId,
-        });
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "finance_plan.created",
-          entityType: "finance_plan",
-          entityId: plan.id,
-          requestId: actor.requestId,
-          metadata: {
-            projectId,
-            budgetVersionId: input.budgetVersionId,
-            budgetVersionNumber: budgetVersion.version.versionNumber,
-          },
-        });
-      });
+      await withUniqueViolationAsConflict(
+        "finance_plans_project_unique",
+        planExists,
+        () =>
+          withTransaction(db, async (tx) => {
+            await requireProject(tx, projectId);
+            if (await financePlanRepository.findByProject(tx, projectId))
+              throw planExists();
+            const budgetVersion = await requireLockedBudgetVersion(
+              tx,
+              projectId,
+              input.budgetVersionId,
+            );
+            const plan = await financePlanRepository.insert(tx, {
+              projectId,
+              budgetVersionId: input.budgetVersionId,
+              createdByUserId: actor.userId,
+            });
+            await appendAuditEvent(tx, {
+              actorUserId: actor.userId,
+              action: "finance_plan.created",
+              entityType: "finance_plan",
+              entityId: plan.id,
+              requestId: actor.requestId,
+              metadata: {
+                projectId,
+                budgetVersionId: input.budgetVersionId,
+                budgetVersionNumber: budgetVersion.version.versionNumber,
+              },
+            });
+          }),
+      );
       return load(db, projectId);
     },
 

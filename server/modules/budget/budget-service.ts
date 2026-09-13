@@ -17,6 +17,7 @@ import type { BudgetLineItemRow, BudgetVersionRow } from "@shared/schema";
 import type { Database } from "../../db/client";
 import { withTransaction, type Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
+import { withUniqueViolationAsConflict } from "../../db/unique-violation";
 import { appendAuditEvent } from "../audit/audit-repository";
 import { documentRepository } from "../documents/document-repository";
 import { createDocumentInTransaction } from "../documents/document-service";
@@ -321,46 +322,53 @@ export function createBudgetService({ db }: { db: Database }) {
       input: CreateBudgetInput,
       actor: BudgetActor,
     ): Promise<Budget> {
-      await withTransaction(db, async (tx) => {
-        await requireProject(tx, projectId);
-        if (await budgetRepository.findByProject(tx, projectId))
-          throw new ApiError(
-            409,
-            "BUDGET_EXISTS",
-            "This project already has a budget.",
-          );
-        const budget = await budgetRepository.insert(tx, {
-          projectId,
-          currency: input.currency,
-          createdByUserId: actor.userId,
-        });
-        const version = await budgetVersionRepository.insert(tx, {
-          budgetId: budget.id,
-          versionNumber: 1,
-          createdByUserId: actor.userId,
-        });
-        for (const [position, name] of Array.from(
-          defaultBudgetDepartments.entries(),
-        )) {
-          await budgetDepartmentRepository.insert(tx, {
-            budgetVersionId: version.id,
-            name,
-            position,
-          });
-        }
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "budget.created",
-          entityType: "budget",
-          entityId: budget.id,
-          requestId: actor.requestId,
-          metadata: {
-            projectId,
-            currency: input.currency,
-            budgetVersionId: version.id,
-          },
-        });
-      });
+      const budgetExists = () =>
+        new ApiError(
+          409,
+          "BUDGET_EXISTS",
+          "This project already has a budget.",
+        );
+      await withUniqueViolationAsConflict(
+        "budgets_project_unique",
+        budgetExists,
+        () =>
+          withTransaction(db, async (tx) => {
+            await requireProject(tx, projectId);
+            if (await budgetRepository.findByProject(tx, projectId))
+              throw budgetExists();
+            const budget = await budgetRepository.insert(tx, {
+              projectId,
+              currency: input.currency,
+              createdByUserId: actor.userId,
+            });
+            const version = await budgetVersionRepository.insert(tx, {
+              budgetId: budget.id,
+              versionNumber: 1,
+              createdByUserId: actor.userId,
+            });
+            for (const [position, name] of Array.from(
+              defaultBudgetDepartments.entries(),
+            )) {
+              await budgetDepartmentRepository.insert(tx, {
+                budgetVersionId: version.id,
+                name,
+                position,
+              });
+            }
+            await appendAuditEvent(tx, {
+              actorUserId: actor.userId,
+              action: "budget.created",
+              entityType: "budget",
+              entityId: budget.id,
+              requestId: actor.requestId,
+              metadata: {
+                projectId,
+                currency: input.currency,
+                budgetVersionId: version.id,
+              },
+            });
+          }),
+      );
       return loadBudget(db, projectId);
     },
 
@@ -465,88 +473,101 @@ export function createBudgetService({ db }: { db: Database }) {
       fromVersionId: string,
       actor: BudgetActor,
     ): Promise<Budget> {
-      await withTransaction(db, async (tx) => {
-        const source = requireVersion(
-          await budgetVersionRepository.findById(tx, {
-            projectId,
-            versionId: fromVersionId,
+      const alreadyOpen = () =>
+        new ApiError(
+          409,
+          "BUDGET_VERSION_ALREADY_OPEN",
+          "Finish the open budget version before starting another revision.",
+        );
+      await withUniqueViolationAsConflict(
+        "budget_versions_one_open_per_budget",
+        alreadyOpen,
+        () =>
+          withTransaction(db, async (tx) => {
+            const source = requireVersion(
+              await budgetVersionRepository.findById(tx, {
+                projectId,
+                versionId: fromVersionId,
+              }),
+            );
+            if (source.version.status !== "locked")
+              throw new ApiError(
+                409,
+                "BUDGET_VERSION_NOT_LOCKED",
+                "Revisions start from a locked version.",
+              );
+            // The budget row lock serialises concurrent revision attempts, so the
+            // "nothing open" check below cannot be raced; the partial unique index
+            // remains the backstop.
+            await budgetRepository.lockRow(tx, source.version.budgetId);
+            const versions = await budgetVersionRepository.listByBudget(
+              tx,
+              source.version.budgetId,
+            );
+            if (versions.some((v) => v.version.status !== "locked"))
+              throw alreadyOpen();
+            const nextNumber =
+              Math.max(...versions.map((v) => v.version.versionNumber)) + 1;
+            const draft = await budgetVersionRepository.insert(tx, {
+              budgetId: source.version.budgetId,
+              versionNumber: nextNumber,
+              createdByUserId: actor.userId,
+            });
+            const departments = await budgetDepartmentRepository.listByVersion(
+              tx,
+              fromVersionId,
+            );
+            const sourceIds = departments.map((d) => d.id);
+            const lineItems = await budgetLineItemRepository.listByDepartments(
+              tx,
+              sourceIds,
+            );
+            const links = await budgetDepartmentDocumentRepository.listByOwners(
+              tx,
+              sourceIds,
+            );
+            for (const department of departments) {
+              const copy = await budgetDepartmentRepository.insert(tx, {
+                budgetVersionId: draft.id,
+                name: department.name,
+                position: department.position,
+              });
+              for (const item of lineItems.filter(
+                (i) => i.budgetDepartmentId === department.id,
+              )) {
+                await budgetLineItemRepository.insert(tx, {
+                  budgetDepartmentId: copy.id,
+                  name: item.name,
+                  amount: item.amount,
+                  note: item.note,
+                  position: item.position,
+                });
+              }
+              for (const link of links.filter(
+                (l) => l.ownerId === department.id,
+              )) {
+                await budgetDepartmentDocumentRepository.insert(tx, {
+                  ownerId: copy.id,
+                  documentLineageId: link.documentLineageId,
+                  attachedByUserId: link.attachedByUserId,
+                });
+              }
+            }
+            await appendAuditEvent(tx, {
+              actorUserId: actor.userId,
+              action: "budget_version.created",
+              entityType: "budget_version",
+              entityId: draft.id,
+              requestId: actor.requestId,
+              metadata: {
+                projectId,
+                versionNumber: nextNumber,
+                copiedFromVersionId: fromVersionId,
+                copiedFromVersionNumber: source.version.versionNumber,
+              },
+            });
           }),
-        );
-        if (source.version.status !== "locked")
-          throw new ApiError(
-            409,
-            "BUDGET_VERSION_NOT_LOCKED",
-            "Revisions start from a locked version.",
-          );
-        const versions = await budgetVersionRepository.listByBudget(
-          tx,
-          source.version.budgetId,
-        );
-        if (versions.some((v) => v.version.status !== "locked"))
-          throw new ApiError(
-            409,
-            "BUDGET_VERSION_ALREADY_OPEN",
-            "Finish the open budget version before starting another revision.",
-          );
-        const nextNumber =
-          Math.max(...versions.map((v) => v.version.versionNumber)) + 1;
-        const draft = await budgetVersionRepository.insert(tx, {
-          budgetId: source.version.budgetId,
-          versionNumber: nextNumber,
-          createdByUserId: actor.userId,
-        });
-        const departments = await budgetDepartmentRepository.listByVersion(
-          tx,
-          fromVersionId,
-        );
-        const sourceIds = departments.map((d) => d.id);
-        const lineItems = await budgetLineItemRepository.listByDepartments(
-          tx,
-          sourceIds,
-        );
-        const links = await budgetDepartmentDocumentRepository.listByOwners(
-          tx,
-          sourceIds,
-        );
-        for (const department of departments) {
-          const copy = await budgetDepartmentRepository.insert(tx, {
-            budgetVersionId: draft.id,
-            name: department.name,
-            position: department.position,
-          });
-          for (const item of lineItems.filter(
-            (i) => i.budgetDepartmentId === department.id,
-          )) {
-            await budgetLineItemRepository.insert(tx, {
-              budgetDepartmentId: copy.id,
-              name: item.name,
-              amount: item.amount,
-              note: item.note,
-              position: item.position,
-            });
-          }
-          for (const link of links.filter((l) => l.ownerId === department.id)) {
-            await budgetDepartmentDocumentRepository.insert(tx, {
-              ownerId: copy.id,
-              documentLineageId: link.documentLineageId,
-              attachedByUserId: link.attachedByUserId,
-            });
-          }
-        }
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "budget_version.created",
-          entityType: "budget_version",
-          entityId: draft.id,
-          requestId: actor.requestId,
-          metadata: {
-            projectId,
-            versionNumber: nextNumber,
-            copiedFromVersionId: fromVersionId,
-            copiedFromVersionNumber: source.version.versionNumber,
-          },
-        });
-      });
+      );
       return loadBudget(db, projectId);
     },
 
@@ -559,44 +580,58 @@ export function createBudgetService({ db }: { db: Database }) {
       const currency = requireBudget(
         await budgetRepository.findByProject(db, projectId),
       ).budget.currency;
-      await withTransaction(db, async (tx) => {
-        await budgetVersionRepository.lockRow(tx, versionId);
-        const version = requireVersion(
-          await budgetVersionRepository.findById(tx, { projectId, versionId }),
+      const departmentNameTaken = () =>
+        new ApiError(
+          409,
+          "BUDGET_DEPARTMENT_NAME_TAKEN",
+          "A department with that name already exists in this version.",
         );
-        assertDraft(version.version);
-        const siblings = await budgetDepartmentRepository.listByVersion(
-          tx,
-          versionId,
-        );
-        if (
-          siblings.some(
-            (d) => d.name.toLowerCase() === input.name.toLowerCase(),
-          )
-        )
-          throw new ApiError(
-            409,
-            "BUDGET_DEPARTMENT_NAME_TAKEN",
-            "A department with that name already exists in this version.",
-          );
-        const created = await budgetDepartmentRepository.insert(tx, {
-          budgetVersionId: versionId,
-          name: input.name,
-          position: await budgetDepartmentRepository.nextPosition(
-            tx,
-            versionId,
-          ),
-        });
-        await budgetVersionRepository.touch(tx, versionId);
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "budget_department.created",
-          entityType: "budget_department",
-          entityId: created.id,
-          requestId: actor.requestId,
-          metadata: { projectId, budgetVersionId: versionId, name: input.name },
-        });
-      });
+      await withUniqueViolationAsConflict(
+        "budget_departments_version_name_unique",
+        departmentNameTaken,
+        () =>
+          withTransaction(db, async (tx) => {
+            await budgetVersionRepository.lockRow(tx, versionId);
+            const version = requireVersion(
+              await budgetVersionRepository.findById(tx, {
+                projectId,
+                versionId,
+              }),
+            );
+            assertDraft(version.version);
+            const siblings = await budgetDepartmentRepository.listByVersion(
+              tx,
+              versionId,
+            );
+            if (
+              siblings.some(
+                (d) => d.name.toLowerCase() === input.name.toLowerCase(),
+              )
+            )
+              throw departmentNameTaken();
+            const created = await budgetDepartmentRepository.insert(tx, {
+              budgetVersionId: versionId,
+              name: input.name,
+              position: await budgetDepartmentRepository.nextPosition(
+                tx,
+                versionId,
+              ),
+            });
+            await budgetVersionRepository.touch(tx, versionId);
+            await appendAuditEvent(tx, {
+              actorUserId: actor.userId,
+              action: "budget_department.created",
+              entityType: "budget_department",
+              entityId: created.id,
+              requestId: actor.requestId,
+              metadata: {
+                projectId,
+                budgetVersionId: versionId,
+                name: input.name,
+              },
+            });
+          }),
+      );
       return loadVersion(db, projectId, versionId, currency);
     },
 

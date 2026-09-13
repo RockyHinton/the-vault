@@ -71,7 +71,9 @@ cross-domain imports.
    first argument (`DatabaseExecutor` for reads, `Transaction` for writes that must be atomic) and
    returns rows or `undefined`. They contain no policy and no audit vocabulary.
 3. **Audit events go through `appendAuditEvent(tx, …)`** from `server/modules/audit`, with the
-   same executor as the state change, so they commit or roll back together.
+   same executor as the state change, so they commit or roll back together. Action names are
+   the `AuditAction` union in `server/modules/audit/audit-actions.ts`; add a domain's names
+   there (`<entity>.<past-tense verb>`; two legacy `.set` names are kept as persisted).
 4. **Optimistic concurrency is enforced in the write predicate.** Writes match on `id` and the
    caller's `version`; zero rows updated means the caller is stale. The service throws
    `409 VERSION_CONFLICT` inside the transaction, so a stale write leaves no history or audit rows.
@@ -102,6 +104,28 @@ Services are created by a factory (`createProjectService({ db })`, `createUserSe
 `createAuthService({ db })`) and receive their dependencies explicitly. There are no
 module-scope singletons holding connections. CPU-heavy work that does not need the transaction
 (password hashing) happens before it.
+
+### Cross-domain reads
+
+Domains may read each other; they never write each other's tables. The rule for the next agent:
+
+1. **Inside a transaction, read the other domain's repository.** A command that must decide
+   on another domain's state within its own unit of work (Finance Plan checking that a budget
+   version is locked, Cash Flow resolving the plan's departments and approved sources,
+   Documents refusing to delete a lineage that backs a live script) calls that domain's
+   repository with its own `tx`. Repositories are policy-free query functions, so this cannot
+   pull another service's transaction or policy into the command.
+2. **Outside a transaction, compose services.** A read model that only assembles other
+   domains' contracts (Financing Overview) takes the services as dependencies and calls their
+   read methods; it owns no table and no transaction.
+3. **Never call another domain's service from inside your transaction** (transaction
+   inversion), and never import a service from a domain that imports yours. The one shared
+   write primitive is the Documents domain's `createDocumentInTransaction` /
+   `addDocumentVersionInTransaction`, deliberately exported for owners to call with their `tx`.
+4. **Uniqueness races.** Where a "one X per Y" rule is a unique index and the service also
+   pre-checks it, wrap the command in `withUniqueViolationAsConflict(constraintName, …)` from
+   `server/db/unique-violation.ts` so the concurrent loser gets the same 409 as the pre-check.
+   Name the constraint; never map unique violations generically.
 
 ## Authentication
 
@@ -193,6 +217,37 @@ records where a domain permits; studio_admin manages everything; lifecycle and a
 commands are studio_admin-only unless a domain records a different decision. Services resolve
 actors for display. See ADR 0006.
 
+### The studio-wide visibility model
+
+One Vault deployment serves one production company. Every active user belongs to that studio,
+so **every active user can read every project and every record in it**, and can take part in
+every collaborative command (notes, tasks, people, rights, legal records, documents, scripts,
+budget drafts, finance plans, cash flow, territories). There is no project membership, no
+per-project ACL and no tenant concept; a second company gets its own deployment, database and
+storage. The only narrower rules are the ones each domain states explicitly: authored-record
+ownership (author or creator or uploader, else studio_admin) for edits that belong to one
+person and for destructive commands, and studio_admin for lifecycle sign-offs (project stage
+and archive, user administration, budget lock, financing approval and rebase, audit reads).
+Deliberate asymmetries that look accidental are not:
+
+- A **draft budget** is a shared worksheet: departments, line items and their document links
+  are created, edited, removed and detached by any active user, because nothing in a draft is
+  anyone's authored record; the lock is the sign-off and locked content is immutable. Starting
+  a revision from a locked version is likewise open to any user: it creates a new draft and
+  never touches the locked version the finance plan and cash flow reference.
+- **Cash-flow payments** are authored rows (creator-or-admin to remove); **spend windows and
+  timing overrides** are settings on a department or source with no author, so clearing them
+  is collaborative like setting them.
+- **Documents** belong to their uploader: metadata edits, adding a version and deletion are
+  uploader-or-admin on the current version, whichever route reaches the Documents primitive
+  (Scripts included).
+
+Where an admin-only rule is enforced: `requireStudioAdmin` middleware guards a route when the
+whole endpoint is administrative (projects lifecycle, users, evaluation profile, audit);
+an in-service `assertCan*` guards a command when it is one admin-only step among collaborative
+commands on the same aggregate and needs the loaded record (budget lock, financing approve and
+rebase). Both are server-side; the client only hides controls.
+
 ## Authored records, actors and assignment
 
 Project Notes, Project Tasks and team Reviews are the reference implementations of an
@@ -271,8 +326,12 @@ script-side version counter and today no mutable script field, so the script row
 - **Reader.** `pdfjs-dist` renders pages to a canvas from bytes fetched through
   `GET /files/:id/content` with the session cookie; the worker is bundled as a same-origin
   asset. No object URL, no public link, no storage key leaves the server.
-- **Authorization.** Any active user reads, uploads, adds versions and annotates; removing a
-  script or another author's note is creator-or-admin.
+- **Authorization.** Any active user reads, uploads a first draft and annotates; a new version
+  follows the Documents rule (the current version's uploader or a studio_admin); removing a
+  script or another author's note is creator-or-admin. Deleting the script's document lineage
+  through the Documents library is refused while the script is live
+  (`409 DOCUMENT_BACKS_SCRIPT`): the Script page removes the script, and only then may the
+  lineage be deleted.
 - **Audit vocabulary:** `script.created|version_added|deleted` (alongside the Documents
   domain's own `document.created|version_added`) and
   `script_annotation.created|updated|deleted`.
@@ -543,7 +602,10 @@ POST /projects/:id/documents      one transaction: claim staged file (→ availa
                                   document, audit. Only the uploader (or an admin) may claim.
 POST …/documents/:id/versions     one transaction: retire current (compare-and-set), claim new
                                   file, insert version N+1 in the same lineage, audit.
-PATCH …/documents/:id             metadata edit, compare-and-set, author-or-admin, audit.
+                                  Uploader-or-admin of the current version, on every route.
+PATCH …/documents/:id             metadata edit of the current version only, compare-and-set,
+                                  uploader-or-admin, audit. Superseded versions are history and
+                                  are never rewritten (409 NOT_CURRENT_VERSION).
 DELETE …/documents/:id            soft-delete the lineage, bytes retained, audit.
 GET  /files/:id/content           session check → stream bytes; attachment by default,
                                   inline only for PDF/images; nosniff, no-store, sandbox CSP.

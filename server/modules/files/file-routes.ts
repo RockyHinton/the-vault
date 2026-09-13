@@ -1,5 +1,6 @@
 import { Router, type Request } from "express";
 import { fileContentQuerySchema, fileIdParamSchema } from "@shared/contracts";
+import { ApiError } from "../../http/errors";
 import { handle } from "../../http/handler";
 import { validate } from "../../http/validation";
 import type { FileActor, FileService } from "./file-service";
@@ -18,6 +19,19 @@ const actor = (req: Request): FileActor => ({
  * straight through inspection into storage. Download streams back through
  * the app after authorization; there are no public or signed URLs.
  */
+/** The header is percent-encoded metadata; a malformed encoding is the client's error, not a 500. */
+function decodeFilenameHeader(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    throw new ApiError(
+      400,
+      "INVALID_FILENAME_HEADER",
+      `The ${FILENAME_HEADER} header must be a percent-encoded UTF-8 filename.`,
+    );
+  }
+}
+
 export function createFileRouter(service: FileService): Router {
   const router = Router();
 
@@ -30,7 +44,7 @@ export function createFileRouter(service: FileService): Router {
         {
           source: req,
           declaredFilename: declaredFilename
-            ? decodeURIComponent(declaredFilename)
+            ? decodeFilenameHeader(declaredFilename)
             : undefined,
           declaredLength: Number.isFinite(length) ? length : undefined,
         },

@@ -1,5 +1,10 @@
 import { and, desc, eq, isNotNull, isNull, lt, type SQL } from "drizzle-orm";
-import { projects, projectStageHistory, type ProjectRow } from "@shared/schema";
+import {
+  projects,
+  projectStageHistory,
+  stageHistoryTransition,
+  type ProjectRow,
+} from "@shared/schema";
 import type { DatabaseExecutor, Transaction } from "../../db/transaction";
 
 type ProjectInsert = typeof projects.$inferInsert;
@@ -19,7 +24,7 @@ export type ProjectArchiveFields = {
 };
 
 export type StageHistoryTransition =
-  "created" | "stage_changed" | "archived" | "restored";
+  (typeof stageHistoryTransition.enumValues)[number];
 
 /**
  * Compare-and-set update. Matches on id + expected version (+ optional extra

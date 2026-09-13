@@ -23,6 +23,13 @@ export const applicationRole = pgEnum("application_role", [
   "user",
 ]);
 export const userStatus = pgEnum("user_status", ["active", "suspended"]);
+/** How a stage-history row came to be; the vocabulary of `project-service` lifecycle commands. */
+export const stageHistoryTransition = pgEnum("stage_history_transition", [
+  "created",
+  "stage_changed",
+  "archived",
+  "restored",
+]);
 export const projectStage = pgEnum("project_stage", [
   "evaluation",
   "development",
@@ -323,7 +330,7 @@ export const projectStageHistory = pgTable(
       .references(() => projects.id, { onDelete: "restrict" }),
     fromStage: projectStage("from_stage"),
     toStage: projectStage("to_stage").notNull(),
-    transitionType: text("transition_type").notNull(),
+    transitionType: stageHistoryTransition("transition_type").notNull(),
     note: text("note"),
     actorUserId: uuid("actor_user_id")
       .notNull()
@@ -408,6 +415,13 @@ export const fileObjects = pgTable(
     index("file_objects_created_by_user_id_idx").on(table.createdByUserId),
     check("file_objects_byte_size_positive", sql`${table.byteSize} > 0`),
     check("file_objects_sha256_shape", sql`${table.sha256} ~ '^[a-f0-9]{64}$'`),
+    // Lifecycle: staged (no timestamps) → available (available_at) → deleted
+    // (deleted_at). A staged upload swept before it was ever claimed is
+    // deleted without an available_at, so that column stays free on deletion.
+    check(
+      "file_objects_status_matches_timestamps",
+      sql`(${table.status} = 'staged' AND ${table.availableAt} IS NULL AND ${table.deletedAt} IS NULL) OR (${table.status} = 'available' AND ${table.availableAt} IS NOT NULL AND ${table.deletedAt} IS NULL) OR (${table.status} = 'deleted' AND ${table.deletedAt} IS NOT NULL)`,
+    ),
   ],
 );
 

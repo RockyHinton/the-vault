@@ -39,6 +39,8 @@ export default function ScriptView() {
 
   const previousVersions = [...versions].filter((v) => !v.isCurrent).sort((a, b) => b.versionNumber - a.versionNumber);
   const canRemove = script ? isStudioAdmin || script.createdBy.id === currentUserId : false;
+  // A new version is added by the current version's uploader or an admin (server-enforced; hidden here as UX).
+  const canAddVersion = script ? isStudioAdmin || script.currentVersion.createdBy.id === currentUserId : false;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -110,12 +112,14 @@ export default function ScriptView() {
                         Open Script Reader
                       </Button>
                     </Link>
-                    <ScriptUploadDialog projectId={project.id} mode={{ kind: "new-version", script }}>
-                      <Button variant="outline" size="lg">
-                        <Upload className="mr-2 h-4 w-4" />
-                        Upload New Version
-                      </Button>
-                    </ScriptUploadDialog>
+                    {canAddVersion && (
+                      <ScriptUploadDialog projectId={project.id} mode={{ kind: "new-version", script }}>
+                        <Button variant="outline" size="lg">
+                          <Upload className="mr-2 h-4 w-4" />
+                          Upload New Version
+                        </Button>
+                      </ScriptUploadDialog>
+                    )}
                     <a href={fileContentUrl(script.currentVersion.file.id)} aria-label={`Download ${script.title}`}>
                       <Button variant="ghost" size="lg">
                         <Download className="mr-2 h-4 w-4" />

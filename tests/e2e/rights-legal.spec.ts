@@ -97,7 +97,7 @@ test("rights and legal records persist with documents, status and shared visibil
   await expect(
     page.getByRole("heading", { name: "Writer Agreements" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Add Writer" }).click();
+  await page.getByRole("button", { name: "Add Writer" }).first().click();
   await page.getByLabel("Writer name").fill("Ada Writer");
   await choose(page, "Role", "Co-writer");
   await page.getByLabel("Email").fill("ada@example.com");

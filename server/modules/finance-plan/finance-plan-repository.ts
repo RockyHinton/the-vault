@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, ne, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import {
   applicationUsers,
@@ -285,7 +285,11 @@ export const financeSourceRepository = {
     });
   },
 
-  /** Hard delete of an unapproved source; approved sources are never deleted (service policy). */
+  /**
+   * Hard delete of an unapproved source. The predicate is state-aware so an
+   * approved source, an immutable financial fact, can never be physically
+   * deleted even by a future service mistake.
+   */
   async delete(
     tx: Transaction,
     input: { id: string; expectedVersion: number },
@@ -296,6 +300,7 @@ export const financeSourceRepository = {
         and(
           eq(financeSources.id, input.id),
           eq(financeSources.version, input.expectedVersion),
+          ne(financeSources.status, "approved"),
         ),
       )
       .returning({ id: financeSources.id });

@@ -94,9 +94,10 @@ describe("Documents API against isolated PostgreSQL and storage", () => {
       },
       createdBy: {
         id: context.seeded.memberUserId,
-        email: memberCredentials.email,
+        displayName: "Test Member",
       },
     });
+    expect(doc.createdBy).not.toHaveProperty("email");
     expect(JSON.stringify(created.body)).not.toMatch(
       /storage_key|storageKey|url/i,
     );

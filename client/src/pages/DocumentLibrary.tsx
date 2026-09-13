@@ -191,7 +191,7 @@ export default function DocumentLibrary({ projectId, folder }: DocumentLibraryPr
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       <div>{format(new Date(doc.createdAt), "MMM d, yyyy h:mm a")}</div>
-                      <div className="text-xs">{doc.createdBy.displayName ?? doc.createdBy.email}</div>
+                      <div className="text-xs">{doc.createdBy.displayName}</div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -207,11 +207,13 @@ export default function DocumentLibrary({ projectId, folder }: DocumentLibraryPr
                             <Download className="h-4 w-4" />
                           </a>
                         </Button>
-                        <DocumentUploadDialog projectId={projectId} mode={{ kind: "version", document: doc }}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" aria-label={`New version of ${doc.title}`}>
-                            <History className="h-4 w-4" />
-                          </Button>
-                        </DocumentUploadDialog>
+                        {canManage(doc) && (
+                          <DocumentUploadDialog projectId={projectId} mode={{ kind: "version", document: doc }}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" aria-label={`New version of ${doc.title}`}>
+                              <History className="h-4 w-4" />
+                            </Button>
+                          </DocumentUploadDialog>
+                        )}
                         {canManage(doc) && (
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setToDelete(doc)} aria-label={`Delete ${doc.title}`}>
                             <Trash2 className="h-4 w-4" />

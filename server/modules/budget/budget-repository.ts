@@ -74,6 +74,19 @@ function versionsBase(executor: DatabaseExecutor) {
 
 /** Persistence for `budgets`: one row per project. */
 export const budgetRepository = {
+  /** Row lock for the rest of the transaction; version-creating commands serialise on it. */
+  async lockRow(
+    tx: Transaction,
+    budgetId: string,
+  ): Promise<BudgetRow | undefined> {
+    const [row] = await tx
+      .select()
+      .from(budgets)
+      .where(eq(budgets.id, budgetId))
+      .for("update");
+    return row;
+  },
+
   async findByProject(
     executor: DatabaseExecutor,
     projectId: string,
@@ -309,10 +322,27 @@ export const budgetDepartmentRepository = {
   },
 
   /** Hard delete: departments exist only inside a draft, which has no history to keep. */
+  /**
+   * Physically removes a department of a draft version only. The predicate
+   * is state-aware so a locked version's content can never be deleted, even
+   * by a future service mistake: the row must belong to a version whose
+   * status is still `draft`.
+   */
   async delete(tx: Transaction, id: string): Promise<boolean> {
     const rows = await tx
       .delete(budgetDepartments)
-      .where(eq(budgetDepartments.id, id))
+      .where(
+        and(
+          eq(budgetDepartments.id, id),
+          inArray(
+            budgetDepartments.budgetVersionId,
+            tx
+              .select({ id: budgetVersions.id })
+              .from(budgetVersions)
+              .where(eq(budgetVersions.status, "draft")),
+          ),
+        ),
+      )
       .returning({ id: budgetDepartments.id });
     return rows.length > 0;
   },
@@ -480,6 +510,18 @@ export const budgetLineItemRepository = {
       .where(
         and(
           eq(budgetLineItems.id, input.id),
+          // Draft versions only; locked history is never physically deleted.
+          inArray(
+            budgetLineItems.budgetDepartmentId,
+            tx
+              .select({ id: budgetDepartments.id })
+              .from(budgetDepartments)
+              .innerJoin(
+                budgetVersions,
+                eq(budgetDepartments.budgetVersionId, budgetVersions.id),
+              )
+              .where(eq(budgetVersions.status, "draft")),
+          ),
           eq(budgetLineItems.version, input.expectedVersion),
         ),
       )

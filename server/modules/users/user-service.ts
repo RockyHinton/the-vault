@@ -3,6 +3,7 @@ import type { ApplicationUserRow } from "@shared/schema";
 import type { Database } from "../../db/client";
 import { withTransaction, type Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
+import { isUniqueViolation } from "../../db/unique-violation";
 import { appendAuditEvent } from "../audit/audit-repository";
 import { credentialRepository } from "../auth/credential-repository";
 import { hashPassword } from "../auth/password-hashing";
@@ -42,16 +43,6 @@ function requireFresh(row: ApplicationUserRow | undefined): ApplicationUserRow {
       "This user changed while you were editing. Refresh and try again.",
     );
   return row;
-}
-
-/** PostgreSQL unique violation, e.g. two admins provisioning the same email at once. */
-function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "23505"
-  );
 }
 
 /**
@@ -127,7 +118,7 @@ export function createUserService({ db }: { db: Database }) {
         });
         return toVaultUser(row);
       } catch (error) {
-        if (isUniqueViolation(error)) {
+        if (isUniqueViolation(error, "application_users_email_lower_unique")) {
           throw new ApiError(
             409,
             "USER_EXISTS",

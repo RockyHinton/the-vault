@@ -87,6 +87,24 @@ export const scriptRepository = {
       .where(eq(scripts.id, id));
   },
 
+  /** The live script, if any, whose identity is this document lineage (any project). */
+  async findLiveByLineage(
+    executor: DatabaseExecutor,
+    documentLineageId: string,
+  ): Promise<ScriptRow | undefined> {
+    const [row] = await executor
+      .select()
+      .from(scripts)
+      .where(
+        and(
+          eq(scripts.documentLineageId, documentLineageId),
+          isNull(scripts.deletedAt),
+        ),
+      )
+      .limit(1);
+    return row;
+  },
+
   async softDelete(
     tx: Transaction,
     input: { id: string; deletedAt: Date },
