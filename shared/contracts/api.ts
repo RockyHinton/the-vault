@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { rightsStatusValues } from "./rights-status";
 
 export const apiErrorSchema = z.object({
   error: z.object({
@@ -727,3 +728,282 @@ export const attachNewPersonDocumentSchema = z.object({
 export type AttachNewPersonDocumentInput = z.infer<
   typeof attachNewPersonDocumentSchema
 >;
+
+// --- Underlying rights ---
+
+export const rightsTypeSchema = z.enum([
+  "original",
+  "book",
+  "article",
+  "life_rights",
+  "remake",
+  "other",
+]);
+export type RightsType = z.infer<typeof rightsTypeSchema>;
+export const rightsStatusSchema = z.enum(rightsStatusValues);
+
+/** One underlying-rights source for a project (a book, a life story, a remake…). */
+export const rightSchema = z.object({
+  id: z.string().uuid(),
+  projectId: z.string().uuid(),
+  rightsType: rightsTypeSchema,
+  status: rightsStatusSchema,
+  rightsHolder: z.string().nullable(),
+  expiryDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable(),
+  notes: z.string().nullable(),
+  documents: z.array(documentSchema),
+  createdBy: userRefSchema,
+  version: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type Right = z.infer<typeof rightSchema>;
+
+const rightsDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.");
+
+export const createRightSchema = z.object({
+  rightsType: rightsTypeSchema,
+  /** Must belong to the project's current stage; omitted means that stage's first status. */
+  status: rightsStatusSchema.optional(),
+  rightsHolder: z.string().trim().max(200).nullable().optional(),
+  expiryDate: rightsDateSchema.nullable().optional(),
+  notes: z.string().trim().max(4_000).nullable().optional(),
+});
+export type CreateRightInput = z.infer<typeof createRightSchema>;
+
+export const updateRightSchema = z
+  .object({
+    rightsType: rightsTypeSchema.optional(),
+    rightsHolder: z.string().trim().max(200).nullable().optional(),
+    expiryDate: rightsDateSchema.nullable().optional(),
+    notes: z.string().trim().max(4_000).nullable().optional(),
+    version: z.number().int().positive(),
+  })
+  .refine((value) => Object.keys(value).some((key) => key !== "version"), {
+    message: "At least one rights field must be supplied.",
+  });
+export type UpdateRightInput = z.infer<typeof updateRightSchema>;
+
+export const changeRightStatusSchema = z.object({
+  status: rightsStatusSchema,
+  version: z.number().int().positive(),
+});
+export type ChangeRightStatusInput = z.infer<typeof changeRightStatusSchema>;
+export const rightIdParamSchema = z.object({
+  projectId: z.string().uuid(),
+  rightId: z.string().uuid(),
+});
+export const rightDocumentParamSchema = rightIdParamSchema.extend({
+  documentId: z.string().uuid(),
+});
+
+// --- Owner document attachment (shared by People, Rights and Legal) ---
+
+/** Upload-and-attach input for any owner: the owner's service chooses the folder. */
+export const attachNewOwnerDocumentSchema = z.object({
+  fileObjectId: z.string().uuid(),
+  title: z.string().trim().min(1).max(200),
+  status: documentStatusSchema.default("draft"),
+  notes: z.string().trim().max(4_000).optional(),
+});
+export type AttachNewOwnerDocumentInput = z.infer<
+  typeof attachNewOwnerDocumentSchema
+>;
+export const versionOnlySchema = z.object({
+  version: z.number().int().positive(),
+});
+
+// --- Legal records (documentation) ---
+
+export const legalCategorySchema = z.enum([
+  "chain_of_title",
+  "writer_agreements",
+  "investment_agreements",
+  "co_production",
+  "producers_agreements",
+  "director_agreements",
+  "cast_agreements",
+  "banking_docs",
+  "funding_tax_credit",
+  "sales_agency",
+  "cama",
+]);
+export type LegalCategory = z.infer<typeof legalCategorySchema>;
+
+const optionalText = (max: number) =>
+  z.string().trim().max(max).nullable().optional();
+const optionalEmail = z.string().trim().email().max(200).nullable().optional();
+const optionalDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.")
+  .nullable()
+  .optional();
+/** Money inside legal details is a decimal string; Finance will own real ledgers later. */
+const decimalAmount = z
+  .string()
+  .regex(
+    /^\d{1,12}(\.\d{1,2})?$/,
+    "Enter an amount such as 25000 or 25000.50.",
+  );
+export const legalCurrencySchema = z.enum(["GBP", "USD", "EUR"]);
+
+/**
+ * Per-category details, one schema each. `name` and `notes` are typed
+ * columns on the record; everything here is category-specific and stored as
+ * validated JSON. Enum-like selects keep the product's labels as values.
+ */
+export const legalDetailsSchema = z.discriminatedUnion("category", [
+  z.object({
+    category: z.literal("chain_of_title"),
+    holder: z.string().trim().min(1).max(200),
+    rightsType: z.enum([
+      "Original Screenplay",
+      "Underlying Work (Book/Article)",
+      "Rewrite",
+      "Assignment",
+      "Option",
+      "Other",
+    ]),
+    agreementDate: optionalDate,
+  }),
+  z.object({
+    category: z.literal("writer_agreements"),
+    role: z.enum([
+      "Original Writer",
+      "Co-writer",
+      "Rewrite",
+      "Polish",
+      "Story By",
+      "Other",
+    ]),
+    company: optionalText(200),
+    email: optionalEmail,
+  }),
+  z.object({
+    category: z.literal("investment_agreements"),
+    investorType: z.enum(["Individual", "Company", "Fund", "Other"]),
+    currency: legalCurrencySchema,
+    amount: decimalAmount,
+    commitment: z.enum(["Targeted", "Soft committed", "Closed"]),
+    email: optionalEmail,
+  }),
+  z.object({
+    category: z.literal("co_production"),
+    country: optionalText(100),
+    contactName: optionalText(200),
+    email: optionalEmail,
+  }),
+  z.object({
+    category: z.literal("producers_agreements"),
+    role: z.enum([
+      "Producer",
+      "Executive Producer",
+      "Line Producer",
+      "Co-Producer",
+      "Associate Producer",
+      "Other",
+    ]),
+    company: optionalText(200),
+    email: optionalEmail,
+  }),
+  z.object({
+    category: z.literal("director_agreements"),
+    company: optionalText(200),
+    email: optionalEmail,
+  }),
+  z.object({
+    category: z.literal("cast_agreements"),
+    role: z.string().trim().min(1).max(200),
+    castType: z.enum(["Lead", "Supporting", "Day Player", "Extra", "Other"]),
+    fee: decimalAmount.nullable().optional(),
+    agent: optionalText(200),
+  }),
+  z.object({
+    category: z.literal("banking_docs"),
+    purpose: z.enum([
+      "Production Account",
+      "Escrow",
+      "Completion Bond",
+      "Loan Facility",
+      "Other",
+    ]),
+    contactName: optionalText(200),
+    email: optionalEmail,
+  }),
+  z.object({
+    category: z.literal("funding_tax_credit"),
+    fundingType: z.enum([
+      "Tax Credit",
+      "Grant",
+      "Public Fund",
+      "Rebate / Incentive",
+      "Other",
+    ]),
+    expectedAmount: decimalAmount.nullable().optional(),
+    region: optionalText(100),
+  }),
+  z.object({
+    category: z.literal("sales_agency"),
+    territory: optionalText(200),
+    contactName: optionalText(200),
+    email: optionalEmail,
+  }),
+  z.object({
+    category: z.literal("cama"),
+    contactName: optionalText(200),
+    email: optionalEmail,
+  }),
+]);
+export type LegalDetails = z.infer<typeof legalDetailsSchema>;
+
+/** A legal entity of one category with its attached documents. Confirmation is derived, never stored. */
+export const legalRecordSchema = z.object({
+  id: z.string().uuid(),
+  projectId: z.string().uuid(),
+  category: legalCategorySchema,
+  name: z.string(),
+  notes: z.string().nullable(),
+  details: legalDetailsSchema,
+  documents: z.array(documentSchema),
+  createdBy: userRefSchema,
+  version: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type LegalRecord = z.infer<typeof legalRecordSchema>;
+
+export const createLegalRecordSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  notes: z.string().trim().max(4_000).nullable().optional(),
+  details: legalDetailsSchema,
+});
+export type CreateLegalRecordInput = z.infer<typeof createLegalRecordSchema>;
+
+/** Category is immutable; `details` replaces the whole detail set for the record's category. */
+export const updateLegalRecordSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200).optional(),
+    notes: z.string().trim().max(4_000).nullable().optional(),
+    details: legalDetailsSchema.optional(),
+    version: z.number().int().positive(),
+  })
+  .refine((value) => Object.keys(value).some((key) => key !== "version"), {
+    message: "At least one legal record field must be supplied.",
+  });
+export type UpdateLegalRecordInput = z.infer<typeof updateLegalRecordSchema>;
+
+export const legalRecordIdParamSchema = z.object({
+  projectId: z.string().uuid(),
+  recordId: z.string().uuid(),
+});
+export const legalRecordDocumentParamSchema = legalRecordIdParamSchema.extend({
+  documentId: z.string().uuid(),
+});
+export const legalRecordListQuerySchema = z.object({
+  category: legalCategorySchema.optional(),
+});

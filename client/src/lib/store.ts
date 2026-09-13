@@ -29,35 +29,6 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
 
-  rightsItems?: Array<{
-    id: string;
-    rightsType: string;
-    status: string;
-    rightsHolder: string;
-    expiryDate: string | null;
-    notes: string;
-    documents: Array<{ id: string; name: string; url?: string; createdAt: string }>;
-  }>;
-
-  rights?: {
-    type: 'Original' | 'Book' | 'Article' | 'Life Rights' | 'Remake' | 'Other';
-    holder: string;
-    statusByStage: {
-      Evaluation?: 'Identified' | 'Contacted' | 'Under Review' | 'Option Pending' | 'Optioned' | 'Not Available';
-      Development?: 'Optioned' | 'Extended' | 'Purchase Pending' | 'Purchased' | 'Rights Issue';
-      Production?: 'Cleared' | 'Chain Complete' | 'Missing Doc' | 'Expired' | 'Legal Hold';
-    };
-    expiryDate: string;
-    notes: string;
-  };
-
-  // Development Data
-  closingChecklist?: {
-    financeClosed: boolean;
-    talentConfirmed: boolean;
-    legalDocsClosed: boolean;
-  };
-
   // Financing Data (New)
   financing?: {
     totalBudget: number;
@@ -66,21 +37,6 @@ export interface Project {
     breakdown: { category: string; amount: number; percentage: number }[];
     cashflow: { month: string; in: number; out: number }[];
     approvals: { item: string; status: 'Approved' | 'Pending' | 'Rejected'; date?: string }[];
-  };
-
-  // Documentation Checklist (New)
-  documentationChecklist?: Record<string, boolean>;
-
-  // Legal Data (New)
-  legal?: {
-    chainOfTitle: { item: string; status: 'Clean' | 'Issues' | 'Pending'; notes?: string }[];
-    keyAgreements: { 
-      type: string; 
-      party: string; 
-      status: 'Drafting' | 'Negotiation' | 'Executed'; 
-      dueDate?: string;
-    }[];
-    riskAssessment: { category: string; riskLevel: 'Low' | 'Medium' | 'High'; description: string }[];
   };
 
   // Production Schedule Data (New)
@@ -123,35 +79,6 @@ export interface Project {
   // Cash Flow Data (New)
   cashFlow?: CashFlowState;
 
-  // Documentation Entity State (New)
-  documentationState?: DocumentationState;
-}
-
-// --- Documentation Entity Types ---
-
-export interface DocFile {
-  id: string;
-  fileName: string;
-  docType: string;
-  status: 'Draft' | 'Pending' | 'Signed' | 'Approved';
-  uploadedAt: string;
-  notes?: string;
-}
-
-export interface DocEntity {
-  id: string;
-  title: string;
-  meta: Record<string, any>;
-  isExpanded?: boolean;
-  documents: DocFile[];
-}
-
-export interface DocumentationState {
-  // Keyed by docTypeKey (e.g., "chain_of_title", "writer_agreements")
-  [docTypeKey: string]: {
-    entities: DocEntity[];
-    lastUpdatedAt: string;
-  };
 }
 
 // --- Finance Plan Types ---
@@ -387,17 +314,6 @@ const MOCK_PROJECTS: Project[] = [
         { item: 'Top Sheet Budget v4', status: 'Approved', date: '2023-12-01' },
       ]
     },
-    legal: {
-      chainOfTitle: [
-        { item: 'Option Agreement', status: 'Clean', notes: 'Executed 2022' },
-      ],
-      keyAgreements: [
-        { type: 'Director Agreement', party: 'Ridley Scott Jr.', status: 'Executed', dueDate: '2023-10-01' },
-      ],
-      riskAssessment: [
-        { category: 'Copyright', riskLevel: 'Low', description: 'Original screenplay, clean chain of title.' },
-      ]
-    }
   },
   {
     id: 'p2',
@@ -438,11 +354,6 @@ const MOCK_PROJECTS: Project[] = [
       cashflow: [],
       approvals: []
     },
-    closingChecklist: {
-      financeClosed: true,
-      talentConfirmed: true,
-      legalDocsClosed: true
-    }
   },
   {
     id: 'p4',
@@ -611,14 +522,12 @@ interface AppState {
     notes?: string 
   }) => void;
   unarchiveProject: (projectId: string) => void;
-  updateClosingChecklist: (projectId: string, checklist: Partial<Project['closingChecklist']>) => void;
   
   // Budget Actions
   updateBudgetState: (projectId: string, updates: Partial<ProjectFinanceState>) => void;
   updateBudgetDraft: (projectId: string, updates: Partial<BudgetVersion>) => void;
 
   // Evaluation Actions
-  updateDocumentationChecklist: (projectId: string, checklist: Record<string, boolean>) => void;
   updateFinancing: (projectId: string, data: Partial<Project['financing']>) => void;
   getScriptAnnotations: (scriptId: string) => ScriptAnnotation[];
   addAnnotation: (annotation: Omit<ScriptAnnotation, 'id' | 'timestamp' | 'authorId' | 'authorName'>) => void;
@@ -827,15 +736,6 @@ export const useStore = create<AppState>()((set, get) => ({
     })
   })),
 
-  updateClosingChecklist: (projectId, checklist) => set((state) => ({
-    projects: state.projects.map(p => 
-      p.id === projectId ? { 
-        ...p, 
-        closingChecklist: { ...p.closingChecklist, ...checklist } as any 
-      } : p
-    )
-  })),
-
   updateBudgetState: (projectId, updates) => set((state) => ({
     projects: state.projects.map(p => 
       p.id === projectId ? {
@@ -859,15 +759,6 @@ export const useStore = create<AppState>()((set, get) => ({
         }
       };
     })
-  })),
-
-  updateDocumentationChecklist: (projectId, checklist) => set((state) => ({
-    projects: state.projects.map(p => 
-      p.id === projectId ? { 
-        ...p, 
-        documentationChecklist: { ...p.documentationChecklist, ...checklist } 
-      } : p
-    )
   })),
 
   updateFinancing: (projectId, data) => set((state) => ({

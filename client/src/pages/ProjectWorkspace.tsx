@@ -25,6 +25,7 @@ import ProjectNotesView from "@/components/stages/ProjectNotesView";
 import ProducersView from "@/components/stages/ProducersView";
 import CreativesView from "@/components/stages/CreativesView";
 import DocumentationEntityPage from "@/components/features/documentation/DocumentationEntityPage";
+import { legalCategoryForRoute } from "@/features/legal/categories";
 import UnderlyingRightsPage from "@/components/features/UnderlyingRightsPage";
 import DistributionView from "@/components/stages/DistributionView";
 import { Button } from "@/components/ui/button";
@@ -209,8 +210,8 @@ function ProjectSidebar({
  * Bridge for screens that have not been migrated yet: they still read the
  * prototype workspace shape and their fixture state from the store. Each
  * domain migration removes its screen from here. Documents, Evaluation,
- * Project Notes, Producers and Creatives are served from server state in
- * WorkspaceShell.
+ * Project Notes, Producers, Creatives, Underlying Rights and Documentation
+ * are served from server state in WorkspaceShell.
  */
 function PrototypeContent({
   categorySlug,
@@ -237,32 +238,11 @@ function PrototypeContent({
   if (currentCategory?.slug === "financing") {
     return <FinancingView project={project} currentSubcategory={currentSubcategory?.name} subcategoryId={currentSubcategory?.slug} folder={folder} />;
   }
-  if (currentCategory?.slug === "legal") {
-    if (currentSubcategory) {
-      const docTypeKey = currentSubcategory.slug.replace(/-/g, "_");
-      return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="flex items-end justify-between border-b border-border pb-6">
-            <div>
-              <h2 className="text-3xl font-display font-bold text-foreground tracking-tight">{currentSubcategory.name}</h2>
-              <p className="text-muted-foreground mt-1">Manage {currentSubcategory.name.toLowerCase()} documentation and records.</p>
-            </div>
-          </div>
-          <DocumentationEntityPage project={project} docTypeKey={docTypeKey} />
-        </div>
-      );
-    }
-    return <LegalView project={project} />;
-  }
   if (currentCategory?.slug === "schedules") {
     return <SchedulesView project={project} currentSubcategory={currentSubcategory?.name} subcategoryId={currentSubcategory?.slug} folder={folder} />;
   }
   if (currentCategory?.slug === "script") return <ScriptView project={project} />;
   if (currentCategory?.slug === "distribution") return <DistributionView project={project} />;
-  if (currentCategory?.slug === "underlying-rights") {
-    const stage = project.stage === "Development" ? "Development" : project.stage === "Production" ? "Production" : "Evaluation";
-    return <UnderlyingRightsPage project={project} stage={stage} />;
-  }
   if (currentCategory) {
     return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -368,6 +348,20 @@ function WorkspaceShell({ categorySlug, subcategorySlug }: { categorySlug?: stri
             <ProducersView />
           ) : categorySlug === "creatives" ? (
             <CreativesView />
+          ) : categorySlug === "underlying-rights" ? (
+            <UnderlyingRightsPage />
+          ) : categorySlug === "legal" && !subcategorySlug ? (
+            <LegalView />
+          ) : categorySlug === "legal" && currentSubcategory && legalCategoryForRoute(currentSubcategory.slug) ? (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-end justify-between border-b border-border pb-6">
+                <div>
+                  <h2 className="text-3xl font-display font-bold text-foreground tracking-tight">{currentSubcategory.name}</h2>
+                  <p className="text-muted-foreground mt-1">Manage {currentSubcategory.name.toLowerCase()} documentation and records.</p>
+                </div>
+              </div>
+              <DocumentationEntityPage category={legalCategoryForRoute(currentSubcategory.slug)!} />
+            </div>
           ) : !categorySlug && project.stage === "evaluation" && !project.archivedAt ? (
             <EvaluationView />
           ) : categorySlug === "documents" ? (

@@ -29,6 +29,8 @@ import { TaskManager } from "@/components/features/TaskManager";
 import { cn } from "@/lib/utils";
 import { useTransitionProjectStage } from "@/features/projects/use-projects";
 import { usePeople } from "@/features/people/use-people";
+import { useLegalRecords } from "@/features/legal/use-legal-records";
+import { summarizeLegalCategory } from "@shared/contracts";
 import { toast } from "sonner";
 
 interface DevelopmentViewProps {
@@ -37,6 +39,7 @@ interface DevelopmentViewProps {
 
 export default function DevelopmentView({ project }: DevelopmentViewProps) {
   const creativesQuery = usePeople(project.id, "creative");
+  const legalRecordsQuery = useLegalRecords(project.id);
   const transition = useTransitionProjectStage();
   const [showPromoteDialog, setShowPromoteDialog] = useState(false);
   const [, setLocation] = useLocation();
@@ -92,35 +95,28 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
     talentReason = "Talent confirmation not set up yet.";
   }
 
-  // C. LEGAL READINESS
-  // Derived from documentationState
-  const docState = project.documentationState || {};
-  
-  // Helper to check doc status
-  const checkDocCategory = (key: string) => {
-    const section = docState[key];
-    if (!section || section.entities.length === 0) return 'Empty';
-    const pending = section.entities.filter(e => e.documents.some(d => d.status !== 'Approved')).length;
-    return pending > 0 ? 'Pending' : 'Complete';
-  };
-
-  const chainOfTitleStatus = checkDocCategory('chain_of_title');
-  const investmentStatus = checkDocCategory('investment_agreements');
-  const castAgreementsStatus = checkDocCategory('cast_agreements');
+  // C. LEGAL READINESS (from the Legal Records domain, same derivation as the overview)
+  const legalRecords = legalRecordsQuery.data?.data.items ?? [];
+  const categoryCompletion = (category: "chain_of_title" | "investment_agreements" | "cast_agreements") =>
+    summarizeLegalCategory(
+      legalRecords
+        .filter((record) => record.category === category)
+        .map((record) => ({ documentStatuses: record.documents.map((d) => d.status) })),
+    ).completion;
+  const overall = summarizeLegalCategory(
+    legalRecords.map((record) => ({ documentStatuses: record.documents.map((d) => d.status) })),
+  );
 
   let legalStatus: 'Ready' | 'In Progress' | 'Blocking' = 'Blocking';
   let legalReason = "Key agreements missing.";
 
-  const anyPending = Object.values(docState).some(s => s.entities.some(e => e.documents.some(d => d.status !== 'Approved')));
-  const hasEntities = Object.values(docState).some(s => s.entities.length > 0);
-
-  if (!hasEntities) {
+  if (overall.total === 0) {
     legalStatus = 'Blocking';
     legalReason = "No documentation entities created.";
-  } else if (chainOfTitleStatus === 'Empty' || investmentStatus === 'Empty') {
+  } else if (categoryCompletion('chain_of_title') === 'empty' || categoryCompletion('investment_agreements') === 'empty') {
     legalStatus = 'Blocking';
     legalReason = "Chain of Title or Investment Docs empty.";
-  } else if (anyPending) {
+  } else if (overall.pending > 0) {
     legalStatus = 'In Progress';
     legalReason = "Some agreements pending approval.";
   } else {
@@ -151,10 +147,10 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
   }
 
   // Legal Blockers
-  if (chainOfTitleStatus !== 'Complete') {
+  if (categoryCompletion('chain_of_title') !== 'completed') {
     blockers.push({ id: 'l1', text: "Chain of Title not complete.", tag: 'Legal', link: `/project/${project.id}/legal` });
   }
-  if (castAgreementsStatus === 'Pending') {
+  if (categoryCompletion('cast_agreements') === 'in_progress') {
     blockers.push({ id: 'l2', text: "Cast agreements pending approval.", tag: 'Legal', link: `/project/${project.id}/legal` });
   }
 

@@ -98,6 +98,44 @@ export const engagementStatus = pgEnum("engagement_status", [
   "attached",
   "unavailable_passed",
 ]);
+export const rightsType = pgEnum("rights_type", [
+  "original",
+  "book",
+  "article",
+  "life_rights",
+  "remake",
+  "other",
+]);
+export const rightsStatus = pgEnum("rights_status", [
+  "identified",
+  "contacted",
+  "under_review",
+  "option_pending",
+  "optioned",
+  "not_available",
+  "extended",
+  "purchase_pending",
+  "purchased",
+  "rights_issue",
+  "cleared",
+  "chain_complete",
+  "missing_doc",
+  "expired",
+  "legal_hold",
+]);
+export const legalCategory = pgEnum("legal_category", [
+  "chain_of_title",
+  "writer_agreements",
+  "investment_agreements",
+  "co_production",
+  "producers_agreements",
+  "director_agreements",
+  "cast_agreements",
+  "banking_docs",
+  "funding_tax_credit",
+  "sales_agency",
+  "cama",
+]);
 export const contractStatus = pgEnum("contract_status", [
   "not_sent",
   "sent",
@@ -627,6 +665,131 @@ export const projectPersonDocuments = pgTable(
   ],
 );
 
+/**
+ * Columns every owner→documents join table shares. Owners reference the
+ * document lineage (the first version's id) so new versions stay attached.
+ */
+const attachmentColumns = {
+  documentLineageId: uuid("document_lineage_id")
+    .notNull()
+    .references(() => documents.id, { onDelete: "restrict" }),
+  attachedByUserId: uuid("attached_by_user_id")
+    .notNull()
+    .references(() => applicationUsers.id, { onDelete: "restrict" }),
+  attachedAt: timestamp("attached_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+};
+
+/** An underlying-rights source for a project. Status vocabulary is validated per stage by the service. */
+export const projectRights = pgTable(
+  "project_rights",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "restrict" }),
+    rightsType: rightsType("rights_type").notNull(),
+    status: rightsStatus("status").notNull(),
+    rightsHolder: text("rights_holder"),
+    expiryDate: date("expiry_date"),
+    notes: text("notes"),
+    version: integer("version").notNull().default(1),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    index("project_rights_project_created_idx").on(
+      table.projectId,
+      table.createdAt,
+    ),
+    check("project_rights_version_positive", sql`${table.version} > 0`),
+  ],
+);
+
+export const projectRightDocuments = pgTable(
+  "project_right_documents",
+  {
+    rightId: uuid("right_id")
+      .notNull()
+      .references(() => projectRights.id, { onDelete: "restrict" }),
+    ...attachmentColumns,
+  },
+  (table) => [
+    primaryKey({ columns: [table.rightId, table.documentLineageId] }),
+    index("project_right_documents_lineage_idx").on(table.documentLineageId),
+  ],
+);
+
+/** Category-specific legal details; the shape is validated by the contracts' discriminated union. */
+export type LegalDetailsJson = { category: string } & Record<string, unknown>;
+
+/**
+ * A legal/documentation entity of one category (a writer, an investor, a
+ * bank…). It has no stored status: confirmation is derived from the statuses
+ * of its attached documents, per the product rule in the shared contracts.
+ */
+export const legalRecords = pgTable(
+  "legal_records",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "restrict" }),
+    category: legalCategory("category").notNull(),
+    name: text("name").notNull(),
+    notes: text("notes"),
+    details: jsonb("details").$type<LegalDetailsJson>().notNull(),
+    version: integer("version").notNull().default(1),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    index("legal_records_project_category_created_idx").on(
+      table.projectId,
+      table.category,
+      table.createdAt,
+    ),
+    check("legal_records_version_positive", sql`${table.version} > 0`),
+    check(
+      "legal_records_name_not_blank",
+      sql`length(btrim(${table.name})) > 0`,
+    ),
+    check(
+      "legal_records_details_is_object",
+      sql`jsonb_typeof(${table.details}) = 'object'`,
+    ),
+    check(
+      "legal_records_details_category_matches",
+      sql`${table.details}->>'category' = ${table.category}::text`,
+    ),
+  ],
+);
+
+export const legalRecordDocuments = pgTable(
+  "legal_record_documents",
+  {
+    legalRecordId: uuid("legal_record_id")
+      .notNull()
+      .references(() => legalRecords.id, { onDelete: "restrict" }),
+    ...attachmentColumns,
+  },
+  (table) => [
+    primaryKey({ columns: [table.legalRecordId, table.documentLineageId] }),
+    index("legal_record_documents_lineage_idx").on(table.documentLineageId),
+  ],
+);
+
 export const applicationUsersRelations = relations(
   applicationUsers,
   ({ many }) => ({
@@ -652,6 +815,8 @@ export type ProjectReviewRow = typeof projectReviews.$inferSelect;
 export type ProjectNoteRow = typeof projectNotes.$inferSelect;
 export type ProjectTaskRow = typeof projectTasks.$inferSelect;
 export type ProjectPersonRow = typeof projectPeople.$inferSelect;
+export type ProjectRightRow = typeof projectRights.$inferSelect;
+export type LegalRecordRow = typeof legalRecords.$inferSelect;
 export type ProjectPersonDocumentRow =
   typeof projectPersonDocuments.$inferSelect;
 export type ProjectRow = typeof projects.$inferSelect;

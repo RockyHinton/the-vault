@@ -1,11 +1,11 @@
-import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import {
   applicationUsers,
   projectPeople,
   projectPersonDocuments,
-  type ProjectPersonDocumentRow,
   type ProjectPersonRow,
 } from "@shared/schema";
+import { createAttachmentRepository } from "../documents/document-attachments";
 import type { DatabaseExecutor, Transaction } from "../../db/transaction";
 import type { UserRefColumns } from "../users/user-ref";
 
@@ -164,66 +164,9 @@ export const personRepository = {
   },
 };
 
-/** Persistence for the person→document lineage join. */
-export const personDocumentRepository = {
-  /** Attachment rows for every listed person, oldest attachment first. */
-  async listByPersons(
-    executor: DatabaseExecutor,
-    personIds: string[],
-  ): Promise<ProjectPersonDocumentRow[]> {
-    if (personIds.length === 0) return [];
-    return executor
-      .select()
-      .from(projectPersonDocuments)
-      .where(inArray(projectPersonDocuments.personId, personIds))
-      .orderBy(asc(projectPersonDocuments.attachedAt));
-  },
-
-  async find(
-    executor: DatabaseExecutor,
-    input: { personId: string; documentLineageId: string },
-  ): Promise<ProjectPersonDocumentRow | undefined> {
-    const [row] = await executor
-      .select()
-      .from(projectPersonDocuments)
-      .where(
-        and(
-          eq(projectPersonDocuments.personId, input.personId),
-          eq(projectPersonDocuments.documentLineageId, input.documentLineageId),
-        ),
-      )
-      .limit(1);
-    return row;
-  },
-
-  async insert(
-    tx: Transaction,
-    input: {
-      personId: string;
-      documentLineageId: string;
-      attachedByUserId: string;
-    },
-  ): Promise<ProjectPersonDocumentRow> {
-    const [row] = await tx
-      .insert(projectPersonDocuments)
-      .values(input)
-      .returning();
-    return row;
-  },
-
-  async delete(
-    tx: Transaction,
-    input: { personId: string; documentLineageId: string },
-  ): Promise<ProjectPersonDocumentRow | undefined> {
-    const [row] = await tx
-      .delete(projectPersonDocuments)
-      .where(
-        and(
-          eq(projectPersonDocuments.personId, input.personId),
-          eq(projectPersonDocuments.documentLineageId, input.documentLineageId),
-        ),
-      )
-      .returning();
-    return row;
-  },
-};
+/** Persistence for the person→document lineage join (shared owner pattern). */
+export const personDocumentRepository = createAttachmentRepository({
+  table: projectPersonDocuments,
+  ownerColumn: projectPersonDocuments.personId,
+  ownerKey: "personId",
+});

@@ -14,10 +14,7 @@ import { withTransaction, type Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
 import { appendAuditEvent } from "../audit/audit-repository";
 import { documentRepository } from "../documents/document-repository";
-import {
-  createDocumentInTransaction,
-  toDocumentContract,
-} from "../documents/document-service";
+import { createDocumentInTransaction } from "../documents/document-service";
 import { projectRepository } from "../projects/project-repository";
 import { toUserRef } from "../users/user-ref";
 import {
@@ -135,35 +132,15 @@ const blankToNull = (value: string | null | undefined) =>
  * domain and linked by lineage, never copied.
  */
 export function createPersonService({ db }: { db: Database }) {
-  /** Attached current document versions, keyed by person id, in one query pair. */
-  async function documentsByPerson(
+  const documentsByPerson = (
     executor: Transaction | Database,
     projectId: string,
     personIds: string[],
-  ): Promise<Map<string, Document[]>> {
-    const links = await personDocumentRepository.listByPersons(
-      executor,
-      personIds,
-    );
-    const records = await documentRepository.listCurrentByLineages(executor, {
+  ) =>
+    personDocumentRepository.loadDocumentsByOwner(executor, {
       projectId,
-      lineageIds: Array.from(
-        new Set(links.map((link) => link.documentLineageId)),
-      ),
+      ownerIds: personIds,
     });
-    const byLineage = new Map(
-      records.map((record) => [
-        record.document.lineageId,
-        toDocumentContract(record),
-      ]),
-    );
-    const result = new Map<string, Document[]>(personIds.map((id) => [id, []]));
-    for (const link of links) {
-      const document = byLineage.get(link.documentLineageId);
-      if (document) result.get(link.personId)?.push(document);
-    }
-    return result;
-  }
 
   async function load(
     executor: Transaction | Database,
@@ -406,7 +383,7 @@ export function createPersonService({ db }: { db: Database }) {
             "The document was not found.",
           );
         const already = await personDocumentRepository.find(tx, {
-          personId,
+          ownerId: personId,
           documentLineageId: document.document.lineageId,
         });
         if (already)
@@ -438,7 +415,7 @@ export function createPersonService({ db }: { db: Database }) {
         });
         const lineageId = document?.document.lineageId ?? documentId;
         const removed = await personDocumentRepository.delete(tx, {
-          personId,
+          ownerId: personId,
           documentLineageId: lineageId,
         });
         if (!removed)
@@ -467,7 +444,7 @@ export function createPersonService({ db }: { db: Database }) {
     actor: PersonActor,
   ) {
     await personDocumentRepository.insert(tx, {
-      personId: person.id,
+      ownerId: person.id,
       documentLineageId,
       attachedByUserId: actor.userId,
     });

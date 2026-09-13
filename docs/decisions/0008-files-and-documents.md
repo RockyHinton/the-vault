@@ -28,6 +28,14 @@ own transaction through `createDocumentInTransaction` exported by the Documents 
 link only. `project_person_documents` is the reference implementation, documented in
 ARCHITECTURE.md under "Attaching documents to a domain".
 
+**Amendment (Rights + Legal milestone, 2026-09-13).** With three owners the join-table
+persistence became one narrow factory, `createAttachmentRepository`, restricted to the listed
+join tables; it is persistence only. Document status stays Documents-domain state with a single
+mutation path (the Documents update, uploader-or-admin, one `document.updated` event); owners
+such as Legal derive from it and expose no status command of their own. The ADR's original
+rule stands: no polymorphic column, no paths or URLs on owners, bytes only through the Files
+domain.
+
 ## Lifecycle and failure semantics
 
 Object storage and PostgreSQL are not one transaction, so the order is fixed:

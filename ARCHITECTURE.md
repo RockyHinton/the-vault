@@ -41,6 +41,8 @@ cross-domain imports.
   assignment").
 - `server/modules/people`: producers and creatives engaged with a project, and the canonical
   owner→documents attachment (see "Attaching documents to a domain").
+- `server/modules/rights`, `server/modules/legal`: underlying rights and legal/documentation
+  records (see "Rights and legal records").
 - `server/modules/<domain>`: `<domain>-routes.ts`, `<domain>-service.ts`,
   `<domain>-repository.ts`, plus pure domain rules (e.g. `project-lifecycle.ts`).
 - `shared/schema.ts`: PostgreSQL schema only. `shared/contracts`: Zod request/response contracts.
@@ -325,17 +327,24 @@ the bytes. The full rule set is in "Attaching documents to a domain" below.
 
 ## Attaching documents to a domain
 
-`project_person_documents` is the reference implementation. Copy it for Rights, Legal,
-Finance or any owner that carries documents.
+People, Rights and Legal Records attach documents the same way; `project_person_documents`,
+`project_right_documents` and `legal_record_documents` are three instances of one convention.
+Copy it for Finance, Distribution or any owner that carries documents.
 
 - **Reference the lineage.** The join column is `document_lineage_id`, a foreign key to
   `documents.id` that stores the lineage id (the first version's id). A new version keeps the
   attachment, and reads resolve the *current* version with
   `documentRepository.listCurrentByLineages`. Never store a version-specific id on an owner.
+- **One join repository, created per owner.** `createAttachmentRepository({ table,
+  ownerColumn, ownerKey })` in `server/modules/documents/document-attachments.ts` gives an
+  owner its `listByOwners`, `find`, `insert`, `delete` and `loadDocumentsByOwner` over its join
+  table (the schema's shared `attachmentColumns`). The accepted tables are listed in that file,
+  so adding an owner is a reviewed change, not a generic framework. Policy, audit vocabulary and
+  the folder choice stay in the owning service.
 - **The owner's service composes, the Documents domain creates.** Upload-and-attach is one
-  owner command (`POST /projects/:id/people/:personId/documents`) whose transaction calls
-  `createDocumentInTransaction(tx, …)` from `server/modules/documents` and then inserts the
-  join row. The document is created in the owner's workspace folder and appears in the library
+  owner command (`POST /projects/:id/people/:personId/documents`, and the same shape under
+  `rights` and `legal-records`) whose transaction calls `createDocumentInTransaction(tx, …)`
+  from `server/modules/documents` and then inserts the join row. The document is created in the owner's workspace folder and appears in the library
   like any other; the Documents domain writes `document.created`, the owner writes
   `<owner>.document_attached`. If the link fails, the transaction rolls back and the staged
   file is swept later; nothing half-attached exists.
@@ -349,6 +358,48 @@ Finance or any owner that carries documents.
   document query per list, never per row.
 - **Privacy is unchanged.** Bytes are still served only by `GET /files/:id/content` after the
   session check; nothing on the owner is a URL or a path.
+- **Document status is Documents-domain state.** Draft, under review, final and signed are the
+  lifecycle of every document in every folder. They change only through
+  `PATCH /projects/:id/documents/:documentId` under the uploader-or-admin rule and produce one
+  `document.updated` event; no owner exposes a second status command. Owners whose workflow
+  depends on it (Legal) derive from the current versions and never write `documents` rows.
+- **Client.** `OwnerDocumentList` (`client/src/components/documents`) renders the attached
+  list, upload-and-attach and detach for any owner; `ownerDocumentApi(schema)` types the three
+  commands against the owner's contract.
+
+## Rights and legal records
+
+Three concepts stay distinct: a **Right** or **Legal Record** is the business entity and its
+metadata; a **Document** is the versioned Vault record it attaches; a **FileObject** is the
+immutable bytes behind one document version.
+
+- **Rights** (`project_rights`): type, holder, expiry (`date`), notes, creator, version, soft
+  delete. Nothing is created implicitly; an empty project has no rights items. The one product
+  rule is stage-scoped vocabulary: `rightsStatusesByStage` in
+  `shared/contracts/rights-status.ts` lists which statuses belong to evaluation, development and
+  production; `POST …/rights/:id/status` accepts only a status of the project's current stage
+  (`422 STATUS_NOT_ALLOWED_FOR_STAGE`), and a status set in an earlier stage stays readable
+  until changed. The page-level position (cleared, at risk, in progress) is
+  `summarizeRightsForStage`, computed wherever it is shown. There are no transition rules
+  between statuses and no coupling to project stage transitions.
+- **Legal records** (`legal_records`): one aggregate for the eleven documentation categories
+  (`legal_category` enum), with typed `name` and `notes` and a `details` JSONB column
+  validated by `legalDetailsSchema`, a discriminated union with one object schema per
+  category. PostgreSQL checks that `details.category` equals the row's category, that details
+  is an object and that the name is not blank; the category is immutable. Money inside details
+  is a decimal string with a currency enum; Finance will own real ledgers later.
+- **No stored legal status.** A record is *confirmed* when it has at least one attached
+  document and every attached document's current version is `signed` or `final`; a category is
+  empty, in progress or completed from its records (`shared/contracts/legal-completion.ts`,
+  unit-tested, used by the overview, the category page and Development readiness). The UI
+  labels the document statuses Draft, Pending (`under_review`), Signed and Approved (`final`)
+  and edits them through the Documents update, so only a document's uploader or an admin moves
+  a legal record towards confirmation.
+- **Authorization** mirrors People: any active user records, edits, moves status and attaches;
+  removing a record or detaching a document is creator-or-admin.
+- **Audit vocabulary:** `right.created|updated|status_changed|deleted|document_attached|
+  document_detached` and `legal_record.created|updated|deleted|document_attached|
+  document_detached`.
 
 ## Test-environment safety
 
@@ -385,9 +436,9 @@ There is no permissive CORS policy: browser access is same-origin.
 6. Add tests: unit for pure rules, integration against the disposable database for policy,
    constraints, concurrency, authorization (admin and user) and audit rows, and a browser check
    for the UI path.
-7. If the domain carries documents, copy the People attachment (join table keyed by document
-   lineage, `createDocumentInTransaction` inside the owner's command) rather than adding upload
-   code.
+7. If the domain carries documents, add a join table with the schema's `attachmentColumns`,
+   register it in `document-attachments.ts`, and use `createAttachmentRepository` plus
+   `createDocumentInTransaction` inside the owner's command rather than adding upload code.
 
 Avoid raw `fetch` in components, UI state as a source of truth for server records,
 feature-specific data in the Project core table, repositories that open transactions, audit

@@ -16,7 +16,11 @@ import type { EvaluationService } from "./modules/evaluation/evaluation-service"
 import { createFileRouter } from "./modules/files/file-routes";
 import { createNoteRouter } from "./modules/notes/note-routes";
 import type { NoteService } from "./modules/notes/note-service";
+import { createLegalRecordRouter } from "./modules/legal/legal-record-routes";
+import type { LegalRecordService } from "./modules/legal/legal-record-service";
 import { createPersonRouter } from "./modules/people/person-routes";
+import { createRightRouter } from "./modules/rights/right-routes";
+import type { RightService } from "./modules/rights/right-service";
 import type { PersonService } from "./modules/people/person-service";
 import { createTaskRouter } from "./modules/tasks/task-routes";
 import type { TaskService } from "./modules/tasks/task-service";
@@ -39,6 +43,8 @@ export interface ApiRouterDependencies {
   noteService: NoteService;
   taskService: TaskService;
   personService: PersonService;
+  rightService: RightService;
+  legalRecordService: LegalRecordService;
 }
 
 /** `/api/v1`. Add a domain here by mounting its router behind `requireLocalUser`. */
@@ -96,6 +102,16 @@ export function createApiRouter(deps: ApiRouterDependencies): Router {
     "/projects/:projectId/people",
     deps.requireLocalUser,
     createPersonRouter(deps.personService),
+  );
+  api.use(
+    "/projects/:projectId/rights",
+    deps.requireLocalUser,
+    createRightRouter(deps.rightService),
+  );
+  api.use(
+    "/projects/:projectId/legal-records",
+    deps.requireLocalUser,
+    createLegalRecordRouter(deps.legalRecordService),
   );
   api.use(
     "/projects",
