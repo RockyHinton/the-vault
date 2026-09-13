@@ -538,3 +538,192 @@ export const taskIdParamSchema = z.object({
   projectId: z.string().uuid(),
   taskId: z.string().uuid(),
 });
+
+// --- Project people (producers and creatives) ---
+
+export const personKindSchema = z.enum(["producer", "creative"]);
+export type PersonKind = z.infer<typeof personKindSchema>;
+export const creativeRoleTypeSchema = z.enum([
+  "director",
+  "cast",
+  "head_of_department",
+]);
+export type CreativeRoleType = z.infer<typeof creativeRoleTypeSchema>;
+export const engagementStatusSchema = z.enum([
+  "identified",
+  "contacted",
+  "interested",
+  "offered",
+  "confirmed",
+  "contracted",
+  "attached",
+  "unavailable_passed",
+]);
+export type EngagementStatus = z.infer<typeof engagementStatusSchema>;
+export const contractStatusSchema = z.enum([
+  "not_sent",
+  "sent",
+  "signed",
+  "pending_amendments",
+]);
+export type ContractStatus = z.infer<typeof contractStatusSchema>;
+
+const contactTypeSchema = z.string().trim().min(1).max(40);
+/** A contact whose type names an email address must hold a valid one. */
+export const personContactSchema = z
+  .object({
+    type: contactTypeSchema,
+    value: z.string().trim().min(1).max(200),
+  })
+  .superRefine((contact, context) => {
+    if (
+      /mail/i.test(contact.type) &&
+      !z.string().email().safeParse(contact.value).success
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["value"],
+        message: "Enter a valid email address.",
+      });
+    }
+  });
+export type PersonContact = z.infer<typeof personContactSchema>;
+
+export const personLinkSchema = z.object({
+  label: z.string().trim().min(1).max(60),
+  url: z
+    .string()
+    .trim()
+    .url()
+    .max(2_000)
+    .refine((url) => /^https?:\/\//i.test(url), {
+      message: "Links must start with http:// or https://.",
+    }),
+});
+export type PersonLink = z.infer<typeof personLinkSchema>;
+
+const isoDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.");
+
+/** Project-specific hiring information; the status itself moves by command. */
+export const personEngagementSchema = z.object({
+  status: engagementStatusSchema.nullable(),
+  roleOnProject: z.string().nullable(),
+  startDate: isoDateSchema.nullable(),
+  contractStatus: contractStatusSchema.nullable(),
+  notes: z.string().nullable(),
+});
+export type PersonEngagement = z.infer<typeof personEngagementSchema>;
+
+/**
+ * A person engaged with one project: a producer or a creative. The represented
+ * person is not a Vault user; `createdBy` is the user who recorded them.
+ */
+export const personSchema = z.object({
+  id: z.string().uuid(),
+  projectId: z.string().uuid(),
+  kind: personKindSchema,
+  name: z.string(),
+  /** Producer "role" or creative "specific role" (e.g. "Director of Photography"). */
+  roleTitle: z.string(),
+  /** Producers only. */
+  company: z.string().nullable(),
+  /** Creatives only. */
+  creativeRoleType: creativeRoleTypeSchema.nullable(),
+  /** Creatives only: representation. */
+  agent: z.string().nullable(),
+  contacts: z.array(personContactSchema),
+  links: z.array(personLinkSchema),
+  notes: z.string().nullable(),
+  engagement: personEngagementSchema,
+  /** Current versions of every attached document lineage. */
+  documents: z.array(documentSchema),
+  createdBy: userRefSchema,
+  version: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type Person = z.infer<typeof personSchema>;
+
+const personEngagementInputSchema = z.object({
+  roleOnProject: z.string().trim().max(120).nullable().optional(),
+  startDate: isoDateSchema.nullable().optional(),
+  contractStatus: contractStatusSchema.nullable().optional(),
+  notes: z.string().trim().max(4_000).nullable().optional(),
+});
+
+const personCommonInputSchema = {
+  name: z.string().trim().min(1).max(200),
+  roleTitle: z.string().trim().min(1).max(120),
+  contacts: z.array(personContactSchema).max(20).default([]),
+  links: z.array(personLinkSchema).max(20).default([]),
+  notes: z.string().trim().max(4_000).nullable().optional(),
+  engagement: personEngagementInputSchema.default({}),
+  /** The initial engagement status; later changes go through the status command. */
+  status: engagementStatusSchema.nullable().default(null),
+};
+
+export const createPersonSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("producer"),
+    company: z.string().trim().min(1).max(200),
+    ...personCommonInputSchema,
+  }),
+  z.object({
+    kind: z.literal("creative"),
+    creativeRoleType: creativeRoleTypeSchema,
+    agent: z.string().trim().max(200).nullable().optional(),
+    ...personCommonInputSchema,
+  }),
+]);
+export type CreatePersonInput = z.infer<typeof createPersonSchema>;
+
+/** Kind is immutable; kind-specific fields are checked against it by the service. */
+export const updatePersonSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200).optional(),
+    roleTitle: z.string().trim().min(1).max(120).optional(),
+    company: z.string().trim().min(1).max(200).optional(),
+    creativeRoleType: creativeRoleTypeSchema.optional(),
+    agent: z.string().trim().max(200).nullable().optional(),
+    contacts: z.array(personContactSchema).max(20).optional(),
+    links: z.array(personLinkSchema).max(20).optional(),
+    notes: z.string().trim().max(4_000).nullable().optional(),
+    engagement: personEngagementInputSchema.optional(),
+    version: z.number().int().positive(),
+  })
+  .refine((value) => Object.keys(value).some((key) => key !== "version"), {
+    message: "At least one person field must be supplied.",
+  });
+export type UpdatePersonInput = z.infer<typeof updatePersonSchema>;
+
+export const changePersonStatusSchema = z.object({
+  status: engagementStatusSchema.nullable(),
+  version: z.number().int().positive(),
+});
+export type ChangePersonStatusInput = z.infer<typeof changePersonStatusSchema>;
+export const personVersionSchema = z.object({
+  version: z.number().int().positive(),
+});
+export const personIdParamSchema = z.object({
+  projectId: z.string().uuid(),
+  personId: z.string().uuid(),
+});
+export const personDocumentParamSchema = personIdParamSchema.extend({
+  documentId: z.string().uuid(),
+});
+export const personListQuerySchema = z.object({
+  kind: personKindSchema.optional(),
+});
+
+/** Upload-and-attach: the document is created in the person's folder and linked in one transaction. */
+export const attachNewPersonDocumentSchema = z.object({
+  fileObjectId: z.string().uuid(),
+  title: z.string().trim().min(1).max(200),
+  status: documentStatusSchema.default("draft"),
+  notes: z.string().trim().max(4_000).optional(),
+});
+export type AttachNewPersonDocumentInput = z.infer<
+  typeof attachNewPersonDocumentSchema
+>;

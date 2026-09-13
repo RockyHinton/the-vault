@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Project, useStore } from "@/lib/store";
+import { Project } from "@/lib/store";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -28,6 +28,7 @@ import {
 import { TaskManager } from "@/components/features/TaskManager";
 import { cn } from "@/lib/utils";
 import { useTransitionProjectStage } from "@/features/projects/use-projects";
+import { usePeople } from "@/features/people/use-people";
 import { toast } from "sonner";
 
 interface DevelopmentViewProps {
@@ -35,7 +36,7 @@ interface DevelopmentViewProps {
 }
 
 export default function DevelopmentView({ project }: DevelopmentViewProps) {
-  const { creativeProfiles } = useStore();
+  const creativesQuery = usePeople(project.id, "creative");
   const transition = useTransitionProjectStage();
   const [showPromoteDialog, setShowPromoteDialog] = useState(false);
   const [, setLocation] = useLocation();
@@ -72,11 +73,10 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
     financeReason = "Budget is not locked yet.";
   }
 
-  // B. TALENT READINESS
-  // access profiles from store
-  const projectCreatives = creativeProfiles.filter(p => p.projectId === project.id);
+  // B. TALENT READINESS (from the People domain)
+  const projectCreatives = creativesQuery.data?.data.items ?? [];
   const confirmedTalent = projectCreatives.length; // Simply count for MVP
-  const hasKeyCast = projectCreatives.some(p => p.roleType === 'Cast');
+  const hasKeyCast = projectCreatives.some(p => p.creativeRoleType === 'cast');
   
   let talentStatus: 'Ready' | 'Partial' | 'Incomplete' = 'Incomplete';
   let talentReason = "No talent confirmed.";

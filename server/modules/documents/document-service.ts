@@ -26,7 +26,8 @@ export interface DocumentActor {
   requestId: string;
 }
 
-function toContract(record: DocumentRecord): Document {
+/** Also used by owning domains that embed attached documents in their own contracts. */
+export function toDocumentContract(record: DocumentRecord): Document {
   const { document, file, createdBy } = record;
   return {
     id: document.id,
@@ -111,6 +112,57 @@ async function requireProject(tx: Transaction, projectId: string) {
 }
 
 /**
+ * Creates version 1 of a document inside the caller's transaction: claims the
+ * staged file, inserts the row, appends `document.created`. The HTTP create
+ * command and owning domains that attach a document in the same unit of work
+ * (for example a person's profile document) both go through here, so every
+ * document is born the same way.
+ */
+export async function createDocumentInTransaction(
+  tx: Transaction,
+  input: {
+    projectId: string;
+    document: CreateDocumentInput;
+    actor: DocumentActor;
+  },
+): Promise<Document> {
+  const { projectId, document, actor } = input;
+  const id = randomUUID();
+  await requireProject(tx, projectId);
+  const file = await claimStagedFile(tx, document.fileObjectId, actor);
+  const row = await documentRepository.insert(tx, {
+    id,
+    projectId,
+    lineageId: id,
+    versionNumber: 1,
+    fileObjectId: file.id,
+    folder: document.folder,
+    title: document.title,
+    status: document.status,
+    notes: document.notes || null,
+    createdByUserId: actor.userId,
+  });
+  await appendAuditEvent(tx, {
+    actorUserId: actor.userId,
+    action: "document.created",
+    entityType: "document",
+    entityId: row.id,
+    requestId: actor.requestId,
+    metadata: {
+      projectId,
+      folder: document.folder,
+      fileObjectId: file.id,
+      sha256: file.sha256,
+    },
+  });
+  return toDocumentContract(
+    requireDocument(
+      await documentRepository.findById(tx, { projectId, documentId: id }),
+    ),
+  );
+}
+
+/**
  * Documents use-cases. Each command is one transaction over PostgreSQL only;
  * the bytes were already stored by the Files domain before the command runs,
  * so the command either records the document or changes nothing.
@@ -122,7 +174,7 @@ export function createDocumentService({ db }: { db: Database }) {
         projectId,
         folder: input.folder,
       });
-      return rows.map(toContract);
+      return rows.map(toDocumentContract);
     },
 
     /** The requested version plus every live version of its lineage. */
@@ -135,8 +187,8 @@ export function createDocumentService({ db }: { db: Database }) {
         record.document.lineageId,
       );
       return {
-        document: toContract(record),
-        versions: versions.map(toContract),
+        document: toDocumentContract(record),
+        versions: versions.map(toDocumentContract),
       };
     },
 
@@ -145,40 +197,9 @@ export function createDocumentService({ db }: { db: Database }) {
       input: CreateDocumentInput,
       actor: DocumentActor,
     ): Promise<Document> {
-      const id = randomUUID();
-      const record = await withTransaction(db, async (tx) => {
-        await requireProject(tx, projectId);
-        const file = await claimStagedFile(tx, input.fileObjectId, actor);
-        const document = await documentRepository.insert(tx, {
-          id,
-          projectId,
-          lineageId: id,
-          versionNumber: 1,
-          fileObjectId: file.id,
-          folder: input.folder,
-          title: input.title,
-          status: input.status,
-          notes: input.notes || null,
-          createdByUserId: actor.userId,
-        });
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "document.created",
-          entityType: "document",
-          entityId: document.id,
-          requestId: actor.requestId,
-          metadata: {
-            projectId,
-            folder: input.folder,
-            fileObjectId: file.id,
-            sha256: file.sha256,
-          },
-        });
-        return requireDocument(
-          await documentRepository.findById(tx, { projectId, documentId: id }),
-        );
-      });
-      return toContract(record);
+      return withTransaction(db, (tx) =>
+        createDocumentInTransaction(tx, { projectId, document: input, actor }),
+      );
     },
 
     /**
@@ -242,7 +263,7 @@ export function createDocumentService({ db }: { db: Database }) {
           await documentRepository.findById(tx, { projectId, documentId: id }),
         );
       });
-      return toContract(record);
+      return toDocumentContract(record);
     },
 
     async update(
@@ -285,7 +306,7 @@ export function createDocumentService({ db }: { db: Database }) {
           await documentRepository.findById(tx, { projectId, documentId }),
         );
       });
-      return toContract(record);
+      return toDocumentContract(record);
     },
 
     /** Soft-deletes the whole lineage. Bytes are retained (no byte deletion yet). */

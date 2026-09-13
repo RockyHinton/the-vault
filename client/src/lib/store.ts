@@ -307,69 +307,6 @@ export interface ScriptAnnotation {
   timestamp: string;
 }
 
-// --- Producer Profile Types ---
-
-export interface ContactDetail {
-  id: string;
-  type: string;
-  value: string;
-}
-
-export interface LinkDetail {
-  id: string;
-  label: string;
-  url: string;
-}
-
-export type ProfileDocumentStatus = 'Draft' | 'Pending' | 'Signed' | 'Approved';
-export type ProfileDocumentType = 'Agreement' | 'Deal Memo' | 'ID / KYC' | 'NDA' | 'Release' | 'Contract Amendment' | 'Other';
-
-export interface ProfileDocument {
-  id: string;
-  fileName: string;
-  docType: ProfileDocumentType;
-  status: ProfileDocumentStatus;
-  uploadedAt: string;
-  fileUrl?: string;
-}
-
-export interface ProjectEngagement {
-  status: 'Identified' | 'Contacted' | 'Interested' | 'Offered' | 'Confirmed' | 'Contracted' | 'Attached' | 'Unavailable / Passed' | '';
-  roleOnProject?: string;
-  startDate?: string;
-  contractStatus: 'Not sent' | 'Sent' | 'Signed' | 'Pending amendments' | '';
-  notes?: string;
-}
-
-export interface ProducerProfile {
-  id: string;
-  projectId: string;
-  name: string;
-  company: string;
-  role: string;
-  contactDetails: ContactDetail[];
-  links: LinkDetail[];
-  notes: string;
-  engagement?: ProjectEngagement;
-  profileDocuments?: ProfileDocument[];
-}
-
-export type CreativeRoleType = 'Director' | 'Cast' | 'Head of Department';
-
-export interface CreativeProfile {
-  id: string;
-  projectId: string;
-  name: string;
-  roleType: CreativeRoleType;
-  specificRole: string; // e.g. "Director of Photography", "Lead Actor", etc.
-  agent?: string;
-  contactDetails: ContactDetail[];
-  links: LinkDetail[];
-  notes: string;
-  engagement?: ProjectEngagement;
-  profileDocuments?: ProfileDocument[];
-}
-
 // --- Distribution / Territory Types ---
 
 export type TerritoryStatus = 'Available' | 'In Discussion' | 'Licensed' | 'Delivered' | 'Closed';
@@ -643,71 +580,6 @@ const MOCK_ANNOTATIONS: ScriptAnnotation[] = [
   }
 ];
 
-const MOCK_PRODUCER_PROFILES: ProducerProfile[] = [
-  {
-    id: 'pp1',
-    projectId: 'p1',
-    name: 'Sarah Producer',
-    company: 'Rocket Productions',
-    role: 'Lead Producer',
-    contactDetails: [
-      { id: 'cd1', type: 'Email', value: 'sarah@rocket.com' },
-      { id: 'cd2', type: 'Phone', value: '+1 (555) 123-4567' }
-    ],
-    links: [
-      { id: 'l1', label: 'IMDb', url: 'https://imdb.com' },
-      { id: 'l2', label: 'LinkedIn', url: 'https://linkedin.com' }
-    ],
-    notes: 'Primary point of contact for all creative decisions.',
-    engagement: {
-      status: 'Interested',
-      roleOnProject: 'Lead Producer',
-      contractStatus: 'Not sent',
-      notes: ''
-    }
-  }
-];
-
-const MOCK_CREATIVE_PROFILES: CreativeProfile[] = [
-  {
-    id: 'cp1',
-    projectId: 'p1',
-    name: 'Ridley Scott Jr.',
-    roleType: 'Director',
-    specificRole: 'Director',
-    agent: 'CAA',
-    contactDetails: [
-      { id: 'cd3', type: 'Agent Email', value: 'agent@caa.com' }
-    ],
-    links: [
-      { id: 'l3', label: 'IMDb', url: 'https://imdb.com' }
-    ],
-    notes: 'Visionary director with a strong visual style.',
-    engagement: {
-      status: 'Contacted',
-      roleOnProject: 'Director',
-      contractStatus: 'Not sent',
-      notes: ''
-    }
-  },
-  {
-    id: 'cp2',
-    projectId: 'p1',
-    name: 'Hiroyuki Sanada',
-    roleType: 'Cast',
-    specificRole: 'Detective Kaito',
-    contactDetails: [],
-    links: [],
-    notes: 'Attached for lead role.',
-    engagement: {
-      status: 'Attached',
-      roleOnProject: 'Detective Kaito',
-      contractStatus: 'Signed',
-      notes: ''
-    }
-  }
-];
-
 // --- Store ---
 
 interface AppState {
@@ -720,8 +592,6 @@ interface AppState {
   subcategories: Subcategory[];
   documents: Document[];
   annotations: ScriptAnnotation[];
-  producerProfiles: ProducerProfile[];
-  creativeProfiles: CreativeProfile[];
   currentProjectId: string | null;
   territories: Territory[];
 
@@ -755,17 +625,6 @@ interface AppState {
   deleteAnnotation: (annotationId: string) => void;
   deleteProject: (projectId: string) => void;
 
-  // Producer Profile Actions
-  getProducerProfiles: (projectId: string) => ProducerProfile[];
-  addProducerProfile: (profile: Omit<ProducerProfile, 'id'>) => void;
-  updateProducerProfile: (id: string, updates: Partial<ProducerProfile>) => void;
-  deleteProducerProfile: (id: string) => void;
-
-  // Creative Profile Actions
-  getCreativeProfiles: (projectId: string) => CreativeProfile[];
-  addCreativeProfile: (profile: Omit<CreativeProfile, 'id'>) => void;
-  updateCreativeProfile: (id: string, updates: Partial<CreativeProfile>) => void;
-  deleteCreativeProfile: (id: string) => void;
 
   // Generic Project Update
   updateProject: (projectId: string, updates: Partial<Project>) => void;
@@ -791,8 +650,6 @@ export const useStore = create<AppState>()((set, get) => ({
   subcategories: MOCK_SUBCATEGORIES,
   documents: MOCK_DOCUMENTS,
   annotations: MOCK_ANNOTATIONS,
-  producerProfiles: MOCK_PRODUCER_PROFILES,
-  creativeProfiles: MOCK_CREATIVE_PROFILES,
   currentProjectId: null,
   territories: [],
 
@@ -807,8 +664,6 @@ export const useStore = create<AppState>()((set, get) => ({
       projects: MOCK_PROJECTS,
       documents: MOCK_DOCUMENTS,
       annotations: MOCK_ANNOTATIONS,
-      producerProfiles: MOCK_PRODUCER_PROFILES,
-      creativeProfiles: MOCK_CREATIVE_PROFILES,
       territories: [],
       currentProjectId: null,
     }),
@@ -830,52 +685,6 @@ export const useStore = create<AppState>()((set, get) => ({
     projects: state.projects.filter(p => p.id !== projectId),
     // Cleanup related data
     documents: state.documents.filter(d => d.projectId !== projectId),
-  })),
-
-  // Producer Profile Actions
-  getProducerProfiles: (projectId) => {
-    const { producerProfiles } = get();
-    return producerProfiles.filter(p => p.projectId === projectId);
-  },
-
-  addProducerProfile: (profile) => set((state) => ({
-    producerProfiles: [
-      { ...profile, id: `pp${Date.now()}` },
-      ...state.producerProfiles
-    ]
-  })),
-
-  updateProducerProfile: (id, updates) => set((state) => ({
-    producerProfiles: state.producerProfiles.map(p => 
-      p.id === id ? { ...p, ...updates } : p
-    )
-  })),
-
-  deleteProducerProfile: (id) => set((state) => ({
-    producerProfiles: state.producerProfiles.filter(p => p.id !== id)
-  })),
-
-  // Creative Profile Actions
-  getCreativeProfiles: (projectId) => {
-    const { creativeProfiles } = get();
-    return creativeProfiles.filter(p => p.projectId === projectId);
-  },
-
-  addCreativeProfile: (profile) => set((state) => ({
-    creativeProfiles: [
-      { ...profile, id: `cp${Date.now()}` },
-      ...state.creativeProfiles
-    ]
-  })),
-
-  updateCreativeProfile: (id, updates) => set((state) => ({
-    creativeProfiles: state.creativeProfiles.map(p => 
-      p.id === id ? { ...p, ...updates } : p
-    )
-  })),
-
-  deleteCreativeProfile: (id) => set((state) => ({
-    creativeProfiles: state.creativeProfiles.filter(p => p.id !== id)
   })),
 
   setCurrentProject: (id) => set({ currentProjectId: id }),

@@ -16,6 +16,8 @@ import type { EvaluationService } from "./modules/evaluation/evaluation-service"
 import { createFileRouter } from "./modules/files/file-routes";
 import { createNoteRouter } from "./modules/notes/note-routes";
 import type { NoteService } from "./modules/notes/note-service";
+import { createPersonRouter } from "./modules/people/person-routes";
+import type { PersonService } from "./modules/people/person-service";
 import { createTaskRouter } from "./modules/tasks/task-routes";
 import type { TaskService } from "./modules/tasks/task-service";
 import type { FileService } from "./modules/files/file-service";
@@ -36,6 +38,7 @@ export interface ApiRouterDependencies {
   evaluationService: EvaluationService;
   noteService: NoteService;
   taskService: TaskService;
+  personService: PersonService;
 }
 
 /** `/api/v1`. Add a domain here by mounting its router behind `requireLocalUser`. */
@@ -88,6 +91,11 @@ export function createApiRouter(deps: ApiRouterDependencies): Router {
     "/projects/:projectId/tasks",
     deps.requireLocalUser,
     createTaskRouter(deps.taskService),
+  );
+  api.use(
+    "/projects/:projectId/people",
+    deps.requireLocalUser,
+    createPersonRouter(deps.personService),
   );
   api.use(
     "/projects",

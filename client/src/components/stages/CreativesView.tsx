@@ -1,122 +1,95 @@
 import { useMemo, useState } from "react";
-import { Project, useStore, CreativeRoleType } from "@/lib/store";
+import type { CreativeRoleType, EngagementStatus, Person } from "@shared/contracts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, User, Clapperboard, Star, HardHat, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { CreativeDialog } from "@/components/features/CreativeDialog";
-import { CreativeDetailsDialog } from "@/components/features/CreativeDetailsDialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { AlertCircle, Plus, Search, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useProjectWorkspace } from "@/features/projects/workspace-context";
+import { usePeople } from "@/features/people/use-people";
+import {
+  attentionReasons,
+  creativeRoleTypeLabels,
+  creativeRoleTypes,
+  engagementStatusLabel,
+  engagementStatusLabels,
+  engagementStatuses,
+  statusBadgeVariant,
+  statusTone,
+} from "@/features/people/labels";
+import { PersonFormDialog } from "@/components/people/PersonFormDialog";
+import { PersonDetailsDialog, creativeRoleIcon } from "@/components/people/PersonDetailsDialog";
 
-interface CreativesViewProps {
-  project: Project;
-}
+const NOT_SET = "not_set";
+type StatusFilter = "all" | typeof NOT_SET | EngagementStatus;
+type RoleFilter = "all" | CreativeRoleType;
 
-const STATUS_OPTIONS = [
-  "Not set",
-  "Identified",
-  "Contacted",
-  "Interested",
-  "Offered",
-  "Confirmed",
-  "Contracted",
-  "Attached",
-  "Unavailable / Passed",
-] as const;
+const toneClass = {
+  positive: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
+  pending: "border-amber-500/30 bg-amber-500/10 text-amber-700",
+  attention: "border-rose-500/30 bg-rose-500/10 text-rose-700",
+} as const;
 
-type StatusFilter = "All" | (typeof STATUS_OPTIONS)[number];
-
-type AttentionReason = "Contract pending" | "Missing docs" | "Needs approval";
-
-const getVisibleStatus = (profile: any) => {
-  const s = profile?.engagement?.status;
-  if (!s) return "Not set";
-  return s as (typeof STATUS_OPTIONS)[number];
+const firstButtonLabel: Record<RoleFilter, string> = {
+  all: "Add First Creative",
+  director: "Add First Director",
+  cast: "Add First Cast Member",
+  head_of_department: "Add First Head of Department",
 };
 
-const getAttentionReasons = (profile: any): AttentionReason[] => {
-  const reasons: AttentionReason[] = [];
-  const status = profile?.engagement?.status || "";
-  const contractStatus = profile?.engagement?.contractStatus || "";
+/** Directors, cast and heads of department engaged with the project, from server state. */
+export default function CreativesView() {
+  const { project } = useProjectWorkspace();
+  const peopleQuery = usePeople(project.id, "creative");
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  if ((status === "Offered" || status === "Confirmed" || status === "Contracted" || status === "Attached") && contractStatus && contractStatus !== "Signed") {
-    reasons.push("Contract pending");
-  }
+  const people = useMemo(() => peopleQuery.data?.data.items ?? [], [peopleQuery.data]);
+  const selected = people.find((person) => person.id === selectedId) ?? null;
 
-  const docs = profile?.profileDocuments || [];
-  const hasApprovedOrSigned = docs.some((d: any) => d.status === "Approved" || d.status === "Signed");
-  if (!hasApprovedOrSigned) {
-    reasons.push("Missing docs");
-  }
-
-  const needsApproval = !!status && status !== "Contracted" && status !== "Attached" && status !== "Unavailable / Passed";
-  if (needsApproval) {
-    reasons.push("Needs approval");
-  }
-
-  return reasons;
-};
-
-const getStatusBadgeVariant = (status: string) => {
-  if (status === "Contracted" || status === "Attached") return "default" as const;
-  if (status === "Unavailable / Passed") return "destructive" as const;
-  if (status === "Offered" || status === "Confirmed" || status === "Interested") return "secondary" as const;
-  return "outline" as const;
-};
-
-export default function CreativesView({ project }: CreativesViewProps) {
-  const { getCreativeProfiles } = useStore();
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<CreativeRoleType | 'All'>('All');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
-
-  const profiles = getCreativeProfiles(project.id);
-  const selectedProfile = profiles.find(p => p.id === selectedProfileId);
-
-  const filteredProfiles = profiles.filter((p) => {
-    const q = searchQuery.toLowerCase();
-    const matchesSearch = p.name.toLowerCase().includes(q) || p.specificRole.toLowerCase().includes(q);
-    const matchesRole = roleFilter === 'All' || p.roleType === roleFilter;
-
-    const status = getVisibleStatus(p);
-    const matchesStatus = statusFilter === "All" || status === statusFilter;
-
+  const filtered = people.filter((person: Person) => {
+    const q = search.trim().toLowerCase();
+    const matchesSearch =
+      !q || person.name.toLowerCase().includes(q) || person.roleTitle.toLowerCase().includes(q);
+    const matchesRole = roleFilter === "all" || person.creativeRoleType === roleFilter;
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === NOT_SET
+        ? person.engagement.status === null
+        : person.engagement.status === statusFilter);
     return matchesSearch && matchesRole && matchesStatus;
   });
 
   const counts = useMemo(() => {
-    const all = profiles.length;
-    const byStatus: Record<string, number> = {};
-    STATUS_OPTIONS.forEach((s) => (byStatus[s] = 0));
+    const byStatus = new Map<StatusFilter, number>();
     let needsAttention = 0;
-
-    profiles.forEach((p) => {
-      const s = getVisibleStatus(p);
-      byStatus[s] = (byStatus[s] || 0) + 1;
-      if (getAttentionReasons(p).length) needsAttention += 1;
-    });
-
-    return { all, byStatus, needsAttention };
-  }, [profiles]);
-
-  const getRoleIcon = (roleType: string) => {
-    switch(roleType) {
-      case 'Director': return <Clapperboard className="h-3.5 w-3.5 mr-1.5" />;
-      case 'Cast': return <Star className="h-3.5 w-3.5 mr-1.5" />;
-      case 'Head of Department': return <HardHat className="h-3.5 w-3.5 mr-1.5" />;
-      default: return <User className="h-3.5 w-3.5 mr-1.5" />;
+    for (const person of people) {
+      const key: StatusFilter = person.engagement.status ?? NOT_SET;
+      byStatus.set(key, (byStatus.get(key) ?? 0) + 1);
+      if (attentionReasons(person).length) needsAttention += 1;
     }
-  };
+    return { byStatus, needsAttention };
+  }, [people]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border pb-6">
         <div>
           <h2 className="text-3xl font-display font-bold text-foreground tracking-tight flex items-center gap-3">
@@ -128,69 +101,63 @@ export default function CreativesView({ project }: CreativesViewProps) {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button onClick={() => setIsAddDialogOpen(true)} className="shadow-lg shadow-primary/20">
+          <Button onClick={() => setIsAddOpen(true)} className="shadow-lg shadow-primary/20">
             <Plus className="mr-2 h-4 w-4" />
             Add Creative
           </Button>
         </div>
       </div>
 
-      {/* Filters & Search */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-          <div className="flex items-center gap-2 p-1 bg-secondary/10 rounded-lg border border-border/50">
-            {(['All', 'Director', 'Cast', 'Head of Department'] as const).map((filter) => (
+          <div className="flex items-center gap-2 p-1 bg-secondary/10 rounded-lg border border-border/50" role="group" aria-label="Role type">
+            {(["all", ...creativeRoleTypes] as RoleFilter[]).map((filter) => (
               <button
-                data-testid={`button-role-filter-${filter}`}
                 key={filter}
+                type="button"
+                aria-pressed={roleFilter === filter}
                 onClick={() => setRoleFilter(filter)}
                 className={cn(
                   "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
                   roleFilter === filter
                     ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/20"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/20",
                 )}
               >
-                {filter}
+                {filter === "all" ? "All" : creativeRoleTypeLabels[filter]}
               </button>
             ))}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
             <div className="flex items-center gap-2">
-              <span
-                data-testid="label-status-filter"
-                className="text-xs font-medium text-muted-foreground"
-              >
-                Profile status
-              </span>
+              <span className="text-xs font-medium text-muted-foreground">Profile status</span>
               <div className="h-7 w-px bg-border/70" />
             </div>
-
             <div className="w-full sm:w-56">
               <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-                <SelectTrigger data-testid="select-status-filter" className="bg-background/50">
+                <SelectTrigger className="bg-background/50" aria-label="Filter by status">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="All">All ({counts.all})</SelectItem>
-                  {STATUS_OPTIONS.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s} ({counts.byStatus[s] || 0})
+                  <SelectItem value="all">All ({people.length})</SelectItem>
+                  <SelectItem value={NOT_SET}>Not set ({counts.byStatus.get(NOT_SET) ?? 0})</SelectItem>
+                  {engagementStatuses.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {engagementStatusLabels[status]} ({counts.byStatus.get(status) ?? 0})
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                data-testid="input-search-creatives"
+                aria-label="Search creatives"
                 placeholder="Search creatives..."
                 className="pl-9"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
               />
             </div>
           </div>
@@ -199,102 +166,101 @@ export default function CreativesView({ project }: CreativesViewProps) {
         {counts.needsAttention > 0 && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <div className="h-2 w-2 rounded-full bg-destructive/60" />
-            <span data-testid="text-needs-attention-count">{counts.needsAttention} profile(s) need attention</span>
+            <span>{counts.needsAttention} profile(s) need attention</span>
           </div>
         )}
       </div>
 
-      {/* Grid */}
-      {filteredProfiles.length > 0 ? (
+      {peopleQuery.isLoading ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">Loading creatives…</p>
+      ) : peopleQuery.isError ? (
+        <p className="text-sm text-destructive py-8 text-center">Creatives could not be loaded.</p>
+      ) : filtered.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProfiles.map((profile) => {
-            const status = getVisibleStatus(profile);
-            const attention = getAttentionReasons(profile);
-
+          {filtered.map((person) => {
+            const status = person.engagement.status;
+            const reasons = attentionReasons(person);
+            const roleType = person.creativeRoleType;
             return (
               <Card
-                data-testid={`card-creative-${profile.id}`}
-                key={profile.id}
+                key={person.id}
+                data-testid="person-card"
+                role="button"
+                tabIndex={0}
                 className="group cursor-pointer hover:border-primary/50 transition-all duration-300 hover:shadow-md bg-secondary/5 border-secondary"
-                onClick={() => setSelectedProfileId(profile.id)}
+                onClick={() => setSelectedId(person.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setSelectedId(person.id);
+                  }
+                }}
               >
                 <CardContent className="p-6 space-y-4">
                   <div className="flex items-start justify-between">
                     <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 text-xl font-bold">
-                      {profile.name.charAt(0)}
+                      {person.name.charAt(0)}
                     </div>
-
                     <div className="flex items-center gap-2">
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <div
-                              data-testid={`status-approval-creative-${profile.id}`}
-                              className={
-                                "h-8 w-8 rounded-md border flex items-center justify-center " +
-                                (status === "Contracted" || status === "Attached"
-                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700"
-                                  : status === "Offered" || status === "Confirmed"
-                                    ? "border-amber-500/30 bg-amber-500/10 text-amber-700"
-                                    : "border-rose-500/30 bg-rose-500/10 text-rose-700")
-                              }
+                              className={cn(
+                                "h-8 w-8 rounded-md border flex items-center justify-center",
+                                toneClass[statusTone(status)],
+                              )}
                             >
                               <AlertCircle className="h-4 w-4" />
                             </div>
                           </TooltipTrigger>
                           <TooltipContent>
-                            {status}
-                            {attention.length ? ` · ${attention.join(" · ")}` : ""}
+                            {engagementStatusLabel(status)}
+                            {reasons.length ? ` · ${reasons.join(" · ")}` : ""}
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-
-                      <Badge
-                        data-testid={`badge-status-creative-${profile.id}`}
-                        variant={getStatusBadgeVariant(status)}
-                        className="bg-background/50 backdrop-blur-sm"
-                      >
-                        {status}
+                      <Badge variant={statusBadgeVariant(status)} className="bg-background/50 backdrop-blur-sm">
+                        {engagementStatusLabel(status)}
                       </Badge>
-
                       <Badge
-                        variant={
-                          profile.roleType === 'Director' ? 'default' :
-                          profile.roleType === 'Cast' ? 'secondary' : 'outline'
-                        }
+                        variant={roleType === "director" ? "default" : roleType === "cast" ? "secondary" : "outline"}
                         className="bg-opacity-90"
                       >
-                        {profile.roleType}
+                        {roleType ? creativeRoleTypeLabels[roleType] : "Creative"}
                       </Badge>
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="font-bold text-lg text-foreground group-hover:text-primary transition-colors">{profile.name}</h3>
+                    <h3 className="font-bold text-lg text-foreground group-hover:text-primary transition-colors">
+                      {person.name}
+                    </h3>
                     <div className="flex items-center text-muted-foreground text-sm mt-1">
-                      {getRoleIcon(profile.roleType)}
-                      {profile.specificRole}
+                      {creativeRoleIcon(roleType, "h-3.5 w-3.5 mr-1.5")}
+                      {person.roleTitle}
                     </div>
                   </div>
 
                   <div className="space-y-2 pt-2">
-                    {profile.agent && (
+                    {person.agent && (
                       <div className="text-xs text-muted-foreground truncate flex items-center gap-2 bg-background/40 p-1.5 rounded-md">
                         <span className="opacity-70 font-semibold w-10">REP</span>
-                        <span className="font-medium text-foreground">{profile.agent}</span>
+                        <span className="font-medium text-foreground">{person.agent}</span>
                       </div>
                     )}
-                    {profile.contactDetails.slice(0, 2).map((contact) => (
-                      <div key={contact.id} className="text-sm text-muted-foreground truncate flex items-center gap-2 bg-background/40 p-1.5 rounded-md">
+                    {person.contacts.slice(0, 2).map((contact, index) => (
+                      <div
+                        key={`${contact.type}-${index}`}
+                        className="text-sm text-muted-foreground truncate flex items-center gap-2 bg-background/40 p-1.5 rounded-md"
+                      >
                         <div className="h-1.5 w-1.5 rounded-full bg-primary/40" />
                         <span className="opacity-70 text-xs uppercase w-10 truncate">{contact.type}</span>
                         <span className="font-medium text-foreground truncate">{contact.value}</span>
                       </div>
                     ))}
-                    {(profile.contactDetails.length > 2 || (profile.agent && profile.contactDetails.length > 1)) && (
-                      <div className="text-xs text-muted-foreground pl-2">
-                        + more details
-                      </div>
+                    {person.contacts.length > 2 && (
+                      <div className="text-xs text-muted-foreground pl-2">+ more details</div>
                     )}
                   </div>
                 </CardContent>
@@ -307,34 +273,23 @@ export default function CreativesView({ project }: CreativesViewProps) {
           <User className="h-16 w-16 text-muted-foreground/30 mb-4" />
           <h3 className="text-xl font-semibold text-foreground">No creatives found</h3>
           <p className="text-muted-foreground mb-6 max-w-md text-center">
-            {searchQuery || roleFilter !== 'All' ? "Try adjusting your filters or search." : "Start building your creative team by adding profiles."}
+            {search || roleFilter !== "all" || statusFilter !== "all"
+              ? "Try adjusting your filters or search."
+              : "Start building your creative team by adding profiles."}
           </p>
-          <Button onClick={() => setIsAddDialogOpen(true)} data-testid="button-add-first-creative">
+          <Button onClick={() => setIsAddOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            {roleFilter === "Director"
-              ? "Add First Director"
-              : roleFilter === "Cast"
-                ? "Add First Cast Member"
-                : roleFilter === "Head of Department"
-                  ? "Add First Head of Department"
-                  : "Add First Creative"}
+            {firstButtonLabel[roleFilter]}
           </Button>
         </div>
       )}
 
-      {/* Add Dialog */}
-      <CreativeDialog 
-        projectId={project.id} 
-        isOpen={isAddDialogOpen} 
-        onClose={() => setIsAddDialogOpen(false)} 
-      />
-
-      {/* Details Dialog */}
-      {selectedProfile && (
-        <CreativeDetailsDialog
-          profile={selectedProfile}
-          isOpen={!!selectedProfileId}
-          onClose={() => setSelectedProfileId(null)}
+      <PersonFormDialog projectId={project.id} kind="creative" open={isAddOpen} onOpenChange={setIsAddOpen} />
+      {selected && (
+        <PersonDetailsDialog
+          person={selected}
+          open={selectedId !== null}
+          onOpenChange={(open) => !open && setSelectedId(null)}
         />
       )}
     </div>

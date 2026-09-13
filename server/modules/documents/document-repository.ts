@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import {
   applicationUsers,
   documents,
@@ -100,6 +100,24 @@ export const documentRepository = {
       )
       .limit(1);
     return row;
+  },
+
+  /** The live current version of each listed lineage, within one project. */
+  async listCurrentByLineages(
+    executor: DatabaseExecutor,
+    input: { projectId: string; lineageIds: string[] },
+  ): Promise<DocumentRecord[]> {
+    if (input.lineageIds.length === 0) return [];
+    return base(executor)
+      .where(
+        and(
+          eq(documents.projectId, input.projectId),
+          inArray(documents.lineageId, input.lineageIds),
+          eq(documents.isCurrent, true),
+          isNull(documents.deletedAt),
+        ),
+      )
+      .orderBy(desc(documents.createdAt), desc(documents.id));
   },
 
   /** Every live version of a lineage, oldest first. */

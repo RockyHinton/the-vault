@@ -14,11 +14,19 @@ Two domains, one boundary:
   uploader, an optimistic `version`, and a lineage. A new version is a new document row and a
   new file object; earlier versions and their bytes are never touched.
 
-Attachment to other domains is by real foreign keys. A future domain that needs documents
-adds a join table (`<owner>_documents(owner_id, document_id)`) or a nullable
-`document_id` column, both constrained to `documents.id`. There is no polymorphic
+Attachment to other domains is by real foreign keys. A domain that needs documents adds a
+join table (`<owner>_documents(owner_id, document_lineage_id)`) or a nullable
+`document_lineage_id` column, both constrained to `documents.id`. There is no polymorphic
 `attached_to` column: the earlier roadmap sketch was rejected because PostgreSQL could not
 enforce it and every consumer would have had to re-validate it.
+
+**Amendment (People milestone, 2026-09-13).** Owners reference the document *lineage id*
+(the first version's `documents.id`) rather than a specific version, so adding a version never
+detaches a document; reads resolve the current version. Owners create documents inside their
+own transaction through `createDocumentInTransaction` exported by the Documents service, so
+"upload and attach" is atomic and every document is born the same way. Detaching removes the
+link only. `project_person_documents` is the reference implementation, documented in
+ARCHITECTURE.md under "Attaching documents to a domain".
 
 ## Lifecycle and failure semantics
 

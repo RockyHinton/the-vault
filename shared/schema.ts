@@ -1,16 +1,18 @@
 import { relations, sql } from "drizzle-orm";
 import {
-  type AnyPgColumn,
   bigint,
   boolean,
   check,
+  date,
   index,
   integer,
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
+  type AnyPgColumn,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -80,6 +82,28 @@ export const taskCategory = pgEnum("task_category", [
 ]);
 export const taskPriority = pgEnum("task_priority", ["low", "medium", "high"]);
 export const taskStatus = pgEnum("task_status", ["open", "done"]);
+export const personKind = pgEnum("person_kind", ["producer", "creative"]);
+export const creativeRoleType = pgEnum("creative_role_type", [
+  "director",
+  "cast",
+  "head_of_department",
+]);
+export const engagementStatus = pgEnum("engagement_status", [
+  "identified",
+  "contacted",
+  "interested",
+  "offered",
+  "confirmed",
+  "contracted",
+  "attached",
+  "unavailable_passed",
+]);
+export const contractStatus = pgEnum("contract_status", [
+  "not_sent",
+  "sent",
+  "signed",
+  "pending_amendments",
+]);
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -493,6 +517,116 @@ export const projectTasks = pgTable(
   ],
 );
 
+/** JSON value shapes stored on people; validated by the contracts before they get here. */
+export interface PersonContactJson {
+  type: string;
+  value: string;
+}
+export interface PersonLinkJson {
+  label: string;
+  url: string;
+}
+
+/**
+ * A producer or creative engaged with one project. The person is not a Vault
+ * user; `created_by_user_id` is who recorded them. Kind-specific columns are
+ * enforced by CHECK constraints rather than separate tables.
+ */
+export const projectPeople = pgTable(
+  "project_people",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "restrict" }),
+    kind: personKind("kind").notNull(),
+    name: text("name").notNull(),
+    roleTitle: text("role_title").notNull(),
+    company: text("company"),
+    creativeRoleType: creativeRoleType("creative_role_type"),
+    agent: text("agent"),
+    contacts: jsonb("contacts")
+      .$type<PersonContactJson[]>()
+      .notNull()
+      .default([]),
+    links: jsonb("links").$type<PersonLinkJson[]>().notNull().default([]),
+    notes: text("notes"),
+    engagementStatus: engagementStatus("engagement_status"),
+    roleOnProject: text("role_on_project"),
+    startDate: date("start_date"),
+    contractStatus: contractStatus("contract_status"),
+    engagementNotes: text("engagement_notes"),
+    version: integer("version").notNull().default(1),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    index("project_people_project_kind_created_idx").on(
+      table.projectId,
+      table.kind,
+      table.createdAt,
+    ),
+    check("project_people_version_positive", sql`${table.version} > 0`),
+    check(
+      "project_people_name_not_blank",
+      sql`length(btrim(${table.name})) > 0`,
+    ),
+    check(
+      "project_people_role_title_not_blank",
+      sql`length(btrim(${table.roleTitle})) > 0`,
+    ),
+    check(
+      "project_people_producer_has_company",
+      sql`${table.kind} <> 'producer' OR ${table.company} IS NOT NULL`,
+    ),
+    check(
+      "project_people_creative_role_type_matches_kind",
+      sql`(${table.kind} = 'creative') = (${table.creativeRoleType} IS NOT NULL)`,
+    ),
+    check(
+      "project_people_contacts_is_array",
+      sql`jsonb_typeof(${table.contacts}) = 'array'`,
+    ),
+    check(
+      "project_people_links_is_array",
+      sql`jsonb_typeof(${table.links}) = 'array'`,
+    ),
+  ],
+);
+
+/**
+ * Documents attached to a person. The key is the document *lineage* (the first
+ * version's id, itself a `documents.id`), so a new version stays attached and
+ * reads resolve the current version. This is the canonical owner→documents
+ * join for every domain (ADR 0008).
+ */
+export const projectPersonDocuments = pgTable(
+  "project_person_documents",
+  {
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => projectPeople.id, { onDelete: "restrict" }),
+    documentLineageId: uuid("document_lineage_id")
+      .notNull()
+      .references(() => documents.id, { onDelete: "restrict" }),
+    attachedByUserId: uuid("attached_by_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    attachedAt: timestamp("attached_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.personId, table.documentLineageId] }),
+    index("project_person_documents_lineage_idx").on(table.documentLineageId),
+  ],
+);
+
 export const applicationUsersRelations = relations(
   applicationUsers,
   ({ many }) => ({
@@ -517,4 +651,7 @@ export type ProjectEvaluationRow = typeof projectEvaluations.$inferSelect;
 export type ProjectReviewRow = typeof projectReviews.$inferSelect;
 export type ProjectNoteRow = typeof projectNotes.$inferSelect;
 export type ProjectTaskRow = typeof projectTasks.$inferSelect;
+export type ProjectPersonRow = typeof projectPeople.$inferSelect;
+export type ProjectPersonDocumentRow =
+  typeof projectPersonDocuments.$inferSelect;
 export type ProjectRow = typeof projects.$inferSelect;

@@ -39,6 +39,8 @@ cross-domain imports.
 - `server/modules/evaluation`, `server/modules/notes`, `server/modules/tasks`: the
   authored-record domains of the Evaluation stage (see "Authored records, actors and
   assignment").
+- `server/modules/people`: producers and creatives engaged with a project, and the canonical
+  owner→documents attachment (see "Attaching documents to a domain").
 - `server/modules/<domain>`: `<domain>-routes.ts`, `<domain>-service.ts`,
   `<domain>-repository.ts`, plus pure domain rules (e.g. `project-lifecycle.ts`).
 - `shared/schema.ts`: PostgreSQL schema only. `shared/contracts`: Zod request/response contracts.
@@ -315,10 +317,38 @@ points at bytes that were not fully written; unclaimed staged uploads are retire
 bytes answer `502 FILE_UNAVAILABLE`).
 
 **Attachment convention.** A domain that needs documents references `documents.id` with a
-real foreign key: a join table `<owner>_documents(owner_id, document_id)` for many, or a
-nullable `document_id` column for one. There is no polymorphic `attached_to`. No domain stores
-paths, blob URLs or filenames of its own, and no domain calls `FileStorage` directly: it
-creates documents through the Documents service and lets the Files domain own the bytes.
+real foreign key: a join table `<owner>_documents(owner_id, document_lineage_id)` for many, or
+a nullable `document_lineage_id` column for one. There is no polymorphic `attached_to`. No
+domain stores paths, blob URLs or filenames of its own, and no domain calls `FileStorage`
+directly: it creates documents through the Documents service and lets the Files domain own
+the bytes. The full rule set is in "Attaching documents to a domain" below.
+
+## Attaching documents to a domain
+
+`project_person_documents` is the reference implementation. Copy it for Rights, Legal,
+Finance or any owner that carries documents.
+
+- **Reference the lineage.** The join column is `document_lineage_id`, a foreign key to
+  `documents.id` that stores the lineage id (the first version's id). A new version keeps the
+  attachment, and reads resolve the *current* version with
+  `documentRepository.listCurrentByLineages`. Never store a version-specific id on an owner.
+- **The owner's service composes, the Documents domain creates.** Upload-and-attach is one
+  owner command (`POST /projects/:id/people/:personId/documents`) whose transaction calls
+  `createDocumentInTransaction(tx, …)` from `server/modules/documents` and then inserts the
+  join row. The document is created in the owner's workspace folder and appears in the library
+  like any other; the Documents domain writes `document.created`, the owner writes
+  `<owner>.document_attached`. If the link fails, the transaction rolls back and the staged
+  file is swept later; nothing half-attached exists.
+- **Attach existing, detach, delete.** `PUT …/documents/:documentId` links an existing document
+  of the same project by any of its version ids; `DELETE …/documents/:documentId` removes the
+  link only. Deleting the owner soft-deletes the owner and leaves documents, versions and bytes
+  untouched. Document metadata, versions and deletion continue to go through the Documents
+  routes and their uploader-or-admin policy.
+- **Contracts embed the current version.** The owner's contract carries
+  `documents: Document[]` (the shared `documentSchema`), loaded with one link query and one
+  document query per list, never per row.
+- **Privacy is unchanged.** Bytes are still served only by `GET /files/:id/content` after the
+  session check; nothing on the owner is a URL or a path.
 
 ## Test-environment safety
 
@@ -355,6 +385,9 @@ There is no permissive CORS policy: browser access is same-origin.
 6. Add tests: unit for pure rules, integration against the disposable database for policy,
    constraints, concurrency, authorization (admin and user) and audit rows, and a browser check
    for the UI path.
+7. If the domain carries documents, copy the People attachment (join table keyed by document
+   lineage, `createDocumentInTransaction` inside the owner's command) rather than adding upload
+   code.
 
 Avoid raw `fetch` in components, UI state as a source of truth for server records,
 feature-specific data in the Project core table, repositories that open transactions, audit

@@ -208,8 +208,9 @@ function ProjectSidebar({
 /**
  * Bridge for screens that have not been migrated yet: they still read the
  * prototype workspace shape and their fixture state from the store. Each
- * domain migration removes its screen from here. Documents, Evaluation and
- * Project Notes are served from server state in WorkspaceShell.
+ * domain migration removes its screen from here. Documents, Evaluation,
+ * Project Notes, Producers and Creatives are served from server state in
+ * WorkspaceShell.
  */
 function PrototypeContent({
   categorySlug,
@@ -257,8 +258,6 @@ function PrototypeContent({
     return <SchedulesView project={project} currentSubcategory={currentSubcategory?.name} subcategoryId={currentSubcategory?.slug} folder={folder} />;
   }
   if (currentCategory?.slug === "script") return <ScriptView project={project} />;
-  if (currentCategory?.slug === "producers") return <ProducersView project={project} />;
-  if (currentCategory?.slug === "creatives") return <CreativesView project={project} />;
   if (currentCategory?.slug === "distribution") return <DistributionView project={project} />;
   if (currentCategory?.slug === "underlying-rights") {
     const stage = project.stage === "Development" ? "Development" : project.stage === "Production" ? "Production" : "Evaluation";
@@ -365,6 +364,10 @@ function WorkspaceShell({ categorySlug, subcategorySlug }: { categorySlug?: stri
         <div className="min-h-[500px]">
           {categorySlug === "project-notes" ? (
             <ProjectNotesView />
+          ) : categorySlug === "producers" ? (
+            <ProducersView />
+          ) : categorySlug === "creatives" ? (
+            <CreativesView />
           ) : !categorySlug && project.stage === "evaluation" && !project.archivedAt ? (
             <EvaluationView />
           ) : categorySlug === "documents" ? (
