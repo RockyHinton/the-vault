@@ -13,6 +13,7 @@ import {
   createRequireLocalUser,
 } from "./modules/auth/auth-service";
 import type { CookiePolicy } from "./modules/auth/session-cookie";
+import { createBudgetService } from "./modules/budget/budget-service";
 import { createDocumentService } from "./modules/documents/document-service";
 import { createEvaluationService } from "./modules/evaluation/evaluation-service";
 import { createNoteService } from "./modules/notes/note-service";
@@ -146,6 +147,7 @@ export async function createVaultServer(
       rightService: createRightService({ db }),
       legalRecordService: createLegalRecordService({ db }),
       scriptService: createScriptService({ db }),
+      budgetService: createBudgetService({ db }),
       taskService: createTaskService({ db }),
     }),
   );

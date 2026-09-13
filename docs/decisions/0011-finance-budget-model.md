@@ -1,0 +1,41 @@
+# ADR 0011: Finance money conventions and the budget version model
+
+Date: 2026-09-13. Status: accepted.
+
+## Context
+
+The prototype budget summed JavaScript numbers, invented an approver, kept history as
+copied UI snapshots and stored a currency per version. Finance Plan and Cash Flow will be
+built on the Budget, so its money, versioning and locking rules must be settled first and
+must hold for the later modules.
+
+## Decision
+
+1. **Money is exact everywhere.** PostgreSQL `numeric(14,2)`; decimal strings on the API;
+   `shared/contracts/money.ts` (validation, BigInt-cents arithmetic, formatting) in both
+   client and server. No monetary value passes through floating point. Totals are derived by
+   PostgreSQL from line items and never stored; a stored total would be a second source of
+   truth.
+2. **One currency per budget**, chosen at creation and fixed for all versions. Later finance
+   modules read it from the budget; FX is out of scope.
+3. **Budget and BudgetVersion are distinct.** The budget is the stable project concept; a
+   version is a numbered revision owning its departments and line items. At most one version
+   is open (draft or awaiting approval), enforced by a partial unique index.
+4. **Locked is permanent.** Content commands lock the version row and require `draft`;
+   lifecycle steps are explicit commands (`submit`, `lock`, `revisions`) with actors and
+   timestamps stored on the version and mirrored in audit events. A revision copies a locked
+   version into a new draft; nothing ever mutates a locked version.
+5. **Approval is administrative.** Any active user drafts, edits and submits; only a
+   studio_admin approves and locks.
+6. **Later finance work references an exact `budget_version_id`.** A finance plan or a cash
+   flow projection states which locked budget version it derives from, so its numbers stay
+   reproducible when a revision is opened.
+7. **No generic finance framework.** No ledger, double-entry, approval engine or currency
+   conversion; each later subdomain gets its own explicit model that follows these rules.
+
+## Consequences
+
+- Finance Plan and Cash Flow copy the same shapes: `numeric(14,2)`, decimal strings, derived
+  totals, explicit lifecycle commands, and a foreign key to the budget version they use.
+- Historical budgets are queryable forever with exact totals and the people who locked them.
+- Concurrency is per line item and per department for edits, per version for lifecycle.

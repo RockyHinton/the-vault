@@ -3,6 +3,8 @@ import {
   annotationTagSchema,
   annotationTypeSchema,
   archiveReasonSchema,
+  budgetVersionStatusSchema,
+  currencyCodeSchema,
   contractStatusSchema,
   creativeRoleTypeSchema,
   documentStatusSchema,
@@ -26,6 +28,8 @@ import {
   annotationType,
   applicationRole,
   archiveReason,
+  budgetVersionStatus,
+  currencyCode,
   contractStatus,
   creativeRoleType,
   documentStatus,
@@ -89,6 +93,13 @@ describe("contract and schema enum parity", () => {
     expect(rightsTypeSchema.options).toEqual(rightsType.enumValues);
     expect(rightsStatusSchema.options).toEqual(rightsStatus.enumValues);
     expect(legalCategorySchema.options).toEqual(legalCategory.enumValues);
+  });
+
+  it("finance enums match", () => {
+    expect(currencyCodeSchema.options).toEqual(currencyCode.enumValues);
+    expect(budgetVersionStatusSchema.options).toEqual(
+      budgetVersionStatus.enumValues,
+    );
   });
 
   it("script annotation enums match", () => {

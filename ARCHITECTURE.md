@@ -45,6 +45,9 @@ cross-domain imports.
   records (see "Rights and legal records").
 - `server/modules/scripts`: screenplays over document lineages and exact-version annotations
   (see "Scripts and provenance").
+- `server/modules/budget`: the Finance bounded context's first subdomain (see "Finance:
+  budget"). Finance Plan and Cash Flow will be sibling modules that reference it, not parts
+  of it.
 - `server/modules/<domain>`: `<domain>-routes.ts`, `<domain>-service.ts`,
   `<domain>-repository.ts`, plus pure domain rules (e.g. `project-lifecycle.ts`).
 - `shared/schema.ts`: PostgreSQL schema only. `shared/contracts`: Zod request/response contracts.
@@ -266,6 +269,50 @@ script-side version counter and today no mutable script field, so the script row
 - **Audit vocabulary:** `script.created|version_added|deleted` (alongside the Documents
   domain's own `document.created|version_added`) and
   `script_annotation.created|updated|deleted`.
+
+## Finance: budget
+
+Finance is one bounded context built as separate subdomains. The Budget is the first and
+sets the money conventions the later Finance Plan and Cash Flow modules follow (ADR 0011).
+
+- **Money.** `numeric(14,2)` in PostgreSQL, decimal strings such as `"125000.00"` on the wire
+  (`moneySchema` normalises authored input; `moneyValueSchema` describes server output), and
+  `shared/contracts/money.ts` for exact BigInt-cents sums and float-free formatting on the
+  client. Totals are never stored: PostgreSQL sums line items per department and per version
+  (`totalsByDepartment`, `totalsByVersion`) and the API returns them as strings. Nothing in the
+  product converts money through `Number`.
+- **Currency** lives once, on `budgets.currency` (`currency_code` enum), fixed for every
+  version. There is no FX and no per-line currency.
+- **Budget vs version.** `budgets` is the stable project concept (one per project);
+  `budget_versions` are numbered revisions with a status (`draft`, `awaiting_approval`,
+  `locked`), the actors and timestamps of each lifecycle step, and an optimistic `version` for
+  lifecycle commands. Departments and line items belong to exactly one budget version; a
+  revision copies them. A partial unique index allows at most one non-locked version per
+  budget, and CHECK constraints tie `submitted_*` and `locked_*` to the status.
+- **Locked means immutable.** Every content command takes the version's row lock
+  (`SELECT … FOR UPDATE`) and then requires status `draft` (`409
+  BUDGET_VERSION_NOT_EDITABLE`), so a concurrent submit or lock cannot slip in between the
+  check and the write. Locked versions are never written again; the only way forward is
+  `POST …/versions/:id/revisions`, which creates draft N+1 with copied departments, line items
+  and document links.
+- **Lifecycle commands** are explicit: `submit` (any active user), `lock` (studio_admin), and
+  `revisions` (any active user, only from a locked version, only while nothing is open).
+  Content edits are collaborative and draft-only; department removal requires an empty
+  department; department names are unique per version, case-insensitively (PostgreSQL index).
+- **Concurrency boundary.** Line items and departments carry their own `version` so two users
+  can edit different lines of the same draft; lifecycle commands use the budget version's
+  `version`. Every stale write answers 409 with no side effects.
+- **Addressing history.** `GET …/budget` returns the open version (or, if none, the latest
+  locked one) as `currentVersion`, `latestLockedVersionId`, and a summary of every version
+  with its exact total and lifecycle actors; `GET …/budget/versions/:id` returns any exact
+  version. **Finance Plan and Cash Flow must reference a `budget_version_id`, normally the
+  locked version they were built from, never "whatever is current".**
+- **Documents** attach to a department of a specific version through
+  `budget_department_documents` (owner convention, folder `financing/budget`); revisions copy
+  the links, so the same lineage is attached to the successor.
+- **Audit vocabulary:** `budget.created`, `budget_version.created|submitted|locked`,
+  `budget_department.created|updated|deleted|document_attached|document_detached`,
+  `budget_line_item.created|updated|deleted` (amount changes record from and to).
 
 ## HTTP boundary
 

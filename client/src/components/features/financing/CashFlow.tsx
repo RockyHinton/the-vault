@@ -3,7 +3,6 @@ import {
   Project, 
   useStore, 
   FinanceSource, 
-  Department, 
   OneOffPayment,
   SpendWindow 
 } from "@/lib/store";
@@ -126,14 +125,15 @@ export default function CashFlow({ project }: CashFlowProps) {
     date: format(new Date(), 'yyyy-MM-dd')
   });
 
+  /** Prototype shape retained until the Cash Flow milestone reads the real Budget domain. */
+type PrototypeDepartment = { id: string; name: string; lineItems: { amount: number }[] };
+
   // -- Data Extraction (Read-Only) --
   
-  // 1. Locked Budget Departments
-  // Find the last locked budget or just use the draft if no locked (for design mode flexibility)
-  // Logic: project.budgetState?.budgetLockedHistory (take last) OR project.budgetState?.budgetDraft
-  const lockedBudget = project.budgetState?.budgetLockedHistory?.[0] || project.budgetState?.budgetDraft;
-  const departments = lockedBudget?.departments || [];
-  const totalBudget = lockedBudget?.departments.reduce((sum, d) => sum + d.lineItems.reduce((s, i) => s + i.amount, 0), 0) || project.financing?.totalBudget || 0;
+  // 1. Budget departments: the real Budget domain is read in the Cash Flow milestone;
+  // until then this prototype screen has no budget departments to draw on.
+  const departments: PrototypeDepartment[] = [];
+  const totalBudget = project.financing?.totalBudget || 0;
   const currency = project.financing?.currency || 'USD';
 
   // 2. Approved Funding Sources

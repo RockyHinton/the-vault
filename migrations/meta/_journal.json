@@ -71,6 +71,13 @@
       "when": 1789307065683,
       "tag": "0009_scripts_annotations",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789319376425,
+      "tag": "0010_budget",
+      "breakpoints": true
     }
   ]
 }

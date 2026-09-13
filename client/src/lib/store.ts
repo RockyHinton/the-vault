@@ -68,8 +68,6 @@ export interface Project {
     archivedBy?: string;
   };
 
-  // Budget Tool Data (New)
-  budgetState?: ProjectFinanceState;
 
   // Finance Plan Data (New)
   financePlan?: {
@@ -134,50 +132,6 @@ export interface CashFlowState {
   sourceAdjustments: Record<string, {
     expectedDate?: string;
   }>;
-}
-
-// --- Budget Tool Types ---
-
-export interface LineItem {
-  id: string;
-  name: string;
-  amount: number;
-  note?: string;
-}
-
-export interface BudgetDocument {
-  id: string;
-  fileName: string;
-  docType: 'Quote' | 'Estimate' | 'Bid' | 'Top Sheet' | 'Schedule' | 'Other';
-  status: 'Reference' | 'Pending approval' | 'Approved';
-  uploadedAt: string;
-}
-
-export interface Department {
-  id: string;
-  name: string;
-  lineItems: LineItem[];
-  documents: BudgetDocument[];
-  isExpanded?: boolean; // UI state
-}
-
-export interface BudgetVersion {
-  id: string;
-  status: 'draft' | 'awaiting_approval' | 'locked';
-  createdAt: string;
-  submittedAt: string | null;
-  approvedAt: string | null;
-  createdBy: string | null;
-  approvedBy: string | null;
-  currency: string;
-  departments: Department[];
-}
-
-export interface ProjectFinanceState {
-  // project.totalBudget is the source of truth for the Overview, but we track state here too
-  budgetDraft: BudgetVersion | null;
-  budgetPending: BudgetVersion | null;
-  budgetLockedHistory: BudgetVersion[];
 }
 
 export interface Category {
@@ -474,9 +428,6 @@ interface AppState {
   }) => void;
   unarchiveProject: (projectId: string) => void;
   
-  // Budget Actions
-  updateBudgetState: (projectId: string, updates: Partial<ProjectFinanceState>) => void;
-  updateBudgetDraft: (projectId: string, updates: Partial<BudgetVersion>) => void;
 
   // Evaluation Actions
   updateFinancing: (projectId: string, data: Partial<Project['financing']>) => void;
@@ -678,31 +629,6 @@ export const useStore = create<AppState>()((set, get) => ({
         ...rest,
         stage: targetStage,
         updatedAt: new Date().toISOString()
-      };
-    })
-  })),
-
-  updateBudgetState: (projectId, updates) => set((state) => ({
-    projects: state.projects.map(p => 
-      p.id === projectId ? {
-        ...p,
-        budgetState: {
-          ...(p.budgetState || { budgetDraft: null, budgetPending: null, budgetLockedHistory: [] }),
-          ...updates
-        }
-      } : p
-    )
-  })),
-
-  updateBudgetDraft: (projectId, updates) => set((state) => ({
-    projects: state.projects.map(p => {
-      if (p.id !== projectId || !p.budgetState?.budgetDraft) return p;
-      return {
-        ...p,
-        budgetState: {
-          ...p.budgetState,
-          budgetDraft: { ...p.budgetState.budgetDraft, ...updates }
-        }
       };
     })
   })),

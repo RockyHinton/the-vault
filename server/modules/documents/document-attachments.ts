@@ -2,6 +2,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import type { Document } from "@shared/contracts";
 import {
+  budgetDepartmentDocuments,
   legalRecordDocuments,
   projectPersonDocuments,
   projectRightDocuments,
@@ -26,8 +27,9 @@ export interface AttachmentRow {
 type AttachmentJoinTable =
   | typeof projectPersonDocuments
   | typeof projectRightDocuments
-  | typeof legalRecordDocuments;
-type OwnerKey = "personId" | "rightId" | "legalRecordId";
+  | typeof legalRecordDocuments
+  | typeof budgetDepartmentDocuments;
+type OwnerKey = "personId" | "rightId" | "legalRecordId" | "budgetDepartmentId";
 
 /**
  * Persistence for one owner→documents join table. Owners (People, Rights,
@@ -102,7 +104,12 @@ export function createAttachmentRepository(config: {
         [ownerKey]: input.ownerId,
         documentLineageId: input.documentLineageId,
         attachedByUserId: input.attachedByUserId,
-      } as { personId: string; rightId: string; legalRecordId: string } & {
+      } as {
+        personId: string;
+        rightId: string;
+        legalRecordId: string;
+        budgetDepartmentId: string;
+      } & {
         documentLineageId: string;
         attachedByUserId: string;
       };

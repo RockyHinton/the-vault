@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { rightsStatusValues } from "./rights-status";
+import { currencyCodeSchema, moneySchema, moneyValueSchema } from "./money";
 
 export const apiErrorSchema = z.object({
   error: z.object({
@@ -850,7 +851,8 @@ const decimalAmount = z
     /^\d{1,12}(\.\d{1,2})?$/,
     "Enter an amount such as 25000 or 25000.50.",
   );
-export const legalCurrencySchema = z.enum(["GBP", "USD", "EUR"]);
+/** Legal details reuse the shared currency vocabulary. */
+export const legalCurrencySchema = currencyCodeSchema;
 
 /**
  * Per-category details, one schema each. `name` and `notes` are typed
@@ -1129,4 +1131,153 @@ export type UpdateScriptAnnotationInput = z.infer<
 
 export const scriptAnnotationIdParamSchema = scriptIdParamSchema.extend({
   annotationId: z.string().uuid(),
+});
+
+// --- Finance: Budget ---
+
+export const budgetVersionStatusSchema = z.enum([
+  "draft",
+  "awaiting_approval",
+  "locked",
+]);
+export type BudgetVersionStatus = z.infer<typeof budgetVersionStatusSchema>;
+
+/** The departments every new budget starts with; users may rename, add and remove them. */
+export const defaultBudgetDepartments = [
+  "Above the Line",
+  "Production",
+  "Post-Production",
+  "Other",
+  "Contingency",
+] as const;
+
+export const budgetLineItemSchema = z.object({
+  id: z.string().uuid(),
+  departmentId: z.string().uuid(),
+  name: z.string(),
+  /** Directly authored; there is no quantity × unit cost in the product. */
+  amount: moneyValueSchema,
+  note: z.string().nullable(),
+  position: z.number().int().nonnegative(),
+  version: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type BudgetLineItem = z.infer<typeof budgetLineItemSchema>;
+
+export const budgetDepartmentSchema = z.object({
+  id: z.string().uuid(),
+  budgetVersionId: z.string().uuid(),
+  name: z.string(),
+  position: z.number().int().nonnegative(),
+  /** Sum of this department's line items, computed by PostgreSQL. */
+  total: moneyValueSchema,
+  lineItems: z.array(budgetLineItemSchema),
+  documents: z.array(documentSchema),
+  version: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type BudgetDepartment = z.infer<typeof budgetDepartmentSchema>;
+
+/** A version's lifecycle facts: who did what and when. Locked versions never change again. */
+export const budgetVersionSummarySchema = z.object({
+  id: z.string().uuid(),
+  budgetId: z.string().uuid(),
+  versionNumber: z.number().int().positive(),
+  status: budgetVersionStatusSchema,
+  /** Sum of every line item in the version, computed by PostgreSQL. */
+  total: moneyValueSchema,
+  createdBy: userRefSchema,
+  createdAt: z.string().datetime(),
+  submittedBy: userRefSchema.nullable(),
+  submittedAt: z.string().datetime().nullable(),
+  lockedBy: userRefSchema.nullable(),
+  lockedAt: z.string().datetime().nullable(),
+  /** Optimistic concurrency for lifecycle commands. */
+  version: z.number().int().positive(),
+  updatedAt: z.string().datetime(),
+});
+export type BudgetVersionSummary = z.infer<typeof budgetVersionSummarySchema>;
+
+export const budgetVersionSchema = budgetVersionSummarySchema.extend({
+  currency: currencyCodeSchema,
+  departments: z.array(budgetDepartmentSchema),
+});
+export type BudgetVersion = z.infer<typeof budgetVersionSchema>;
+
+/**
+ * The project's budget. `currentVersion` is the open (draft or awaiting)
+ * version if one exists, otherwise the latest locked version; `versions`
+ * lists every version newest first so any exact version can be addressed.
+ */
+export const budgetSchema = z.object({
+  id: z.string().uuid(),
+  projectId: z.string().uuid(),
+  currency: currencyCodeSchema,
+  createdBy: userRefSchema,
+  createdAt: z.string().datetime(),
+  currentVersion: budgetVersionSchema,
+  /** The version later Finance Plan and Cash Flow work should reference, when one exists. */
+  latestLockedVersionId: z.string().uuid().nullable(),
+  versions: z.array(budgetVersionSummarySchema),
+});
+export type Budget = z.infer<typeof budgetSchema>;
+
+export const createBudgetSchema = z.object({
+  currency: currencyCodeSchema.default("USD"),
+});
+export type CreateBudgetInput = z.infer<typeof createBudgetSchema>;
+
+export const createBudgetDepartmentSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+});
+export type CreateBudgetDepartmentInput = z.infer<
+  typeof createBudgetDepartmentSchema
+>;
+export const updateBudgetDepartmentSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  version: z.number().int().positive(),
+});
+export type UpdateBudgetDepartmentInput = z.infer<
+  typeof updateBudgetDepartmentSchema
+>;
+
+export const createBudgetLineItemSchema = z.object({
+  name: z.string().trim().min(1).max(200).default("New Item"),
+  amount: moneySchema.default("0.00"),
+  note: z.string().trim().max(1_000).nullable().optional(),
+});
+export type CreateBudgetLineItemInput = z.infer<
+  typeof createBudgetLineItemSchema
+>;
+export const updateBudgetLineItemSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200).optional(),
+    amount: moneySchema.optional(),
+    note: z.string().trim().max(1_000).nullable().optional(),
+    version: z.number().int().positive(),
+  })
+  .refine((value) => Object.keys(value).some((key) => key !== "version"), {
+    message: "At least one line item field must be supplied.",
+  });
+export type UpdateBudgetLineItemInput = z.infer<
+  typeof updateBudgetLineItemSchema
+>;
+
+export const budgetVersionParamSchema = z.object({
+  projectId: z.string().uuid(),
+  versionId: z.string().uuid(),
+});
+export const budgetDepartmentParamSchema = z.object({
+  projectId: z.string().uuid(),
+  departmentId: z.string().uuid(),
+});
+export const budgetDepartmentDocumentParamSchema =
+  budgetDepartmentParamSchema.extend({
+    documentId: z.string().uuid(),
+  });
+export const budgetLineItemParamSchema = z.object({
+  projectId: z.string().uuid(),
+  lineItemId: z.string().uuid(),
 });

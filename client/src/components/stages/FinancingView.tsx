@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/select";
 import DocumentLibrary from "@/pages/DocumentLibrary";
 import { FinancingSourcesTable } from "@/components/features/FinancingSourcesTable";
-import BudgetTool from "@/components/features/financing/BudgetTool";
 import FinancePlan from "@/components/features/financing/FinancePlan";
 import CashFlow from "@/components/features/financing/CashFlow";
 import { 
@@ -51,10 +50,6 @@ export default function FinancingView({ project, currentSubcategory, subcategory
 
   // If we are drilled down into a subcategory (like "Banking Docs"), just show the docs
   if (subcategoryId) {
-    if (currentSubcategory === "Budget") {
-      return <BudgetTool project={project} />;
-    }
-    
     if (currentSubcategory === "Finance Plan") {
       return <FinancePlan project={project} />;
     }

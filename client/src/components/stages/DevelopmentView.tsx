@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { useTransitionProjectStage } from "@/features/projects/use-projects";
 import { usePeople } from "@/features/people/use-people";
 import { useLegalRecords } from "@/features/legal/use-legal-records";
+import { useBudget } from "@/features/budget/use-budget";
 import { summarizeLegalCategory } from "@shared/contracts";
 import { toast } from "sonner";
 
@@ -40,6 +41,7 @@ interface DevelopmentViewProps {
 export default function DevelopmentView({ project }: DevelopmentViewProps) {
   const creativesQuery = usePeople(project.id, "creative");
   const legalRecordsQuery = useLegalRecords(project.id);
+  const budgetQuery = useBudget(project.id);
   const transition = useTransitionProjectStage();
   const [showPromoteDialog, setShowPromoteDialog] = useState(false);
   const [, setLocation] = useLocation();
@@ -50,7 +52,7 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
   const totalBudget = project.financing?.totalBudget || 0;
   const securedFunding = project.financing?.secured || 0;
   const fundingGap = Math.max(0, totalBudget - securedFunding);
-  const budgetLocked = project.budgetState?.budgetLockedHistory && project.budgetState.budgetLockedHistory.length > 0;
+  const budgetLocked = Boolean(budgetQuery.data?.data?.latestLockedVersionId);
   
   // Mock cashflow check (since we might not have deep cashflow data populated yet)
   const hasCashflowIssues = project.financing?.cashflow?.some(m => (m.out > m.in + 1000)); // Arbitrary check for demo

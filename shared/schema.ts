@@ -151,6 +151,12 @@ export const annotationTag = pgEnum("annotation_tag", [
   "budget_impact",
   "other",
 ]);
+export const currencyCode = pgEnum("currency_code", ["GBP", "USD", "EUR"]);
+export const budgetVersionStatus = pgEnum("budget_version_status", [
+  "draft",
+  "awaiting_approval",
+  "locked",
+]);
 export const contractStatus = pgEnum("contract_status", [
   "not_sent",
   "sent",
@@ -885,6 +891,176 @@ export const scriptAnnotations = pgTable(
   ],
 );
 
+/**
+ * One budget per project; the currency is fixed here for every version so
+ * later finance work (plan, cash flow) reads one unambiguous currency.
+ */
+export const budgets = pgTable(
+  "budgets",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "restrict" }),
+    currency: currencyCode("currency").notNull(),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("budgets_project_unique").on(table.projectId)],
+);
+
+/**
+ * A numbered revision of the budget. At most one version per budget is open
+ * (draft or awaiting approval); locked versions are permanent financial
+ * history and are never written again. `version` guards lifecycle commands.
+ */
+export const budgetVersions = pgTable(
+  "budget_versions",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    budgetId: uuid("budget_id")
+      .notNull()
+      .references(() => budgets.id, { onDelete: "restrict" }),
+    versionNumber: integer("version_number").notNull(),
+    status: budgetVersionStatus("status").notNull().default("draft"),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => applicationUsers.id, { onDelete: "restrict" }),
+    submittedByUserId: uuid("submitted_by_user_id").references(
+      () => applicationUsers.id,
+      {
+        onDelete: "restrict",
+      },
+    ),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    lockedByUserId: uuid("locked_by_user_id").references(
+      () => applicationUsers.id,
+      {
+        onDelete: "restrict",
+      },
+    ),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    version: integer("version").notNull().default(1),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("budget_versions_budget_number_unique").on(
+      table.budgetId,
+      table.versionNumber,
+    ),
+    uniqueIndex("budget_versions_one_open_per_budget")
+      .on(table.budgetId)
+      .where(sql`${table.status} <> 'locked'`),
+    check("budget_versions_version_positive", sql`${table.version} > 0`),
+    check("budget_versions_number_positive", sql`${table.versionNumber} > 0`),
+    check(
+      "budget_versions_submitted_matches_status",
+      sql`(${table.status} = 'draft') = (${table.submittedAt} IS NULL) AND (${table.submittedAt} IS NULL) = (${table.submittedByUserId} IS NULL)`,
+    ),
+    check(
+      "budget_versions_locked_matches_status",
+      sql`(${table.status} = 'locked') = (${table.lockedAt} IS NOT NULL) AND (${table.lockedAt} IS NULL) = (${table.lockedByUserId} IS NULL)`,
+    ),
+  ],
+);
+
+export const budgetDepartments = pgTable(
+  "budget_departments",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    budgetVersionId: uuid("budget_version_id")
+      .notNull()
+      .references(() => budgetVersions.id, { onDelete: "restrict" }),
+    name: text("name").notNull(),
+    position: integer("position").notNull(),
+    version: integer("version").notNull().default(1),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("budget_departments_version_name_unique").on(
+      table.budgetVersionId,
+      sql`lower(${table.name})`,
+    ),
+    uniqueIndex("budget_departments_version_position_unique").on(
+      table.budgetVersionId,
+      table.position,
+    ),
+    check("budget_departments_version_positive", sql`${table.version} > 0`),
+    check(
+      "budget_departments_name_not_blank",
+      sql`length(btrim(${table.name})) > 0`,
+    ),
+    check(
+      "budget_departments_position_non_negative",
+      sql`${table.position} >= 0`,
+    ),
+  ],
+);
+
+/** A cost line. `amount` is exact numeric(14,2) and never negative in a cost budget. */
+export const budgetLineItems = pgTable(
+  "budget_line_items",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    budgetDepartmentId: uuid("budget_department_id")
+      .notNull()
+      .references(() => budgetDepartments.id, { onDelete: "restrict" }),
+    name: text("name").notNull(),
+    amount: numeric("amount", { precision: 14, scale: 2 })
+      .notNull()
+      .default("0.00"),
+    note: text("note"),
+    position: integer("position").notNull(),
+    version: integer("version").notNull().default(1),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("budget_line_items_department_position_unique").on(
+      table.budgetDepartmentId,
+      table.position,
+    ),
+    check("budget_line_items_version_positive", sql`${table.version} > 0`),
+    check(
+      "budget_line_items_name_not_blank",
+      sql`length(btrim(${table.name})) > 0`,
+    ),
+    check("budget_line_items_amount_non_negative", sql`${table.amount} >= 0`),
+    check(
+      "budget_line_items_position_non_negative",
+      sql`${table.position} >= 0`,
+    ),
+  ],
+);
+
+/** Supporting documents (quotes, estimates) attached to a department of one version. */
+export const budgetDepartmentDocuments = pgTable(
+  "budget_department_documents",
+  {
+    budgetDepartmentId: uuid("budget_department_id")
+      .notNull()
+      .references(() => budgetDepartments.id, { onDelete: "restrict" }),
+    ...attachmentColumns,
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.budgetDepartmentId, table.documentLineageId],
+    }),
+    index("budget_department_documents_lineage_idx").on(
+      table.documentLineageId,
+    ),
+  ],
+);
+
 export const applicationUsersRelations = relations(
   applicationUsers,
   ({ many }) => ({
@@ -914,6 +1090,10 @@ export type ProjectRightRow = typeof projectRights.$inferSelect;
 export type LegalRecordRow = typeof legalRecords.$inferSelect;
 export type ScriptRow = typeof scripts.$inferSelect;
 export type ScriptAnnotationRow = typeof scriptAnnotations.$inferSelect;
+export type BudgetRow = typeof budgets.$inferSelect;
+export type BudgetVersionRow = typeof budgetVersions.$inferSelect;
+export type BudgetDepartmentRow = typeof budgetDepartments.$inferSelect;
+export type BudgetLineItemRow = typeof budgetLineItems.$inferSelect;
 export type ProjectPersonDocumentRow =
   typeof projectPersonDocuments.$inferSelect;
 export type ProjectRow = typeof projects.$inferSelect;

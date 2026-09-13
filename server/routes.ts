@@ -6,6 +6,8 @@ import { createAuditRouter } from "./modules/audit/audit-routes";
 import { createAuthRouter } from "./modules/auth/auth-routes";
 import type { AuthService } from "./modules/auth/auth-service";
 import type { CookiePolicy } from "./modules/auth/session-cookie";
+import { createBudgetRouter } from "./modules/budget/budget-routes";
+import type { BudgetService } from "./modules/budget/budget-service";
 import { createDocumentRouter } from "./modules/documents/document-routes";
 import type { DocumentService } from "./modules/documents/document-service";
 import {
@@ -48,6 +50,7 @@ export interface ApiRouterDependencies {
   rightService: RightService;
   legalRecordService: LegalRecordService;
   scriptService: ScriptService;
+  budgetService: BudgetService;
 }
 
 /** `/api/v1`. Add a domain here by mounting its router behind `requireLocalUser`. */
@@ -120,6 +123,11 @@ export function createApiRouter(deps: ApiRouterDependencies): Router {
     "/projects/:projectId/scripts",
     deps.requireLocalUser,
     createScriptRouter(deps.scriptService),
+  );
+  api.use(
+    "/projects/:projectId/budget",
+    deps.requireLocalUser,
+    createBudgetRouter(deps.budgetService),
   );
   api.use(
     "/projects",

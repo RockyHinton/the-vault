@@ -25,6 +25,7 @@ import ProjectNotesView from "@/components/stages/ProjectNotesView";
 import ProducersView from "@/components/stages/ProducersView";
 import CreativesView from "@/components/stages/CreativesView";
 import DocumentationEntityPage from "@/components/features/documentation/DocumentationEntityPage";
+import BudgetTool from "@/components/features/financing/BudgetTool";
 import { legalCategoryForRoute } from "@/features/legal/categories";
 import UnderlyingRightsPage from "@/components/features/UnderlyingRightsPage";
 import DistributionView from "@/components/stages/DistributionView";
@@ -210,8 +211,8 @@ function ProjectSidebar({
  * Bridge for screens that have not been migrated yet: they still read the
  * prototype workspace shape and their fixture state from the store. Each
  * domain migration removes its screen from here. Documents, Evaluation,
- * Project Notes, Producers, Creatives, Underlying Rights, Documentation and
- * Script are served from server state in WorkspaceShell.
+ * Project Notes, Producers, Creatives, Underlying Rights, Documentation,
+ * Script and the Budget are served from server state in WorkspaceShell.
  */
 function PrototypeContent({
   categorySlug,
@@ -347,6 +348,8 @@ function WorkspaceShell({ categorySlug, subcategorySlug }: { categorySlug?: stri
             <ProducersView />
           ) : categorySlug === "creatives" ? (
             <CreativesView />
+          ) : categorySlug === "financing" && subcategorySlug === "budget" ? (
+            <BudgetTool />
           ) : categorySlug === "script" ? (
             <ScriptView />
           ) : categorySlug === "underlying-rights" ? (
