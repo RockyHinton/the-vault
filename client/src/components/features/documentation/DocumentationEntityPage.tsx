@@ -48,7 +48,6 @@ import {
   useDeleteLegalRecord,
   useDetachLegalDocument,
   useLegalRecords,
-  useUpdateAttachedDocumentStatus,
 } from "@/features/legal/use-legal-records";
 import {
   detailsFromForm,
@@ -57,6 +56,7 @@ import {
   type LegalFieldDescriptor,
 } from "@/features/legal/categories";
 import { OwnerDocumentList } from "@/components/documents/OwnerDocumentList";
+import { useUpdateDocument } from "@/features/documents/use-documents";
 
 function FieldInput({
   field,
@@ -106,7 +106,7 @@ export default function DocumentationEntityPage({ category }: { category: LegalC
   const remove = useDeleteLegalRecord();
   const attachNew = useAttachNewLegalDocument();
   const detach = useDetachLegalDocument();
-  const updateDocumentStatus = useUpdateAttachedDocumentStatus();
+  const updateDocument = useUpdateDocument();
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [name, setName] = useState("");
@@ -383,11 +383,10 @@ export default function DocumentationEntityPage({ category }: { category: LegalC
                         statusEditor={{
                           canEdit: canManageDocument,
                           onChange: (doc, status) =>
-                            updateDocumentStatus.mutate({
+                            updateDocument.mutate({
                               projectId: project.id,
                               documentId: doc.id,
-                              status,
-                              version: doc.version,
+                              input: { status, version: doc.version },
                             }),
                         }}
                       />

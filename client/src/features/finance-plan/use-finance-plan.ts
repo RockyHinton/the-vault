@@ -229,6 +229,7 @@ export function useCommitFinanceSource(projectId: string) {
     sourceId: string,
     changes: Omit<UpdateFinanceSourceInput, "version">,
   ) => {
+    let reportedError: unknown;
     const run = (): Promise<unknown> => {
       const cached = queryClient.getQueryData<{ data: FinancePlan } | null>(
         financePlanKey(projectId),
@@ -241,9 +242,17 @@ export function useCommitFinanceSource(projectId: string) {
           sourceId,
           input: { ...changes, version: source.version },
         })
-        .catch(() => undefined);
+        .catch((error: unknown) => {
+          reportedError = error;
+          return undefined; // the mutation hook toasts; the field learns below
+        });
     };
     const next = (queues.current.get(sourceId) ?? Promise.resolve()).then(run);
     queues.current.set(sourceId, next);
+    // The queue itself never rejects (so later commits still run); the caller's
+    // promise does, so the field can fall back to the authoritative value.
+    return next.then(() => {
+      if (reportedError !== undefined) throw reportedError;
+    });
   };
 }

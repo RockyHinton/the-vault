@@ -322,7 +322,10 @@ export function TaskManager({ projectId }: TaskManagerProps) {
           {tasksQuery.isLoading && (
             <div className="text-muted-foreground text-sm">Loading tasks…</div>
           )}
-          {!tasksQuery.isLoading && openTasks.length === 0 && doneTasks.length === 0 && (
+          {tasksQuery.isError && (
+            <div className="text-destructive text-sm" role="alert">Tasks could not be loaded.</div>
+          )}
+          {tasksQuery.isSuccess && openTasks.length === 0 && doneTasks.length === 0 && (
             <div className="text-center text-muted-foreground py-12 text-sm border-2 border-dashed border-border rounded-lg bg-card/50">
               <FileText className="h-8 w-8 mx-auto mb-2 opacity-20" />
               No tasks yet. Add one to get started.

@@ -13,9 +13,6 @@ const documentResponse = apiSuccessSchema(documentSchema);
 const documentListResponse = apiSuccessSchema(
   z.object({ items: z.array(documentSchema) }),
 );
-const documentDetailResponse = apiSuccessSchema(
-  z.object({ document: documentSchema, versions: z.array(documentSchema) }),
-);
 
 const base = (projectId: string) => `/projects/${projectId}/documents`;
 
@@ -25,8 +22,6 @@ export const listDocuments = (projectId: string, folder?: DocumentFolder) =>
     `${base(projectId)}${folder ? `?folder=${encodeURIComponent(folder)}` : ""}`,
     documentListResponse,
   );
-export const getDocument = (projectId: string, documentId: string) =>
-  apiClient("GET", `${base(projectId)}/${documentId}`, documentDetailResponse);
 export const createDocument = (projectId: string, input: CreateDocumentInput) =>
   apiClient("POST", base(projectId), documentResponse, input);
 export const addDocumentVersion = (

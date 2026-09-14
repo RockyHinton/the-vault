@@ -111,6 +111,33 @@ test("people: producers and creatives persist with status, documents and shared 
     page.getByRole("row").filter({ hasText: "Deal Memo" }),
   ).toBeVisible();
 
+  // A new version added in the library reaches the producer's profile through
+  // client-side navigation: the owner query is invalidated, not the whole page.
+  await page.getByRole("button", { name: "New version of Deal Memo" }).click();
+  await page.locator("#document-file").setInputFiles({
+    name: "Deal Memo v2.pdf",
+    mimeType: "application/pdf",
+    buffer: pdf,
+  });
+  await page.getByRole("button", { name: "Upload version" }).click();
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await page.locator("aside").getByText("Producers", { exact: true }).click();
+  await page
+    .getByTestId("person-card")
+    .filter({ hasText: "Sam Producer" })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Documents" })
+    .click();
+  await expect(
+    page
+      .getByRole("dialog")
+      .getByTestId("person-document")
+      .filter({ hasText: "Deal Memo" }),
+  ).toContainText("v2");
+  await page.keyboard.press("Escape");
+
   // Creatives: add a cast member.
   await page.goto(`${projectUrl}/creatives`);
   await page.getByRole("button", { name: "Add Creative" }).click();

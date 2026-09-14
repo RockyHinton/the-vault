@@ -23,7 +23,10 @@ export function useCurrentUser() {
 
 /**
  * UX gating only: hides administrative navigation and actions from ordinary
- * users. The server enforces every permission independently.
+ * users. The server enforces every permission independently. Callers sit
+ * behind `ProtectedRoute`, which renders nothing until the session resolves
+ * and leaves for the sign-in page when it cannot, so `false` here always
+ * means "a signed-in ordinary user", never "unknown".
  */
 export function useIsStudioAdmin(): boolean {
   const { data } = useCurrentUser();

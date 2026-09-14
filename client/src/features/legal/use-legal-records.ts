@@ -1,14 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import type {
   AttachNewOwnerDocumentInput,
-  DocumentStatus,
   CreateLegalRecordInput,
   LegalCategory,
   UpdateLegalRecordInput,
 } from "@shared/contracts";
 import { useVaultMutation } from "@/lib/mutations";
 import { documentsKey } from "@/features/documents/use-documents";
-import { updateDocument } from "@/features/documents/documents-api";
 import {
   createLegalRecord,
   deleteLegalRecord,
@@ -113,28 +111,5 @@ export function useDetachLegalDocument() {
       ),
     invalidate: afterDocumentChange,
     successMessage: "Document detached.",
-  });
-}
-
-/**
- * Document status is Documents-domain state (uploader-or-admin, one audit
- * event); Legal only derives from it. This wraps the Documents PATCH so the
- * legal records that embed the document refresh too.
- */
-export function useUpdateAttachedDocumentStatus() {
-  return useVaultMutation({
-    mutationFn: ({
-      projectId,
-      documentId,
-      status,
-      version,
-    }: {
-      projectId: string;
-      documentId: string;
-      status: DocumentStatus;
-      version: number;
-    }) => updateDocument(projectId, documentId, { status, version }),
-    invalidate: afterDocumentChange,
-    successMessage: "Document status updated.",
   });
 }

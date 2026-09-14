@@ -242,6 +242,8 @@ export default function EvaluationScoringView({ onBack }: { onBack: () => void }
           <div className="space-y-4">
             {reviewsQuery.isLoading ? (
               <div className="text-muted-foreground">Loading reviews…</div>
+            ) : reviewsQuery.isError ? (
+              <div className="text-destructive" role="alert">Reviews could not be loaded.</div>
             ) : reviews.length === 0 ? (
               <div className="text-center py-10 border-2 border-dashed rounded-xl text-muted-foreground">
                 No reviews yet. Be the first to rate!

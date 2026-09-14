@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { FileText, Search, CheckCircle2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProjectWorkspace } from "@/features/projects/workspace-context";
+import { QueryState } from "@/components/QueryState";
 import { useLegalRecords } from "@/features/legal/use-legal-records";
 import { legalCategories, legalCategoryConfig } from "@/features/legal/categories";
 
@@ -64,6 +65,7 @@ export default function LegalView() {
         </p>
       </div>
 
+      <QueryState queries={[recordsQuery]} loading="Loading documentation…" error="Documentation could not be loaded.">
       <div className="grid grid-cols-4 gap-4">
         <Card className="bg-card/50 border-border/50">
           <CardContent className="p-4 flex flex-col items-center justify-center text-center">
@@ -122,9 +124,7 @@ export default function LegalView() {
         </div>
       </div>
 
-      {recordsQuery.isError ? (
-        <p className="text-sm text-destructive py-8 text-center">Documentation could not be loaded.</p>
-      ) : (
+      {(
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {visible.length === 0 ? (
             <div className="col-span-full py-12 text-center text-muted-foreground border border-dashed rounded-lg bg-muted/10">
@@ -202,6 +202,7 @@ export default function LegalView() {
           )}
         </div>
       )}
+      </QueryState>
     </div>
   );
 }

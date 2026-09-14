@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Project } from "@/lib/store";
+import type { Project } from "@shared/contracts";
+import { QueryState } from "@/components/QueryState";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -188,6 +189,11 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
   };
 
   return (
+    <QueryState
+      queries={[creativesQuery, legalRecordsQuery, overviewQuery]}
+      loading="Loading development readiness…"
+      error="Development readiness could not be loaded."
+    >
     <div className="space-y-6 animate-in fade-in duration-500 w-full px-6 py-8 max-w-[1600px] mx-auto">
       
       {/* Header */}
@@ -407,5 +413,6 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
       </AlertDialog>
 
     </div>
+    </QueryState>
   );
 }

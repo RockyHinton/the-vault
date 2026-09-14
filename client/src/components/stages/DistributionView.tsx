@@ -474,7 +474,7 @@ function TerritoryWorkspace({ projectId, territoryId, onBack }: { projectId: str
 
       <Separator />
 
-      <DealInformation key={`${territory.id}-${territory.version}`} territory={territory} pending={update.isPending} onSave={(input) => update.mutateAsync({ ...ref, input: { ...input, version: territory.version } })} />
+      <DealInformation territory={territory} pending={update.isPending} onSave={(input) => update.mutateAsync({ ...ref, input: { ...input, version: territory.version } })} />
     </div>
   );
 }
@@ -499,7 +499,20 @@ function DealInformation({
     generalNotes: territory.deal.generalNotes ?? "",
   };
   const [draft, setDraft] = useState<DealDraft>(saved);
-  const dirty = (Object.keys(saved) as (keyof DealDraft)[]).some((k) => draft[k].trim() !== saved[k]);
+  // Reconcile per field: when the server value of a field changes (our own
+  // save or a colleague's), only that field's draft follows it; text typed
+  // into the other fields is kept.
+  const [seen, setSeen] = useState<DealDraft>(saved);
+  const fields = Object.keys(saved) as (keyof DealDraft)[];
+  if (fields.some((k) => seen[k] !== saved[k])) {
+    setSeen(saved);
+    setDraft((current) => {
+      const next = { ...current };
+      for (const k of fields) if (seen[k] !== saved[k]) next[k] = saved[k];
+      return next;
+    });
+  }
+  const dirty = fields.some((k) => draft[k].trim() !== saved[k]);
 
   const field = (name: keyof DealDraft, label: string, multiline = false) => (
     <div className="space-y-1.5">

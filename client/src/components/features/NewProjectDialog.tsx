@@ -44,7 +44,7 @@ export function NewProjectDialog({ isOpen, onClose }: NewProjectDialogProps) {
         <DialogHeader>
           <DialogTitle>New Project Evaluation</DialogTitle>
           <DialogDescription>
-            Create a server-backed project. Title is saved now; package and finance tooling remain prototype-only.
+            Start a new project. Its title, logline and genre can be edited later from the workspace header.
           </DialogDescription>
         </DialogHeader>
         

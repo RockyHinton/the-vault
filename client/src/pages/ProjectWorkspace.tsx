@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link, useRoute, useLocation } from "wouter";
-import { useStore } from "@/lib/store";
-import { toWorkspaceProject } from "@/features/projects/project-fixture-adapter";
 import {
   ProjectWorkspaceProvider,
   useProjectWorkspace,
@@ -14,6 +12,7 @@ import {
 import { Shell } from "@/components/layout/Shell";
 import DocumentLibrary from "@/pages/DocumentLibrary";
 import { folderForWorkspacePath } from "@/features/documents/folders";
+import { stageLabels } from "@/features/projects/labels";
 import EvaluationView from "@/components/stages/EvaluationView";
 import DevelopmentView from "@/components/stages/DevelopmentView";
 import ProductionView from "@/components/stages/ProductionView";
@@ -63,7 +62,6 @@ const iconMap: Record<WorkspaceCategory["icon"], typeof FileText> = {
   Scale,
 };
 
-const stageLabel = { evaluation: "Evaluation", development: "Development", production: "Production" } as const;
 
 function ProjectSidebar({
   categories,
@@ -77,7 +75,7 @@ function ProjectSidebar({
   const { project } = useProjectWorkspace();
   const [, setLocation] = useLocation();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const displayStage = project.archivedAt ? "Archived" : stageLabel[project.stage];
+  const displayStage = project.archivedAt ? "Archived" : stageLabels[project.stage];
 
   useEffect(() => {
     if (currentCategorySlug && expanded[currentCategorySlug] === undefined) {
@@ -210,68 +208,46 @@ function ProjectSidebar({
 }
 
 /**
- * Bridge for screens that have not been migrated yet: they still read the
- * prototype workspace shape and their fixture state from the store. Each
- * domain migration removes its screen from here. Documents, Evaluation,
- * Project Notes, Producers, Creatives, Underlying Rights, Documentation,
- * Script and the Budget are served from server state in WorkspaceShell.
+ * Category pages that are plain document folders (Schedules' subfolders and
+ * any category without a dedicated view) render the library for that folder.
  */
-function PrototypeContent({
-  categorySlug,
-  subcategorySlug,
-}: {
-  categorySlug?: string;
-  subcategorySlug?: string;
-}) {
-  const { project: apiProject } = useProjectWorkspace();
-  const { registerTransientProject, projects, setCurrentProject } = useStore();
-  const transientFeatureState = projects.find((candidate) => candidate.id === apiProject.id);
-
-  useEffect(() => {
-    setCurrentProject(apiProject.id);
-    registerTransientProject(toWorkspaceProject(apiProject));
-  }, [apiProject, registerTransientProject, setCurrentProject]);
-
-  if (!transientFeatureState) return <div>Preparing workspace…</div>;
-  const project = toWorkspaceProject(apiProject, transientFeatureState);
+function FolderPage({ categorySlug, subcategorySlug }: { categorySlug?: string; subcategorySlug?: string }) {
+  const { project } = useProjectWorkspace();
   const currentCategory = findWorkspaceCategory(categorySlug);
   const currentSubcategory = currentCategory?.subcategories.find((s) => s.slug === subcategorySlug);
   const folder = folderForWorkspacePath(categorySlug, subcategorySlug);
-
-  if (currentCategory?.slug === "schedules") {
-    return <SchedulesView project={project} currentSubcategory={currentSubcategory?.name} subcategoryId={currentSubcategory?.slug} folder={folder} />;
-  }
-  if (currentCategory) {
-    return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="flex items-end justify-between border-b border-border pb-6">
-          <div>
-            <h2 className="text-3xl font-display font-bold text-foreground tracking-tight">
-              {currentSubcategory?.name || currentCategory.name}
-            </h2>
-            <p className="text-muted-foreground mt-1">Documents and records for {currentSubcategory?.name || currentCategory.name}.</p>
-          </div>
+  const title = currentSubcategory?.name || currentCategory?.name || "Documents";
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex items-end justify-between border-b border-border pb-6">
+        <div>
+          <h2 className="text-3xl font-display font-bold text-foreground tracking-tight">{title}</h2>
+          <p className="text-muted-foreground mt-1">Documents and records for {title}.</p>
         </div>
-        <DocumentLibrary projectId={project.id} folder={folder} />
+      </div>
+      <DocumentLibrary projectId={project.id} folder={folder} />
+    </div>
+  );
+}
+
+/** The stage home: what the project is doing right now, by lifecycle stage. */
+function StageHome() {
+  const { project } = useProjectWorkspace();
+  if (project.archivedAt)
+    return (
+      <div className="flex flex-col items-center justify-center py-20 opacity-70">
+        <Archive className="h-16 w-16 text-muted-foreground mb-4" />
+        <h2 className="text-2xl font-bold text-foreground">Project Archived</h2>
+        <p className="text-muted-foreground">This project is read-only.</p>
       </div>
     );
-  }
-
   switch (project.stage) {
-    case "Development":
+    case "evaluation":
+      return <EvaluationView />;
+    case "development":
       return <DevelopmentView project={project} />;
-    case "Production":
-      return <ProductionView project={project} />;
-    case "Archived":
-      return (
-        <div className="flex flex-col items-center justify-center py-20 opacity-70">
-          <Archive className="h-16 w-16 text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-bold text-foreground">Project Archived</h2>
-          <p className="text-muted-foreground">This project is read-only.</p>
-        </div>
-      );
-    default:
-      return <div>Unknown Stage</div>;
+    case "production":
+      return <ProductionView />;
   }
 }
 
@@ -281,7 +257,7 @@ function WorkspaceShell({ categorySlug, subcategorySlug }: { categorySlug?: stri
   const categories = workspaceCategoriesFor(project);
   const currentCategory = findWorkspaceCategory(categorySlug);
   const currentSubcategory = currentCategory?.subcategories.find((s) => s.slug === subcategorySlug);
-  const displayStage = project.archivedAt ? "Archived" : stageLabel[project.stage];
+  const displayStage = project.archivedAt ? "Archived" : stageLabels[project.stage];
 
   return (
     <Shell
@@ -333,7 +309,7 @@ function WorkspaceShell({ categorySlug, subcategorySlug }: { categorySlug?: stri
         </div>
         {isStudioAdmin && (
           <EditProjectMetadataDialog
-            project={toWorkspaceProject(project)}
+            project={project}
             open={metadataDialogOpen}
             onOpenChange={setMetadataDialogOpen}
           />
@@ -372,8 +348,10 @@ function WorkspaceShell({ categorySlug, subcategorySlug }: { categorySlug?: stri
               </div>
               <DocumentationEntityPage category={legalCategoryForRoute(currentSubcategory.slug)!} />
             </div>
-          ) : !categorySlug && project.stage === "evaluation" && !project.archivedAt ? (
-            <EvaluationView />
+          ) : !categorySlug ? (
+            <StageHome />
+          ) : categorySlug === "schedules" ? (
+            <SchedulesView currentSubcategory={currentSubcategory?.name} subcategoryId={currentSubcategory?.slug} folder={folderForWorkspacePath(categorySlug, subcategorySlug)} />
           ) : categorySlug === "documents" ? (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="border-b border-border pb-6">
@@ -383,7 +361,7 @@ function WorkspaceShell({ categorySlug, subcategorySlug }: { categorySlug?: stri
               <DocumentLibrary projectId={project.id} />
             </div>
           ) : (
-            <PrototypeContent categorySlug={categorySlug} subcategorySlug={subcategorySlug} />
+            <FolderPage categorySlug={categorySlug} subcategorySlug={subcategorySlug} />
           )}
         </div>
       </div>

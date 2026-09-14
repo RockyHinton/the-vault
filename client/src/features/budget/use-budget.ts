@@ -321,6 +321,7 @@ export function useCommitLineItem(projectId: string) {
     lineItemId: string,
     changes: Omit<UpdateBudgetLineItemInput, "version">,
   ) => {
+    let reportedError: unknown;
     const run = (): Promise<unknown> => {
       const cached = queryClient.getQueryData<{ data: Budget } | null>(
         budgetKey(projectId),
@@ -335,11 +336,44 @@ export function useCommitLineItem(projectId: string) {
           lineItemId,
           input: { ...changes, version: item.version },
         })
-        .catch(() => undefined); // reported by the mutation hook
+        .catch((error: unknown) => {
+          reportedError = error;
+          return undefined; // the mutation hook toasts; the field learns below
+        });
     };
     const next = (queues.current.get(lineItemId) ?? Promise.resolve()).then(
       run,
     );
     queues.current.set(lineItemId, next);
+    // The queue itself never rejects (so later commits still run); the caller's
+    // promise does, so the field can fall back to the authoritative value.
+    return next.then(() => {
+      if (reportedError !== undefined) throw reportedError;
+    });
+  };
+}
+
+/**
+ * Renaming a department reads the department's latest `version` from the
+ * budget cache at send time, the same rule as line-item commits, so a rename
+ * typed after another edit landed never carries a stale render-time version.
+ */
+export function useCommitDepartmentName(projectId: string) {
+  const queryClient = useQueryClient();
+  const rename = useRenameBudgetDepartment();
+  return (departmentId: string, name: string): Promise<unknown> => {
+    const cached = queryClient.getQueryData<{ data: Budget } | null>(
+      budgetKey(projectId),
+    );
+    const department = cached?.data.currentVersion.departments.find(
+      (d) => d.id === departmentId,
+    );
+    if (!department)
+      return Promise.reject(new Error("The department is no longer loaded."));
+    return rename.mutateAsync({
+      projectId,
+      departmentId,
+      input: { name, version: department.version },
+    });
   };
 }

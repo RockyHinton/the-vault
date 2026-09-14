@@ -56,7 +56,7 @@ import {
   useDeletePayment,
   useSetDepartmentWindow,
   useSetSourceTiming,
-  useUpdateCashFlow,
+  useCommitCashFlowSettings,
 } from "@/features/cash-flow/use-cash-flow";
 import { MoneyInput } from "@/components/finance/MoneyInput";
 
@@ -138,7 +138,7 @@ function CashFlowScreen({ cashFlow, fundingGap }: { cashFlow: CashFlowRecord; fu
   const money = (value: string) => formatMoney(value, cashFlow.currency);
   const projection = cashFlow.projection;
 
-  const update = useUpdateCashFlow();
+  const commitSettings = useCommitCashFlowSettings(projectId);
   const setWindow = useSetDepartmentWindow();
   const clearWindow = useClearDepartmentWindow();
   const createPayment = useCreatePayment();
@@ -181,7 +181,7 @@ function CashFlowScreen({ cashFlow, fundingGap }: { cashFlow: CashFlowRecord; fu
             <MoneyInput
               aria-label="Opening balance"
               value={cashFlow.openingBalance}
-              onCommit={(openingBalance) => update.mutate({ projectId, input: { openingBalance, version: cashFlow.version } })}
+              onCommit={(openingBalance) => commitSettings({ openingBalance })}
               className="mt-1 h-8 text-lg font-bold bg-transparent border-transparent hover:border-input focus:border-primary px-0 w-full"
             />
           </CardContent>
@@ -231,7 +231,7 @@ function CashFlowScreen({ cashFlow, fundingGap }: { cashFlow: CashFlowRecord; fu
                     cashFlow.timeframe === timeframe ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground",
                   )}
                   onClick={() => {
-                    if (cashFlow.timeframe !== timeframe) update.mutate({ projectId, input: { timeframe, version: cashFlow.version } });
+                    if (cashFlow.timeframe !== timeframe) void commitSettings({ timeframe }).catch(() => undefined);
                   }}
                 >
                   {timeframe === "monthly" ? "Monthly" : "Weekly"}

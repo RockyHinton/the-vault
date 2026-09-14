@@ -6,19 +6,17 @@ import type {
   UpdateDocumentInput,
 } from "@shared/contracts";
 import { useVaultMutation } from "@/lib/mutations";
+import { documentOwnerQueryKeys } from "./document-owner-keys";
 import {
   addDocumentVersion,
   createDocument,
   deleteDocument,
-  getDocument,
   listDocuments,
   updateDocument,
 } from "./documents-api";
 
 export const documentsKey = (projectId: string) =>
   ["documents", projectId] as const;
-const documentKey = (projectId: string, documentId: string) =>
-  ["documents", projectId, "item", documentId] as const;
 const auditKey = ["audit-events"] as const;
 
 export function useDocuments(projectId: string, folder?: DocumentFolder) {
@@ -28,16 +26,10 @@ export function useDocuments(projectId: string, folder?: DocumentFolder) {
   });
 }
 
-export function useDocument(projectId: string, documentId: string | undefined) {
-  return useQuery({
-    queryKey: documentKey(projectId, documentId ?? ""),
-    queryFn: () => getDocument(projectId, documentId!),
-    enabled: Boolean(documentId),
-  });
-}
-
+/** Document mutation → the library, every owner that embeds documents, and the audit feed. */
 const afterChange = (variables: { projectId: string }) => [
   documentsKey(variables.projectId),
+  ...documentOwnerQueryKeys(variables.projectId),
   auditKey,
 ];
 

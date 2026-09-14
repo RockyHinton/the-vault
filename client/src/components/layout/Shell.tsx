@@ -35,26 +35,11 @@ export function Shell({ children, sidebar }: ShellProps) {
   const user = data?.data.user;
   const isStudioAdmin = useIsStudioAdmin();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const legacyFixtureExport =
-    typeof window !== "undefined"
-      ? window.localStorage.getItem("vault-storage-v11")
-      : null;
 
   const handleLogout = () => {
     logout.mutate(undefined, {
       onSettled: () => setLocation("/", { replace: true }),
     });
-  };
-  const downloadLegacyFixtureExport = () => {
-    if (!legacyFixtureExport) return;
-    const href = URL.createObjectURL(
-      new Blob([legacyFixtureExport], { type: "application/json" }),
-    );
-    const link = document.createElement("a");
-    link.href = href;
-    link.download = "vault-storage-v11-legacy-export.json";
-    link.click();
-    URL.revokeObjectURL(href);
   };
 
   if (!user) return null;
@@ -209,22 +194,6 @@ export function Shell({ children, sidebar }: ShellProps) {
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* Scrollable Page Content */}
         <div className="flex-1 overflow-y-auto p-6 scroll-smooth">
-          <div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            <p>
-              Prototype workspace tools are session-only demos until their
-              domains are migrated. Project title, genre, and logline are
-              server-persisted.
-            </p>
-            {legacyFixtureExport && (
-              <Button
-                variant="link"
-                className="h-auto p-0 text-amber-200"
-                onClick={downloadLegacyFixtureExport}
-              >
-                Download legacy prototype data
-              </Button>
-            )}
-          </div>
           {children}
         </div>
       </main>

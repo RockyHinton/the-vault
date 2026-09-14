@@ -76,6 +76,9 @@ import {
   financeSourceTypes,
 } from "@/features/finance-plan/labels";
 import { MoneyInput } from "@/components/finance/MoneyInput";
+import { CommitInput } from "@/components/forms/CommitInput";
+import { useQueryClient } from "@tanstack/react-query";
+import { financePlanKey } from "@/features/finance-plan/use-finance-plan";
 import { OwnerDocumentList } from "@/components/documents/OwnerDocumentList";
 
 /**
@@ -193,7 +196,9 @@ function PlanScreen({
   const currentUserId = useCurrentUser().data?.data.user.id;
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [addOpen, setAddOpen] = useState(false);
-  const [approveTarget, setApproveTarget] = useState<FinanceSource | null>(null);
+  const [approveTargetId, setApproveTargetId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const approveTarget = plan.sources.find((s) => s.id === approveTargetId) ?? null;
   const [deleteTarget, setDeleteTarget] = useState<FinanceSource | null>(null);
   const [rebaseOpen, setRebaseOpen] = useState(false);
 
@@ -245,7 +250,7 @@ function PlanScreen({
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <Dialog open={!!approveTarget} onOpenChange={(open) => !open && setApproveTarget(null)}>
+      <Dialog open={!!approveTarget} onOpenChange={(open) => !open && setApproveTargetId(null)}>
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
             <div className="flex items-center gap-2 text-amber-500 mb-2">
@@ -262,7 +267,7 @@ function PlanScreen({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setApproveTarget(null)}>
+            <Button variant="outline" onClick={() => setApproveTargetId(null)}>
               Cancel
             </Button>
             <Button
@@ -270,12 +275,17 @@ function PlanScreen({
               disabled={approve.isPending}
               onClick={async () => {
                 if (!approveTarget) return;
+                // The version is read from the cache at send time: the dialog may have
+                // been open while another edit to this source landed.
+                const latest = queryClient
+                  .getQueryData<{ data: FinancePlanRecord } | null>(financePlanKey(projectId))
+                  ?.data.sources.find((s) => s.id === approveTarget.id);
                 try {
-                  await approve.mutateAsync({ projectId, sourceId: approveTarget.id, version: approveTarget.version });
+                  await approve.mutateAsync({ projectId, sourceId: approveTarget.id, version: latest?.version ?? approveTarget.version });
                 } catch {
                   /* toast shown by the mutation */
                 }
-                setApproveTarget(null);
+                setApproveTargetId(null);
               }}
             >
               <CheckCircle2 className="h-4 w-4 mr-2" /> Verify & Approve
@@ -583,19 +593,12 @@ function PlanScreen({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <div className="grid gap-2">
                             <Label>Source Name</Label>
-                            <Input
-                              key={`${source.id}-name-${source.version}`}
+                            <CommitInput
                               aria-label="Source name"
-                              defaultValue={source.name}
+                              value={source.name}
                               disabled={approved}
                               className="bg-background"
-                              onBlur={(e) => {
-                                const name = e.target.value.trim();
-                                if (name && name !== source.name) commit(source.id, { name });
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                              }}
+                              onCommit={(name) => commit(source.id, { name })}
                             />
                           </div>
                           <div className="grid gap-2">
@@ -640,7 +643,7 @@ function PlanScreen({
                               <Select
                                 value={source.status}
                                 onValueChange={(status) => {
-                                  if (status === "approved") setApproveTarget(source);
+                                  if (status === "approved") setApproveTargetId(source.id);
                                   else if (status === "targeted" || status === "soft_committed")
                                     changeStatus.mutate({ projectId, sourceId: source.id, input: { status, version: source.version } });
                                 }}
@@ -661,33 +664,28 @@ function PlanScreen({
                           </div>
                           <div className="grid gap-2">
                             <Label>Expected Date</Label>
-                            <Input
-                              key={`${source.id}-date-${source.version}`}
+                            <CommitInput
                               type="date"
                               aria-label="Expected date"
-                              defaultValue={source.expectedDate ?? ""}
+                              value={source.expectedDate ?? ""}
+                              allowEmpty
                               disabled={approved}
                               className="bg-background"
-                              onBlur={(e) => {
-                                const expectedDate = e.target.value || null;
-                                if (expectedDate !== source.expectedDate) commit(source.id, { expectedDate });
-                              }}
+                              onCommit={(expectedDate) => commit(source.id, { expectedDate: expectedDate || null })}
                             />
                           </div>
                         </div>
                         <div className="grid gap-2">
                           <Label>Notes</Label>
-                          <Textarea
-                            key={`${source.id}-notes-${source.version}`}
+                          <CommitInput
+                            multiline
                             aria-label="Source notes"
-                            defaultValue={source.notes ?? ""}
+                            value={source.notes ?? ""}
+                            allowEmpty
                             disabled={approved}
                             className="h-20 bg-background resize-none"
                             placeholder="Contact points, conditions, next steps…"
-                            onBlur={(e) => {
-                              const notes = e.target.value.trim();
-                              if (notes !== (source.notes ?? "")) commit(source.id, { notes });
-                            }}
+                            onCommit={(notes) => commit(source.id, { notes })}
                           />
                         </div>
                       </div>

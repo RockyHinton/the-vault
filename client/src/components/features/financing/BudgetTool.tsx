@@ -60,57 +60,15 @@ import {
   useDeleteBudgetLineItem,
   useDetachDepartmentDocument,
   useLockBudgetVersion,
-  useRenameBudgetDepartment,
+  useCommitDepartmentName,
   useCommitLineItem,
   useStartBudgetRevision,
   useSubmitBudgetVersion,
 } from "@/features/budget/use-budget";
 import { budgetStatusClass, budgetStatusLabels, currencyCodes, currencyLabels } from "@/features/budget/labels";
 import { MoneyInput } from "@/components/finance/MoneyInput";
+import { CommitInput } from "@/components/forms/CommitInput";
 import { OwnerDocumentList } from "@/components/documents/OwnerDocumentList";
-
-/** A text field that saves on blur or Enter, so every keystroke is not a server write. */
-function CommitInput({
-  value,
-  onCommit,
-  disabled,
-  className,
-  placeholder,
-  "aria-label": ariaLabel,
-}: {
-  value: string;
-  onCommit: (value: string) => void;
-  disabled?: boolean;
-  className?: string;
-  placeholder?: string;
-  "aria-label"?: string;
-}) {
-  const [draft, setDraft] = useState(value);
-  const [seen, setSeen] = useState(value);
-  if (seen !== value) {
-    setSeen(value);
-    setDraft(value);
-  }
-  const commit = () => {
-    const next = draft.trim();
-    if (next && next !== value) onCommit(next);
-    else setDraft(value);
-  };
-  return (
-    <Input
-      value={draft}
-      disabled={disabled}
-      placeholder={placeholder}
-      aria-label={ariaLabel}
-      onChange={(event) => setDraft(event.target.value)}
-      onBlur={commit}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") (event.target as HTMLInputElement).blur();
-      }}
-      className={className}
-    />
-  );
-}
 
 /**
  * The project budget: a numbered, lifecycle-controlled version with
@@ -158,6 +116,8 @@ export default function BudgetTool() {
 
   const viewingHistory = historyVersionId !== null && historyVersionId !== budget.currentVersion.id;
   const version = viewingHistory ? historyQuery.data?.data : budget.currentVersion;
+  if (viewingHistory && historyQuery.isError)
+    return <p className="text-sm text-destructive py-8 text-center">That budget version could not be loaded.</p>;
   if (!version) return <p className="text-sm text-muted-foreground py-8 text-center">Loading version…</p>;
 
   return (
@@ -196,7 +156,7 @@ function BudgetVersionView({
   const lock = useLockBudgetVersion();
   const revise = useStartBudgetRevision();
   const addDepartment = useCreateBudgetDepartment();
-  const renameDepartment = useRenameBudgetDepartment();
+  const commitDepartmentName = useCommitDepartmentName(projectId);
   const removeDepartment = useDeleteBudgetDepartment();
   const addLine = useCreateBudgetLineItem();
   const commitLine = useCommitLineItem(projectId);
@@ -418,9 +378,7 @@ function BudgetVersionView({
                           value={dept.name}
                           aria-label="Department name"
                           disabled={readOnly}
-                          onCommit={(name) =>
-                            renameDepartment.mutate({ projectId, departmentId: dept.id, input: { name, version: dept.version } })
-                          }
+                          onCommit={(name) => commitDepartmentName(dept.id, name)}
                           className="font-medium text-lg border-transparent hover:border-input focus:border-primary bg-transparent px-0 h-auto"
                         />
                       </div>

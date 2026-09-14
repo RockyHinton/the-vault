@@ -1,5 +1,6 @@
 import { Shell } from "@/components/layout/Shell";
-import type { ProjectStage } from "@/lib/store";
+import { archiveReasonLabels, revisitLabels, workspaceStageOf, type WorkspaceStage } from "@/features/projects/labels";
+import { QueryState } from "@/components/QueryState";
 import type { Project as ApiProject } from "@shared/contracts";
 import {
   useDeleteProject,
@@ -7,7 +8,6 @@ import {
   useRestoreProject,
   useTransitionProjectStage,
 } from "@/features/projects/use-projects";
-import { toWorkspaceProject } from "@/features/projects/project-fixture-adapter";
 import { useIsStudioAdmin } from "@/features/auth/use-current-user";
 import { 
   Card, 
@@ -79,14 +79,14 @@ import project4 from "@/assets/WASP_2026_1778321002468.png";
 
 const placeholderImages = [project1, project2, project3, project4];
 
-const stageColors: Record<ProjectStage, string> = {
+const stageColors: Record<WorkspaceStage, string> = {
   Evaluation: "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20",
   Development: "bg-purple-500/10 text-purple-500 hover:bg-purple-500/20",
   Production: "bg-green-500/10 text-green-500 hover:bg-green-500/20",
   Archived: "bg-gray-500/10 text-gray-500 hover:bg-gray-500/20",
 };
 
-const stageIcons: Record<ProjectStage, any> = {
+const stageIcons: Record<WorkspaceStage, typeof Eye> = {
   Evaluation: Eye,
   Development: Briefcase,
   Production: Clapperboard,
@@ -104,7 +104,7 @@ export default function ProjectsPage() {
     ...(activeProjects.data?.pages.flatMap((page) => page.data.items) ?? []),
     ...(archivedProjects.data?.pages.flatMap((page) => page.data.items) ?? []),
   ];
-  const [activeTab, setActiveTab] = useState<ProjectStage | 'All'>('All');
+  const [activeTab, setActiveTab] = useState<WorkspaceStage | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
@@ -120,10 +120,9 @@ export default function ProjectsPage() {
 
   const filteredProjects = projects.filter(p => {
     // 1. Filter by Stage
-    const workspaceProject = toWorkspaceProject(p);
     const matchesStage = activeTab === 'All'
       ? !p.archivedAt
-      : workspaceProject.stage === activeTab;
+      : workspaceStageOf(p) === activeTab;
 
     // 2. Filter by Search Query
     if (!searchQuery && activeTab !== 'Archived') return matchesStage;
@@ -136,13 +135,13 @@ export default function ProjectsPage() {
 
     // 3. Special Filters for Archived Stage
     if (activeTab === 'Archived') {
-       const details = workspaceProject.archiveDetails;
+       const details = p.archive;
        
        // Filter by Reason
-       const matchesReason = archiveFilterReason === 'All' || details?.reason === archiveFilterReason;
+       const matchesReason = archiveFilterReason === 'All' || (details !== null && archiveReasonLabels[details.reason] === archiveFilterReason);
        
        // Filter by Revisit Status
-       const matchesRevisit = archiveFilterRevisit === 'All' || details?.revisit === archiveFilterRevisit;
+       const matchesRevisit = archiveFilterRevisit === 'All' || (details !== null && revisitLabels[details.revisit] === archiveFilterRevisit);
 
        // Filter by Starred
        const matchesStarred = !archiveFilterStarred || details?.starred === true;
@@ -193,7 +192,7 @@ export default function ProjectsPage() {
         </div>
 
         {/* Stage Tabs - Refined to be more text-based and editorial */}
-        <Tabs defaultValue="All" className="w-full" onValueChange={(val) => setActiveTab(val as any)}>
+        <Tabs defaultValue="All" className="w-full" onValueChange={(val) => setActiveTab(val as WorkspaceStage | 'All')}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
             <TabsList className="bg-transparent p-0 h-auto gap-8 justify-start overflow-x-auto w-full sm:w-auto">
               {['All', 'Evaluation', 'Development', 'Production', 'Archived'].map((stage) => (
@@ -287,27 +286,26 @@ export default function ProjectsPage() {
                </div>
              )}
 
-             {/* Projects Grid */}
+             <QueryState queries={[activeProjects, archivedProjects]} loading="Loading projects…" error="Projects could not be loaded.">
+            {/* Projects Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                {filteredProjects.map((apiProject, index) => {
-                 const project = toWorkspaceProject(apiProject);
-                 const StageIcon = stageIcons[project.stage];
+                 const project = apiProject;
+                 const stage = workspaceStageOf(project);
+                 const StageIcon = stageIcons[stage];
                 
                 // Keep the archived visual indicator but adapt it for the cinematic card
                 let borderAccent = "border-white/10";
-                if (project.stage === 'Archived' && project.archiveDetails) {
-                   if (project.archiveDetails.revisit === 'Yes') borderAccent = "border-green-500/50";
-                   else if (project.archiveDetails.revisit === 'Maybe') borderAccent = "border-blue-500/30";
+                if (project.archive) {
+                   if (project.archive.revisit === 'yes') borderAccent = "border-green-500/50";
+                   else if (project.archive.revisit === 'maybe') borderAccent = "border-blue-500/30";
                    else borderAccent = "border-muted/50";
                 }
 
-                // If project has an image property we use it, else we use a placeholder gradient
-                const hasImage = (project as any).coverImage || (project as any).posterUrl;
-                const projectImage = hasImage ? ((project as any).coverImage || (project as any).posterUrl) : undefined;
-                
-                // Deterministic placeholder based on project ID so images don't shift when filtering
-                 const originalIndex = projects.findIndex(p => p.id === project.id);
-                const imageUrl = projectImage || placeholderImages[Math.max(0, originalIndex) % placeholderImages.length];
+                // Projects carry no artwork yet: a deterministic placeholder keyed on
+                // the project's position keeps cards stable while filtering.
+                const originalIndex = projects.findIndex(p => p.id === project.id);
+                const imageUrl = placeholderImages[Math.max(0, originalIndex) % placeholderImages.length];
 
                 return (
                   <motion.div
@@ -344,7 +342,7 @@ export default function ProjectsPage() {
                         {/* Top Action Bar (Three-dot Menu & Star) */}
                         <div className="absolute top-0 inset-x-0 p-4 flex justify-end z-20">
                           <div className="flex items-center gap-3">
-                            {project.archiveDetails?.starred && (
+                            {project.archive?.starred && (
                                 <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 drop-shadow-md animate-in zoom-in duration-300" />
                             )}
                             
@@ -360,7 +358,7 @@ export default function ProjectsPage() {
                                 <DropdownMenuSeparator />
                                 
                                 {/* Advance Option */}
-                                {(project.stage === 'Evaluation' || project.stage === 'Development') && (
+                                {(stage === 'Evaluation' || stage === 'Development') && (
                                   <DropdownMenuItem onClick={(e) => {
                                     e.stopPropagation();
                                      handleAdvanceStage(apiProject);
@@ -371,7 +369,7 @@ export default function ProjectsPage() {
                                 )}
                                 
                                 {/* Archive Option */}
-                                {project.stage !== 'Archived' && (
+                                {stage !== 'Archived' && (
                                   <DropdownMenuItem onClick={(e) => {
                                     e.stopPropagation();
                                      openArchiveDialog(apiProject);
@@ -382,7 +380,7 @@ export default function ProjectsPage() {
                                 )}
 
                                 {/* Unarchive Option */}
-                                {project.stage === 'Archived' && (
+                                {stage === 'Archived' && (
                                   <DropdownMenuItem onClick={(e) => {
                                     e.stopPropagation();
                                      restore.mutate({ id: apiProject.id, version: apiProject.version });
@@ -421,7 +419,7 @@ export default function ProjectsPage() {
                             <div className="flex items-center gap-3">
                               {/* Refined Text-Based Stage Label */}
                               <span className="text-xs font-semibold text-white/60 tracking-[0.1em] capitalize drop-shadow-md group-hover:text-white/80 transition-colors duration-300">
-                                {project.stage}
+                                {stage}
                               </span>
                               
                               {/* Animated Entry Indicator on Hover */}
@@ -489,6 +487,7 @@ export default function ProjectsPage() {
                 </p>
               </div>
             )}
+            </QueryState>
           </div>
         </Tabs>
 

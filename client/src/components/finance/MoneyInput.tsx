@@ -6,8 +6,12 @@ import { cn } from "@/lib/utils";
 interface MoneyInputProps {
   /** The server's normalised decimal string, e.g. "125000.00". */
   value: string;
-  /** Called on blur with a normalised decimal string, only when the value changed and is valid. */
-  onCommit: (value: string) => void;
+  /**
+   * Called on blur with a normalised decimal string, only when the value
+   * changed and is valid. Return the mutation promise: a rejected commit
+   * (stale 409, validation) resets the field to the authoritative value.
+   */
+  onCommit: (value: string) => void | Promise<unknown>;
   disabled?: boolean;
   className?: string;
   "aria-label"?: string;
@@ -41,7 +45,9 @@ export function MoneyInput({
     }
     setInvalid(false);
     setDraft(parsed.data);
-    if (parsed.data !== value) onCommit(parsed.data);
+    if (parsed.data === value) return;
+    const result = onCommit(parsed.data);
+    if (result) result.catch(() => setDraft(value));
   };
 
   return (

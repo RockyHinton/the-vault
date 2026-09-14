@@ -214,3 +214,24 @@ export function useClearSourceTiming() {
     successMessage: "Timing reset to the finance plan date.",
   });
 }
+
+/**
+ * Opening balance and timeframe edits read the cash flow's latest `version`
+ * from the cache at send time, so a field committed after another change
+ * landed never carries a stale render-time version.
+ */
+export function useCommitCashFlowSettings(projectId: string) {
+  const queryClient = useQueryClient();
+  const update = useUpdateCashFlow();
+  return (changes: Omit<UpdateCashFlowInput, "version">): Promise<unknown> => {
+    const cached = queryClient.getQueryData<{ data: CashFlow } | null>(
+      cashFlowKey(projectId),
+    );
+    if (!cached)
+      return Promise.reject(new Error("The cash flow is no longer loaded."));
+    return update.mutateAsync({
+      projectId,
+      input: { ...changes, version: cached.data.version },
+    });
+  };
+}

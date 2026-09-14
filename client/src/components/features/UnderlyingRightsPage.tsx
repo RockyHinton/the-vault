@@ -150,9 +150,11 @@ export default function UnderlyingRightsPage() {
             <h2 className="text-3xl font-display font-bold text-foreground tracking-tight">
               Underlying Rights
             </h2>
-            <Badge variant={rightsSummaryVariant(summary)} data-testid="badge-rights-status">
-              {rightsSummaryLabels[summary]}
-            </Badge>
+            {rightsQuery.isSuccess && (
+              <Badge variant={rightsSummaryVariant(summary)} data-testid="badge-rights-status">
+                {rightsSummaryLabels[summary]}
+              </Badge>
+            )}
           </div>
           <p className="text-muted-foreground mt-1">{rightsStageHelper[stage]}</p>
         </div>
