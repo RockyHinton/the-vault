@@ -1,5 +1,12 @@
 # ADR 0006: Data conventions for authored records, money, dates and attachments
 
+> **Partly superseded.** The attachment model below (`attached_to_type` / `attached_to_id`
+> and `supersedes_document_id`) was replaced by ADR 0008: documents form lineages and owners
+> attach through per-owner join tables keyed by lineage id. The actor shape below
+> (`{ id, displayName, email }`) was replaced by ADR 0009: business contracts carry
+> `UserRef = { id, displayName }` and never an email. Money and date conventions stand.
+> Kept for history.
+
 ## Decision
 
 **Authorship.** Every durable business record carries `created_by_user_id` referencing

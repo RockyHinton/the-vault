@@ -2,34 +2,18 @@ import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
 import { rm, readFile } from "fs/promises";
 
-// server deps to bundle to reduce openat(2) syscalls
-// which helps cold start times
+// Server dependencies bundled into dist/index.cjs (fewer files to open at
+// cold start). Everything else the server imports stays external and is
+// loaded from node_modules at runtime. Keep this list to packages the server
+// actually imports; `npm run build` fails the type check otherwise.
 const allowlist = [
-  "@google/generative-ai",
-  "axios",
-  "connect-pg-simple",
-  "cors",
-  "date-fns",
   "drizzle-orm",
-  "drizzle-zod",
   "express",
   "express-rate-limit",
-  "express-session",
-  "jsonwebtoken",
-  "memorystore",
-  "multer",
+  "helmet",
   "nanoid",
-  "nodemailer",
-  "openai",
-  "passport",
-  "passport-local",
   "pg",
-  "stripe",
-  "uuid",
-  "ws",
-  "xlsx",
   "zod",
-  "zod-validation-error",
 ];
 
 async function buildAll() {

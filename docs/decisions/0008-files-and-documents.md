@@ -26,7 +26,7 @@ detaches a document; reads resolve the current version. Owners create documents 
 own transaction through `createDocumentInTransaction` exported by the Documents service, so
 "upload and attach" is atomic and every document is born the same way. Detaching removes the
 link only. `project_person_documents` is the reference implementation, documented in
-ARCHITECTURE.md under "Attaching documents to a domain".
+docs/architecture/files-and-documents.md under "Attaching documents to a domain".
 
 **Amendment (Rights + Legal milestone, 2026-09-13).** With three owners the join-table
 persistence became one narrow factory, `createAttachmentRepository`, restricted to the listed

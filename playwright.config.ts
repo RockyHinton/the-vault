@@ -14,8 +14,14 @@ process.env.VAULT_E2E_STATE_FILE = stateFile;
 export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: /.*\.spec\.ts/,
+  globalSetup: "./tests/e2e/global-setup.ts",
   globalTeardown: "./tests/e2e/global-teardown.ts",
   timeout: 30_000,
+  // One worker, in order: every spec shares one server, one database and the
+  // two seeded accounts, so specs must never overlap. Reliability and a
+  // readable failure beat a faster wall clock here.
+  workers: 1,
+  fullyParallel: false,
   use: {
     baseURL,
     ...devices["Desktop Chrome"],

@@ -3,7 +3,7 @@ import { readEnvironment } from "./config/env";
 import { createDatabase } from "./db/client";
 import { createFileStorage } from "./files/storage-factory";
 import { createVaultServer } from "./app";
-import { log } from "./observability/logger";
+import { log, setLogLevel } from "./observability/logger";
 
 /**
  * Process entrypoint. Configuration comes from the environment (plus
@@ -12,6 +12,7 @@ import { log } from "./observability/logger";
  */
 async function start() {
   const env = readEnvironment();
+  setLogLevel(env.LOG_LEVEL);
   const database = createDatabase({
     databaseUrl: env.DATABASE_URL,
     nodeEnv: env.NODE_ENV,

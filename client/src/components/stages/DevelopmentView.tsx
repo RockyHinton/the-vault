@@ -30,6 +30,7 @@ import { TaskManager } from "@/components/features/TaskManager";
 import { cn } from "@/lib/utils";
 import { useTransitionProjectStage } from "@/features/projects/use-projects";
 import { usePeople } from "@/features/people/use-people";
+import { talentReadiness } from "@/features/people/readiness";
 import { useLegalRecords } from "@/features/legal/use-legal-records";
 import { useFinancingOverview } from "@/features/financing-overview/use-financing-overview";
 import { formatMoney, summarizeLegalCategory } from "@shared/contracts";
@@ -80,24 +81,9 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
     financeReason = "Budget is not locked yet.";
   }
 
-  // B. TALENT READINESS (from the People domain)
+  // B. TALENT READINESS: the named rule in features/people/readiness.ts.
   const projectCreatives = creativesQuery.data?.data.items ?? [];
-  const confirmedTalent = projectCreatives.length; // Simply count for MVP
-  const hasKeyCast = projectCreatives.some(p => p.creativeRoleType === 'cast');
-  
-  let talentStatus: 'Ready' | 'Partial' | 'Incomplete' = 'Incomplete';
-  let talentReason = "No talent confirmed.";
-
-  if (confirmedTalent > 2 && hasKeyCast) {
-    talentStatus = 'Ready';
-    talentReason = "Key cast and heads of department attached.";
-  } else if (confirmedTalent > 0) {
-    talentStatus = 'Partial';
-    talentReason = "Some key roles filled, others pending.";
-  } else {
-    talentStatus = 'Incomplete';
-    talentReason = "Talent confirmation not set up yet.";
-  }
+  const { status: talentStatus, reason: talentReason } = talentReadiness(projectCreatives);
 
   // C. LEGAL READINESS (from the Legal Records domain, same derivation as the overview)
   const legalRecords = legalRecordsQuery.data?.data.items ?? [];
