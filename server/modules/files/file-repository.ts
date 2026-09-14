@@ -50,15 +50,28 @@ export const fileRepository = {
     return row;
   },
 
-  async markDeleted(
+  /**
+   * staged → deleted, only if the row is still staged and was created before
+   * `cutoff`. Compare-and-set: a concurrent claim (staged → available) and
+   * this transition serialise on the row, and exactly one of them matches.
+   * Returns the retired row, or undefined when the row is no longer eligible.
+   */
+  async retireStaged(
     executor: DatabaseExecutor,
-    id: string,
-    deletedAt: Date,
-  ): Promise<void> {
-    await executor
+    input: { id: string; cutoff: Date; deletedAt: Date },
+  ): Promise<FileObjectRow | undefined> {
+    const [row] = await executor
       .update(fileObjects)
-      .set({ status: "deleted", deletedAt })
-      .where(eq(fileObjects.id, id));
+      .set({ status: "deleted", deletedAt: input.deletedAt })
+      .where(
+        and(
+          eq(fileObjects.id, input.id),
+          eq(fileObjects.status, "staged"),
+          lt(fileObjects.createdAt, input.cutoff),
+        ),
+      )
+      .returning();
+    return row;
   },
 
   async listStagedOlderThan(

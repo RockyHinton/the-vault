@@ -11,10 +11,11 @@ import {
   type UpdateCashFlowPaymentInput,
 } from "@shared/contracts";
 import type { Database } from "../../db/client";
-import { withTransaction, type Transaction } from "../../db/transaction";
+import type { Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
 import { withUniqueViolationAsConflict } from "../../db/unique-violation";
 import { appendAuditEvent } from "../audit/audit-repository";
+import { withLiveProjectTransaction } from "../projects/live-project";
 import {
   budgetDepartmentRepository,
   budgetLineItemRepository,
@@ -315,14 +316,7 @@ export function createCashFlowService({ db }: { db: Database }) {
         "cash_flows_project_unique",
         cashFlowExists,
         () =>
-          withTransaction(db, async (tx) => {
-            const project = await projectRepository.findById(tx, projectId);
-            if (!project)
-              throw new ApiError(
-                404,
-                "PROJECT_NOT_FOUND",
-                "The project was not found.",
-              );
+          withLiveProjectTransaction(db, projectId, async (tx) => {
             if (await cashFlowRepository.findByProject(tx, projectId))
               throw cashFlowExists();
             const plan = await requirePlan(tx, projectId);
@@ -354,7 +348,7 @@ export function createCashFlowService({ db }: { db: Database }) {
       input: UpdateCashFlowInput,
       actor: CashFlowActor,
     ): Promise<CashFlow> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const { cashFlow } = await lockCashFlow(tx, projectId);
         requireFresh(
           await cashFlowRepository.update(tx, {
@@ -399,7 +393,7 @@ export function createCashFlowService({ db }: { db: Database }) {
       input: SetCashFlowDepartmentWindowInput,
       actor: CashFlowActor,
     ): Promise<CashFlow> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const { cashFlow, plan } = await lockCashFlow(tx, projectId);
         await requireDepartmentInVersion(
           tx,
@@ -461,7 +455,7 @@ export function createCashFlowService({ db }: { db: Database }) {
       expectedVersion: number,
       actor: CashFlowActor,
     ): Promise<CashFlow> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const { cashFlow } = await lockCashFlow(tx, projectId);
         const existing = await cashFlowWindowRepository.find(tx, {
           cashFlowId: cashFlow.id,
@@ -501,7 +495,7 @@ export function createCashFlowService({ db }: { db: Database }) {
       input: CreateCashFlowPaymentInput,
       actor: CashFlowActor,
     ): Promise<CashFlow> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const { cashFlow, plan } = await lockCashFlow(tx, projectId);
         await requireDepartmentInVersion(
           tx,
@@ -544,7 +538,7 @@ export function createCashFlowService({ db }: { db: Database }) {
       input: UpdateCashFlowPaymentInput,
       actor: CashFlowActor,
     ): Promise<CashFlow> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const { cashFlow, plan } = await lockCashFlow(tx, projectId);
         const existing = await cashFlowPaymentRepository.find(tx, {
           cashFlowId: cashFlow.id,
@@ -608,7 +602,7 @@ export function createCashFlowService({ db }: { db: Database }) {
       expectedVersion: number,
       actor: CashFlowActor,
     ): Promise<CashFlow> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const { cashFlow } = await lockCashFlow(tx, projectId);
         const existing = await cashFlowPaymentRepository.find(tx, {
           cashFlowId: cashFlow.id,
@@ -652,7 +646,7 @@ export function createCashFlowService({ db }: { db: Database }) {
       input: SetCashFlowSourceTimingInput,
       actor: CashFlowActor,
     ): Promise<CashFlow> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const { cashFlow, plan } = await lockCashFlow(tx, projectId);
         await requireApprovedSource(tx, projectId, plan.plan.id, sourceId);
         const existing = await cashFlowSourceTimingRepository.find(tx, {
@@ -700,7 +694,7 @@ export function createCashFlowService({ db }: { db: Database }) {
       expectedVersion: number,
       actor: CashFlowActor,
     ): Promise<CashFlow> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const { cashFlow } = await lockCashFlow(tx, projectId);
         const existing = await cashFlowSourceTimingRepository.find(tx, {
           cashFlowId: cashFlow.id,

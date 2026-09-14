@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
-import type { PgColumn } from "drizzle-orm/pg-core";
+import { getTableConfig, type PgColumn } from "drizzle-orm/pg-core";
 import type { Document } from "@shared/contracts";
 import {
   budgetDepartmentDocuments,
@@ -10,6 +10,8 @@ import {
   projectRightDocuments,
 } from "@shared/schema";
 import type { DatabaseExecutor, Transaction } from "../../db/transaction";
+import { withUniqueViolationAsConflict } from "../../db/unique-violation";
+import { ApiError } from "../../http/errors";
 import { documentRepository } from "./document-repository";
 import { toDocumentContract } from "./document-service";
 
@@ -41,6 +43,22 @@ type OwnerKey =
   | "budgetDepartmentId"
   | "financeSourceId";
 
+/** The name of a join table's (owner, lineage) primary key constraint. */
+export function attachmentPrimaryKeyName(table: AttachmentJoinTable): string {
+  const [primaryKey] = getTableConfig(table).primaryKeys;
+  if (!primaryKey)
+    throw new Error("An attachment join table must have a primary key.");
+  return primaryKey.getName();
+}
+
+/** The one conflict every owner answers for a lineage that is already linked. */
+export const documentAlreadyAttached = () =>
+  new ApiError(
+    409,
+    "DOCUMENT_ALREADY_ATTACHED",
+    "That document is already attached.",
+  );
+
 /**
  * Persistence for one owner→documents join table. Owners (People, Rights,
  * Legal) each create one with their own table and owner column; policy,
@@ -54,6 +72,8 @@ export function createAttachmentRepository(config: {
   ownerKey: OwnerKey;
 }) {
   const { table, ownerColumn, ownerKey } = config;
+  // The (owner, lineage) primary key, named exactly as the migration created it.
+  const primaryKeyName = attachmentPrimaryKeyName(table);
   const columns = {
     ownerId: ownerColumn,
     documentLineageId: table.documentLineageId,
@@ -100,6 +120,15 @@ export function createAttachmentRepository(config: {
       return row;
     },
 
+    /**
+     * Inserts the link. The join table's primary key (owner, lineage) is the
+     * uniqueness backstop: owners pre-check with `find` for the ordinary
+     * duplicate, and a concurrent duplicate that passed that check too fails
+     * here on this table's own key and becomes the same stable
+     * `409 DOCUMENT_ALREADY_ATTACHED`. The caller's transaction still aborts,
+     * so the loser keeps no link, no other writes and no audit event. Any
+     * other database error propagates untouched.
+     */
     async insert(
       tx: Transaction,
       input: {
@@ -125,7 +154,11 @@ export function createAttachmentRepository(config: {
         documentLineageId: string;
         attachedByUserId: string;
       };
-      await tx.insert(table).values(values);
+      await withUniqueViolationAsConflict(
+        primaryKeyName,
+        documentAlreadyAttached,
+        () => tx.insert(table).values(values),
+      );
     },
 
     /** Returns true when a link was removed. */

@@ -111,8 +111,9 @@ function unsupportedMediaType() {
  *            therefore never point at bytes that were not fully written.
  *   claim  : a document command flips `staged` → `available` inside its own
  *            transaction; only available files back documents.
- *   sweep  : staged rows older than the TTL are retired: object deleted
- *            (missing is fine), row marked `deleted`.
+ *   sweep  : staged rows older than the TTL are retired: row moved to
+ *            `deleted` by compare-and-set first, then the object deleted
+ *            (missing is fine) only for rows that transition succeeded on.
  *   delete : documents are soft-deleted and bytes retained; there is no
  *            user-facing byte deletion in this milestone.
  */
@@ -223,22 +224,47 @@ export function createFileService(deps: {
       }
     },
 
-    /** Retires staged uploads nobody claimed. Safe to run at any time. */
+    /**
+     * Retires staged uploads nobody claimed. Safe to run at any time, and
+     * concurrently with document commands claiming the same files.
+     *
+     * Order is the invariant: the row is first moved staged → deleted by a
+     * compare-and-set that still requires `staged` and the age cutoff, and
+     * only a row this sweep actually retired has its bytes removed. A file a
+     * document claimed in the meantime no longer matches, so its bytes are
+     * never touched. If the byte removal then fails, the row stays `deleted`
+     * (nothing can claim or read it) and the orphaned object is logged with
+     * its key for a later retry: a stray object is recoverable, a live
+     * document without bytes is not.
+     */
     async sweepStagedUploads(input: { now?: Date; limit?: number } = {}) {
       const now = input.now ?? new Date();
       const cutoff = new Date(now.getTime() - STAGED_UPLOAD_TTL_MS);
-      const stale = await fileRepository.listStagedOlderThan(
+      const candidates = await fileRepository.listStagedOlderThan(
         db,
         cutoff,
         input.limit ?? 100,
       );
-      for (const row of stale) {
-        await storage.delete(row.storageKey);
-        await fileRepository.markDeleted(db, row.id, now);
+      let retired = 0;
+      for (const candidate of candidates) {
+        const row = await fileRepository.retireStaged(db, {
+          id: candidate.id,
+          cutoff,
+          deletedAt: now,
+        });
+        if (!row) continue;
+        retired += 1;
+        await storage.delete(row.storageKey).catch((error: unknown) => {
+          log("error", "files.orphan_object", {
+            fileId: row.id,
+            storageKey: row.storageKey,
+            message: error instanceof Error ? error.message : "Unknown error",
+          });
+        });
       }
-      if (stale.length)
-        log("info", "files.staged_uploads_swept", { count: stale.length });
-      return stale.length;
+      if (retired)
+        log("info", "files.staged_uploads_swept", { count: retired });
+      return retired;
     },
   };
 }

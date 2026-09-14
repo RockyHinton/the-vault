@@ -40,7 +40,9 @@ pattern before any backend call; nothing produces a URL; no bytes are stored in 
 
 Object storage and PostgreSQL are not one transaction. The order above guarantees a row never
 points at bytes that were not fully written; unclaimed staged uploads are retired by
-`sweepStagedUploads` after 24 hours; a row is never treated as proof of the object (missing
+`sweepStagedUploads` after 24 hours (row retired by compare-and-set first, bytes deleted only
+for rows the sweep retired, so a concurrently claimed file keeps its bytes; the sweep is not
+scheduled by the application); a row is never treated as proof of the object (missing
 bytes answer `502 FILE_UNAVAILABLE`).
 
 **Attachment convention.** A domain that needs documents references `documents.id` with a
@@ -75,7 +77,9 @@ carries documents; never add a second upload path.
   file is swept later; nothing half-attached exists.
 - **Attach existing, detach, delete.** `PUT …/documents/:documentId` links an existing document
   of the same project by any of its version ids; `DELETE …/documents/:documentId` removes the
-  link only. Deleting the owner soft-deletes the owner and leaves documents, versions and bytes
+  link only. A lineage already linked is `409 DOCUMENT_ALREADY_ATTACHED`: the owner pre-checks,
+  and the join repository's `insert` maps a concurrent duplicate on the table's primary key to
+  the same 409, so owners never add their own race handling. Deleting the owner soft-deletes the owner and leaves documents, versions and bytes
   untouched. Document metadata, versions and deletion continue to go through the Documents
   routes and their uploader-or-admin policy.
 - **Contracts embed the current version.** The owner's contract carries

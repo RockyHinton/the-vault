@@ -15,10 +15,11 @@ import {
 } from "@shared/contracts";
 import type { BudgetLineItemRow, BudgetVersionRow } from "@shared/schema";
 import type { Database } from "../../db/client";
-import { withTransaction, type Transaction } from "../../db/transaction";
+import type { Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
 import { withUniqueViolationAsConflict } from "../../db/unique-violation";
 import { appendAuditEvent } from "../audit/audit-repository";
+import { withLiveProjectTransaction } from "../projects/live-project";
 import { documentRepository } from "../documents/document-repository";
 import { createDocumentInTransaction } from "../documents/document-service";
 import { projectRepository } from "../projects/project-repository";
@@ -332,8 +333,7 @@ export function createBudgetService({ db }: { db: Database }) {
         "budgets_project_unique",
         budgetExists,
         () =>
-          withTransaction(db, async (tx) => {
-            await requireProject(tx, projectId);
+          withLiveProjectTransaction(db, projectId, async (tx) => {
             if (await budgetRepository.findByProject(tx, projectId))
               throw budgetExists();
             const budget = await budgetRepository.insert(tx, {
@@ -379,7 +379,7 @@ export function createBudgetService({ db }: { db: Database }) {
       expectedVersion: number,
       actor: BudgetActor,
     ): Promise<Budget> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireVersion(
           await budgetVersionRepository.findById(tx, { projectId, versionId }),
         );
@@ -425,7 +425,7 @@ export function createBudgetService({ db }: { db: Database }) {
       actor: BudgetActor,
     ): Promise<Budget> {
       assertCanLock(actor);
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireVersion(
           await budgetVersionRepository.findById(tx, { projectId, versionId }),
         );
@@ -483,7 +483,7 @@ export function createBudgetService({ db }: { db: Database }) {
         "budget_versions_one_open_per_budget",
         alreadyOpen,
         () =>
-          withTransaction(db, async (tx) => {
+          withLiveProjectTransaction(db, projectId, async (tx) => {
             const source = requireVersion(
               await budgetVersionRepository.findById(tx, {
                 projectId,
@@ -590,7 +590,7 @@ export function createBudgetService({ db }: { db: Database }) {
         "budget_departments_version_name_unique",
         departmentNameTaken,
         () =>
-          withTransaction(db, async (tx) => {
+          withLiveProjectTransaction(db, projectId, async (tx) => {
             await budgetVersionRepository.lockRow(tx, versionId);
             const version = requireVersion(
               await budgetVersionRepository.findById(tx, {
@@ -644,51 +644,55 @@ export function createBudgetService({ db }: { db: Database }) {
       const currency = requireBudget(
         await budgetRepository.findByProject(db, projectId),
       ).budget.currency;
-      const versionId = await withTransaction(db, async (tx) => {
-        const scope = await requireEditableDepartment(
-          tx,
-          projectId,
-          departmentId,
-        );
-        const siblings = await budgetDepartmentRepository.listByVersion(
-          tx,
-          scope.version.id,
-        );
-        if (
-          siblings.some(
-            (d) =>
-              d.id !== departmentId &&
-              d.name.toLowerCase() === input.name.toLowerCase(),
-          )
-        )
-          throw new ApiError(
-            409,
-            "BUDGET_DEPARTMENT_NAME_TAKEN",
-            "A department with that name already exists in this version.",
-          );
-        requireFresh(
-          await budgetDepartmentRepository.rename(tx, {
-            id: departmentId,
-            expectedVersion: input.version,
-            name: input.name,
-          }),
-        );
-        await budgetVersionRepository.touch(tx, scope.version.id);
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "budget_department.updated",
-          entityType: "budget_department",
-          entityId: departmentId,
-          requestId: actor.requestId,
-          metadata: {
+      const versionId = await withLiveProjectTransaction(
+        db,
+        projectId,
+        async (tx) => {
+          const scope = await requireEditableDepartment(
+            tx,
             projectId,
-            budgetVersionId: scope.version.id,
-            from: scope.department.name,
-            to: input.name,
-          },
-        });
-        return scope.version.id;
-      });
+            departmentId,
+          );
+          const siblings = await budgetDepartmentRepository.listByVersion(
+            tx,
+            scope.version.id,
+          );
+          if (
+            siblings.some(
+              (d) =>
+                d.id !== departmentId &&
+                d.name.toLowerCase() === input.name.toLowerCase(),
+            )
+          )
+            throw new ApiError(
+              409,
+              "BUDGET_DEPARTMENT_NAME_TAKEN",
+              "A department with that name already exists in this version.",
+            );
+          requireFresh(
+            await budgetDepartmentRepository.rename(tx, {
+              id: departmentId,
+              expectedVersion: input.version,
+              name: input.name,
+            }),
+          );
+          await budgetVersionRepository.touch(tx, scope.version.id);
+          await appendAuditEvent(tx, {
+            actorUserId: actor.userId,
+            action: "budget_department.updated",
+            entityType: "budget_department",
+            entityId: departmentId,
+            requestId: actor.requestId,
+            metadata: {
+              projectId,
+              budgetVersionId: scope.version.id,
+              from: scope.department.name,
+              to: input.name,
+            },
+          });
+          return scope.version.id;
+        },
+      );
       return loadVersion(db, projectId, versionId, currency);
     },
 
@@ -696,43 +700,53 @@ export function createBudgetService({ db }: { db: Database }) {
     async deleteDepartment(
       projectId: string,
       departmentId: string,
+      expectedVersion: number,
       actor: BudgetActor,
     ): Promise<BudgetVersion> {
       const currency = requireBudget(
         await budgetRepository.findByProject(db, projectId),
       ).budget.currency;
-      const versionId = await withTransaction(db, async (tx) => {
-        const scope = await requireEditableDepartment(
-          tx,
-          projectId,
-          departmentId,
-        );
-        const contents = await budgetDepartmentRepository.countContents(
-          tx,
-          departmentId,
-        );
-        if (contents.lineItems > 0 || contents.documents > 0)
-          throw new ApiError(
-            409,
-            "BUDGET_DEPARTMENT_NOT_EMPTY",
-            "Remove line items and documents before deleting the department.",
-          );
-        await budgetDepartmentRepository.delete(tx, departmentId);
-        await budgetVersionRepository.touch(tx, scope.version.id);
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "budget_department.deleted",
-          entityType: "budget_department",
-          entityId: departmentId,
-          requestId: actor.requestId,
-          metadata: {
+      const versionId = await withLiveProjectTransaction(
+        db,
+        projectId,
+        async (tx) => {
+          const scope = await requireEditableDepartment(
+            tx,
             projectId,
-            budgetVersionId: scope.version.id,
-            name: scope.department.name,
-          },
-        });
-        return scope.version.id;
-      });
+            departmentId,
+          );
+          const contents = await budgetDepartmentRepository.countContents(
+            tx,
+            departmentId,
+          );
+          if (contents.lineItems > 0 || contents.documents > 0)
+            throw new ApiError(
+              409,
+              "BUDGET_DEPARTMENT_NOT_EMPTY",
+              "Remove line items and documents before deleting the department.",
+            );
+          requireFresh(
+            (await budgetDepartmentRepository.delete(tx, {
+              id: departmentId,
+              expectedVersion,
+            })) || undefined,
+          );
+          await budgetVersionRepository.touch(tx, scope.version.id);
+          await appendAuditEvent(tx, {
+            actorUserId: actor.userId,
+            action: "budget_department.deleted",
+            entityType: "budget_department",
+            entityId: departmentId,
+            requestId: actor.requestId,
+            metadata: {
+              projectId,
+              budgetVersionId: scope.version.id,
+              name: scope.department.name,
+            },
+          });
+          return scope.version.id;
+        },
+      );
       return loadVersion(db, projectId, versionId, currency);
     },
 
@@ -745,38 +759,42 @@ export function createBudgetService({ db }: { db: Database }) {
       const currency = requireBudget(
         await budgetRepository.findByProject(db, projectId),
       ).budget.currency;
-      const versionId = await withTransaction(db, async (tx) => {
-        const scope = await requireEditableDepartment(
-          tx,
-          projectId,
-          departmentId,
-        );
-        const created = await budgetLineItemRepository.insert(tx, {
-          budgetDepartmentId: departmentId,
-          name: input.name,
-          amount: input.amount,
-          note: input.note || null,
-          position: await budgetLineItemRepository.nextPosition(
+      const versionId = await withLiveProjectTransaction(
+        db,
+        projectId,
+        async (tx) => {
+          const scope = await requireEditableDepartment(
             tx,
-            departmentId,
-          ),
-        });
-        await budgetVersionRepository.touch(tx, scope.version.id);
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "budget_line_item.created",
-          entityType: "budget_line_item",
-          entityId: created.id,
-          requestId: actor.requestId,
-          metadata: {
             projectId,
-            budgetVersionId: scope.version.id,
             departmentId,
+          );
+          const created = await budgetLineItemRepository.insert(tx, {
+            budgetDepartmentId: departmentId,
+            name: input.name,
             amount: input.amount,
-          },
-        });
-        return scope.version.id;
-      });
+            note: input.note || null,
+            position: await budgetLineItemRepository.nextPosition(
+              tx,
+              departmentId,
+            ),
+          });
+          await budgetVersionRepository.touch(tx, scope.version.id);
+          await appendAuditEvent(tx, {
+            actorUserId: actor.userId,
+            action: "budget_line_item.created",
+            entityType: "budget_line_item",
+            entityId: created.id,
+            requestId: actor.requestId,
+            metadata: {
+              projectId,
+              budgetVersionId: scope.version.id,
+              departmentId,
+              amount: input.amount,
+            },
+          });
+          return scope.version.id;
+        },
+      );
       return loadVersion(db, projectId, versionId, currency);
     },
 
@@ -797,43 +815,47 @@ export function createBudgetService({ db }: { db: Database }) {
       const changedFields = (
         Object.keys(values) as (keyof typeof values)[]
       ).filter((key) => values[key] !== undefined);
-      const versionId = await withTransaction(db, async (tx) => {
-        const scope = await budgetLineItemRepository.findScoped(tx, {
-          projectId,
-          lineItemId,
-        });
-        if (!scope)
-          throw new ApiError(
-            404,
-            "BUDGET_LINE_ITEM_NOT_FOUND",
-            "The line item was not found.",
-          );
-        await requireEditableDepartment(tx, projectId, scope.department.id);
-        requireFresh(
-          await budgetLineItemRepository.update(tx, {
-            id: lineItemId,
-            expectedVersion: input.version,
-            values,
-          }),
-        );
-        await budgetVersionRepository.touch(tx, scope.version.id);
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "budget_line_item.updated",
-          entityType: "budget_line_item",
-          entityId: lineItemId,
-          requestId: actor.requestId,
-          metadata: {
+      const versionId = await withLiveProjectTransaction(
+        db,
+        projectId,
+        async (tx) => {
+          const scope = await budgetLineItemRepository.findScoped(tx, {
             projectId,
-            budgetVersionId: scope.version.id,
-            changedFields,
-            ...(input.amount !== undefined
-              ? { fromAmount: scope.lineItem.amount, toAmount: input.amount }
-              : {}),
-          },
-        });
-        return scope.version.id;
-      });
+            lineItemId,
+          });
+          if (!scope)
+            throw new ApiError(
+              404,
+              "BUDGET_LINE_ITEM_NOT_FOUND",
+              "The line item was not found.",
+            );
+          await requireEditableDepartment(tx, projectId, scope.department.id);
+          requireFresh(
+            await budgetLineItemRepository.update(tx, {
+              id: lineItemId,
+              expectedVersion: input.version,
+              values,
+            }),
+          );
+          await budgetVersionRepository.touch(tx, scope.version.id);
+          await appendAuditEvent(tx, {
+            actorUserId: actor.userId,
+            action: "budget_line_item.updated",
+            entityType: "budget_line_item",
+            entityId: lineItemId,
+            requestId: actor.requestId,
+            metadata: {
+              projectId,
+              budgetVersionId: scope.version.id,
+              changedFields,
+              ...(input.amount !== undefined
+                ? { fromAmount: scope.lineItem.amount, toAmount: input.amount }
+                : {}),
+            },
+          });
+          return scope.version.id;
+        },
+      );
       return loadVersion(db, projectId, versionId, currency);
     },
 
@@ -846,40 +868,44 @@ export function createBudgetService({ db }: { db: Database }) {
       const currency = requireBudget(
         await budgetRepository.findByProject(db, projectId),
       ).budget.currency;
-      const versionId = await withTransaction(db, async (tx) => {
-        const scope = await budgetLineItemRepository.findScoped(tx, {
-          projectId,
-          lineItemId,
-        });
-        if (!scope)
-          throw new ApiError(
-            404,
-            "BUDGET_LINE_ITEM_NOT_FOUND",
-            "The line item was not found.",
-          );
-        await requireEditableDepartment(tx, projectId, scope.department.id);
-        requireFresh(
-          (await budgetLineItemRepository.delete(tx, {
-            id: lineItemId,
-            expectedVersion,
-          })) || undefined,
-        );
-        await budgetVersionRepository.touch(tx, scope.version.id);
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "budget_line_item.deleted",
-          entityType: "budget_line_item",
-          entityId: lineItemId,
-          requestId: actor.requestId,
-          metadata: {
+      const versionId = await withLiveProjectTransaction(
+        db,
+        projectId,
+        async (tx) => {
+          const scope = await budgetLineItemRepository.findScoped(tx, {
             projectId,
-            budgetVersionId: scope.version.id,
-            name: scope.lineItem.name,
-            amount: scope.lineItem.amount,
-          },
-        });
-        return scope.version.id;
-      });
+            lineItemId,
+          });
+          if (!scope)
+            throw new ApiError(
+              404,
+              "BUDGET_LINE_ITEM_NOT_FOUND",
+              "The line item was not found.",
+            );
+          await requireEditableDepartment(tx, projectId, scope.department.id);
+          requireFresh(
+            (await budgetLineItemRepository.delete(tx, {
+              id: lineItemId,
+              expectedVersion,
+            })) || undefined,
+          );
+          await budgetVersionRepository.touch(tx, scope.version.id);
+          await appendAuditEvent(tx, {
+            actorUserId: actor.userId,
+            action: "budget_line_item.deleted",
+            entityType: "budget_line_item",
+            entityId: lineItemId,
+            requestId: actor.requestId,
+            metadata: {
+              projectId,
+              budgetVersionId: scope.version.id,
+              name: scope.lineItem.name,
+              amount: scope.lineItem.amount,
+            },
+          });
+          return scope.version.id;
+        },
+      );
       return loadVersion(db, projectId, versionId, currency);
     },
 
@@ -892,29 +918,33 @@ export function createBudgetService({ db }: { db: Database }) {
       const currency = requireBudget(
         await budgetRepository.findByProject(db, projectId),
       ).budget.currency;
-      const versionId = await withTransaction(db, async (tx) => {
-        const scope = await requireEditableDepartment(
-          tx,
-          projectId,
-          departmentId,
-        );
-        const document: Document = await createDocumentInTransaction(tx, {
-          projectId,
-          document: { ...input, folder: BUDGET_FOLDER },
-          actor,
-        });
-        await attach(
-          tx,
-          {
+      const versionId = await withLiveProjectTransaction(
+        db,
+        projectId,
+        async (tx) => {
+          const scope = await requireEditableDepartment(
+            tx,
             projectId,
             departmentId,
-            versionId: scope.version.id,
-            documentLineageId: document.lineageId,
-          },
-          actor,
-        );
-        return scope.version.id;
-      });
+          );
+          const document: Document = await createDocumentInTransaction(tx, {
+            projectId,
+            document: { ...input, folder: BUDGET_FOLDER },
+            actor,
+          });
+          await attach(
+            tx,
+            {
+              projectId,
+              departmentId,
+              versionId: scope.version.id,
+              documentLineageId: document.lineageId,
+            },
+            actor,
+          );
+          return scope.version.id;
+        },
+      );
       return loadVersion(db, projectId, versionId, currency);
     },
 
@@ -927,44 +957,48 @@ export function createBudgetService({ db }: { db: Database }) {
       const currency = requireBudget(
         await budgetRepository.findByProject(db, projectId),
       ).budget.currency;
-      const versionId = await withTransaction(db, async (tx) => {
-        const scope = await requireEditableDepartment(
-          tx,
-          projectId,
-          departmentId,
-        );
-        const document = await documentRepository.findById(tx, {
-          projectId,
-          documentId,
-        });
-        if (!document)
-          throw new ApiError(
-            404,
-            "DOCUMENT_NOT_FOUND",
-            "The document was not found.",
-          );
-        const already = await budgetDepartmentDocumentRepository.find(tx, {
-          ownerId: departmentId,
-          documentLineageId: document.document.lineageId,
-        });
-        if (already)
-          throw new ApiError(
-            409,
-            "DOCUMENT_ALREADY_ATTACHED",
-            "That document is already attached.",
-          );
-        await attach(
-          tx,
-          {
+      const versionId = await withLiveProjectTransaction(
+        db,
+        projectId,
+        async (tx) => {
+          const scope = await requireEditableDepartment(
+            tx,
             projectId,
             departmentId,
-            versionId: scope.version.id,
+          );
+          const document = await documentRepository.findById(tx, {
+            projectId,
+            documentId,
+          });
+          if (!document)
+            throw new ApiError(
+              404,
+              "DOCUMENT_NOT_FOUND",
+              "The document was not found.",
+            );
+          const already = await budgetDepartmentDocumentRepository.find(tx, {
+            ownerId: departmentId,
             documentLineageId: document.document.lineageId,
-          },
-          actor,
-        );
-        return scope.version.id;
-      });
+          });
+          if (already)
+            throw new ApiError(
+              409,
+              "DOCUMENT_ALREADY_ATTACHED",
+              "That document is already attached.",
+            );
+          await attach(
+            tx,
+            {
+              projectId,
+              departmentId,
+              versionId: scope.version.id,
+              documentLineageId: document.document.lineageId,
+            },
+            actor,
+          );
+          return scope.version.id;
+        },
+      );
       return loadVersion(db, projectId, versionId, currency);
     },
 
@@ -977,42 +1011,46 @@ export function createBudgetService({ db }: { db: Database }) {
       const currency = requireBudget(
         await budgetRepository.findByProject(db, projectId),
       ).budget.currency;
-      const versionId = await withTransaction(db, async (tx) => {
-        const scope = await requireEditableDepartment(
-          tx,
-          projectId,
-          departmentId,
-        );
-        const document = await documentRepository.findById(tx, {
-          projectId,
-          documentId,
-        });
-        const lineageId = document?.document.lineageId ?? documentId;
-        const removed = await budgetDepartmentDocumentRepository.delete(tx, {
-          ownerId: departmentId,
-          documentLineageId: lineageId,
-        });
-        if (!removed)
-          throw new ApiError(
-            404,
-            "ATTACHMENT_NOT_FOUND",
-            "That document is not attached here.",
-          );
-        await budgetVersionRepository.touch(tx, scope.version.id);
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "budget_department.document_detached",
-          entityType: "budget_department",
-          entityId: departmentId,
-          requestId: actor.requestId,
-          metadata: {
+      const versionId = await withLiveProjectTransaction(
+        db,
+        projectId,
+        async (tx) => {
+          const scope = await requireEditableDepartment(
+            tx,
             projectId,
-            budgetVersionId: scope.version.id,
+            departmentId,
+          );
+          const document = await documentRepository.findById(tx, {
+            projectId,
+            documentId,
+          });
+          const lineageId = document?.document.lineageId ?? documentId;
+          const removed = await budgetDepartmentDocumentRepository.delete(tx, {
+            ownerId: departmentId,
             documentLineageId: lineageId,
-          },
-        });
-        return scope.version.id;
-      });
+          });
+          if (!removed)
+            throw new ApiError(
+              404,
+              "ATTACHMENT_NOT_FOUND",
+              "That document is not attached here.",
+            );
+          await budgetVersionRepository.touch(tx, scope.version.id);
+          await appendAuditEvent(tx, {
+            actorUserId: actor.userId,
+            action: "budget_department.document_detached",
+            entityType: "budget_department",
+            entityId: departmentId,
+            requestId: actor.requestId,
+            metadata: {
+              projectId,
+              budgetVersionId: scope.version.id,
+              documentLineageId: lineageId,
+            },
+          });
+          return scope.version.id;
+        },
+      );
       return loadVersion(db, projectId, versionId, currency);
     },
   };

@@ -9,9 +9,10 @@ import {
   type UpdateLegalRecordInput,
 } from "@shared/contracts";
 import type { Database } from "../../db/client";
-import { withTransaction, type Transaction } from "../../db/transaction";
+import type { Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
 import { appendAuditEvent } from "../audit/audit-repository";
+import { withLiveProjectTransaction } from "../projects/live-project";
 import { documentRepository } from "../documents/document-repository";
 import { createDocumentInTransaction } from "../documents/document-service";
 import { projectRepository } from "../projects/project-repository";
@@ -234,8 +235,7 @@ export function createLegalRecordService({ db }: { db: Database }) {
       input: CreateLegalRecordInput,
       actor: LegalActor,
     ): Promise<LegalRecord> {
-      const id = await withTransaction(db, async (tx) => {
-        await requireProject(tx, projectId);
+      const id = await withLiveProjectTransaction(db, projectId, async (tx) => {
         const created = await legalRecordRepository.insert(tx, {
           projectId,
           category: input.details.category,
@@ -271,7 +271,7 @@ export function createLegalRecordService({ db }: { db: Database }) {
       const changedFields = (
         Object.keys(values) as (keyof LegalRecordEditableFields)[]
       ).filter((key) => values[key] !== undefined);
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireRecord(
           await legalRecordRepository.findById(tx, { projectId, recordId }),
         );
@@ -306,7 +306,7 @@ export function createLegalRecordService({ db }: { db: Database }) {
       version: number,
       actor: LegalActor,
     ): Promise<void> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireRecord(
           await legalRecordRepository.findById(tx, { projectId, recordId }),
         );
@@ -335,7 +335,7 @@ export function createLegalRecordService({ db }: { db: Database }) {
       input: AttachNewOwnerDocumentInput,
       actor: LegalActor,
     ): Promise<LegalRecord> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireRecord(
           await legalRecordRepository.findById(tx, { projectId, recordId }),
         );
@@ -358,7 +358,7 @@ export function createLegalRecordService({ db }: { db: Database }) {
       documentId: string,
       actor: LegalActor,
     ): Promise<LegalRecord> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireRecord(
           await legalRecordRepository.findById(tx, { projectId, recordId }),
         );
@@ -393,7 +393,7 @@ export function createLegalRecordService({ db }: { db: Database }) {
       documentId: string,
       actor: LegalActor,
     ): Promise<LegalRecord> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireRecord(
           await legalRecordRepository.findById(tx, { projectId, recordId }),
         );
@@ -404,10 +404,18 @@ export function createLegalRecordService({ db }: { db: Database }) {
           recordId,
           documentId,
         );
-        await legalRecordDocumentRepository.delete(tx, {
+        // The link may have been removed by a concurrent detach after the
+        // lookup above; zero rows removed is not a successful detach.
+        const removed = await legalRecordDocumentRepository.delete(tx, {
           ownerId: recordId,
           documentLineageId: lineageId,
         });
+        if (!removed)
+          throw new ApiError(
+            404,
+            "ATTACHMENT_NOT_FOUND",
+            "That document is not attached to this record.",
+          );
         await appendAuditEvent(tx, {
           actorUserId: actor.userId,
           action: "legal_record.document_detached",

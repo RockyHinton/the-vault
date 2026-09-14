@@ -166,12 +166,14 @@ export function createBudgetRouter(service: BudgetService): Router {
     "/departments/:departmentId",
     handle(async (req, res) => {
       const params = validate(budgetDepartmentParamSchema, req.params);
+      const { version } = validate(versionOnlySchema, req.body);
       ok(
         req,
         res,
         await service.deleteDepartment(
           params.projectId,
           params.departmentId,
+          version,
           actor(req),
         ),
       );

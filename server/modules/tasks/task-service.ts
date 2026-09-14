@@ -1,8 +1,9 @@
 import type { CreateTaskInput, Task, UpdateTaskInput } from "@shared/contracts";
 import type { Database } from "../../db/client";
-import { withTransaction, type Transaction } from "../../db/transaction";
+import type { Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
 import { appendAuditEvent } from "../audit/audit-repository";
+import { withLiveProjectTransaction } from "../projects/live-project";
 import { projectRepository } from "../projects/project-repository";
 import { toUserRef } from "../users/user-ref";
 import { userRepository } from "../users/user-repository";
@@ -108,8 +109,7 @@ export function createTaskService({ db }: { db: Database }) {
       actor: TaskActor,
     ): Promise<Task> {
       const assigneeUserId = input.assigneeUserId ?? null;
-      const id = await withTransaction(db, async (tx) => {
-        await requireProject(tx, projectId);
+      const id = await withLiveProjectTransaction(db, projectId, async (tx) => {
         await requireAssignable(tx, assigneeUserId);
         const created = await taskRepository.insert(tx, {
           projectId,
@@ -152,7 +152,7 @@ export function createTaskService({ db }: { db: Database }) {
       const changedFields = (
         Object.keys(values) as (keyof TaskEditableFields)[]
       ).filter((key) => values[key] !== undefined);
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireTask(
           await taskRepository.findById(tx, { projectId, taskId }),
         );
@@ -186,7 +186,7 @@ export function createTaskService({ db }: { db: Database }) {
       version: number,
       actor: TaskActor,
     ): Promise<Task> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireTask(
           await taskRepository.findById(tx, { projectId, taskId }),
         );
@@ -221,7 +221,7 @@ export function createTaskService({ db }: { db: Database }) {
       version: number,
       actor: TaskActor,
     ): Promise<Task> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireTask(
           await taskRepository.findById(tx, { projectId, taskId }),
         );
@@ -255,7 +255,7 @@ export function createTaskService({ db }: { db: Database }) {
       version: number,
       actor: TaskActor,
     ): Promise<void> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireTask(
           await taskRepository.findById(tx, { projectId, taskId }),
         );

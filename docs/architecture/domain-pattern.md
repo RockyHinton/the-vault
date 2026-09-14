@@ -44,7 +44,10 @@ write compare-and-set updates (`id` + expected `version`). They contain no polic
 vocabulary and never open a transaction. Editable-field types are `Partial<Pick<Row, …>>`,
 never `Partial<$inferInsert>`.
 
-**Services.** `create<Domain>Service({ db })`. Each command: open `withTransaction`, load
+**Services.** `create<Domain>Service({ db })`. Each command: open `withTransaction` (for a
+project-owned domain, `withLiveProjectTransaction(db, projectId, …)`, which refuses a
+soft-deleted project before any write; see
+[transactions-concurrency-audit.md](transactions-concurrency-audit.md)), load
 and scope the record (`require<X>` → 404), check policy (`assertCan*` → 403, state rules →
 409/422), write through the repository (`requireFresh` → 409 `VERSION_CONFLICT`), append
 the audit event with the same `tx`, and return the contract shape (`to<Contract>`). Services

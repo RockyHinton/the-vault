@@ -255,12 +255,17 @@ describe("budget: departments", () => {
       .patch(`${budget()}/departments/${music.id}`)
       .send({ name: "Music & Score", version: music.version });
     expect(renamed.status).toBe(200);
-    const notEmpty = await member.delete(
-      `${budget()}/departments/${departmentNamed(version, "Production").id}`,
-    );
+    const production = departmentNamed(version, "Production");
+    const notEmpty = await member
+      .delete(`${budget()}/departments/${production.id}`)
+      .send({ version: production.version });
     expect(notEmpty.status).toBe(409);
     expect(notEmpty.body.error.code).toBe("BUDGET_DEPARTMENT_NOT_EMPTY");
-    const removed = await member.delete(`${budget()}/departments/${music.id}`);
+    const removed = await member
+      .delete(`${budget()}/departments/${music.id}`)
+      .send({
+        version: departmentNamed(renamed.body.data, "Music & Score").version,
+      });
     expect(removed.status).toBe(200);
     expect(
       removed.body.data.departments.map((d: { name: string }) => d.name),
@@ -357,7 +362,11 @@ describe("budget: lifecycle and history", () => {
     expect(edit.status).toBe(409);
     expect(edit.body.error.code).toBe("BUDGET_VERSION_NOT_EDITABLE");
     expect(
-      (await admin.delete(`${budget()}/departments/${production.id}`)).status,
+      (
+        await admin
+          .delete(`${budget()}/departments/${production.id}`)
+          .send({ version: production.version })
+      ).status,
     ).toBe(409);
     expect(
       (

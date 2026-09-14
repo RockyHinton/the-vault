@@ -9,9 +9,10 @@ import type {
   UpdateScriptAnnotationInput,
 } from "@shared/contracts";
 import type { Database } from "../../db/client";
-import { withTransaction, type Transaction } from "../../db/transaction";
+import type { Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
 import { appendAuditEvent } from "../audit/audit-repository";
+import { withLiveProjectTransaction } from "../projects/live-project";
 import {
   documentRepository,
   type DocumentRecord,
@@ -276,40 +277,43 @@ export function createScriptService({ db }: { db: Database }) {
       input: CreateScriptInput,
       actor: ScriptActor,
     ): Promise<ScriptDetail> {
-      const scriptId = await withTransaction(db, async (tx) => {
-        await requireProject(tx, projectId);
-        await assertReadableScriptFile(tx, input.fileObjectId, actor);
-        const document = await createDocumentInTransaction(tx, {
-          projectId,
-          document: {
-            fileObjectId: input.fileObjectId,
-            folder: SCRIPT_FOLDER,
-            title: input.title,
-            status: "draft",
-            notes: input.notes,
-          },
-          actor,
-        });
-        const created = await scriptRepository.insert(tx, {
-          projectId,
-          documentLineageId: document.lineageId,
-          createdByUserId: actor.userId,
-        });
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "script.created",
-          entityType: "script",
-          entityId: created.id,
-          requestId: actor.requestId,
-          metadata: {
+      const scriptId = await withLiveProjectTransaction(
+        db,
+        projectId,
+        async (tx) => {
+          await assertReadableScriptFile(tx, input.fileObjectId, actor);
+          const document = await createDocumentInTransaction(tx, {
+            projectId,
+            document: {
+              fileObjectId: input.fileObjectId,
+              folder: SCRIPT_FOLDER,
+              title: input.title,
+              status: "draft",
+              notes: input.notes,
+            },
+            actor,
+          });
+          const created = await scriptRepository.insert(tx, {
             projectId,
             documentLineageId: document.lineageId,
-            documentId: document.id,
-            sha256: document.file.sha256,
-          },
-        });
-        return created.id;
-      });
+            createdByUserId: actor.userId,
+          });
+          await appendAuditEvent(tx, {
+            actorUserId: actor.userId,
+            action: "script.created",
+            entityType: "script",
+            entityId: created.id,
+            requestId: actor.requestId,
+            metadata: {
+              projectId,
+              documentLineageId: document.lineageId,
+              documentId: document.id,
+              sha256: document.file.sha256,
+            },
+          });
+          return created.id;
+        },
+      );
       return loadDetail(db, projectId, scriptId);
     },
 
@@ -320,7 +324,7 @@ export function createScriptService({ db }: { db: Database }) {
       input: AddScriptVersionInput,
       actor: ScriptActor,
     ): Promise<ScriptDetail> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const record = requireScript(
           await scriptRepository.findById(tx, { projectId, scriptId }),
         );
@@ -372,7 +376,7 @@ export function createScriptService({ db }: { db: Database }) {
       scriptId: string,
       actor: ScriptActor,
     ): Promise<void> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const record = requireScript(
           await scriptRepository.findById(tx, { projectId, scriptId }),
         );
@@ -428,7 +432,7 @@ export function createScriptService({ db }: { db: Database }) {
       input: CreateScriptAnnotationInput,
       actor: ScriptActor,
     ): Promise<ScriptAnnotation> {
-      const id = await withTransaction(db, async (tx) => {
+      const id = await withLiveProjectTransaction(db, projectId, async (tx) => {
         const record = requireScript(
           await scriptRepository.findById(tx, { projectId, scriptId }),
         );
@@ -486,7 +490,7 @@ export function createScriptService({ db }: { db: Database }) {
       const changedFields = (
         Object.keys(values) as (keyof AnnotationEditableFields)[]
       ).filter((key) => values[key] !== undefined);
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         requireScript(
           await scriptRepository.findById(tx, { projectId, scriptId }),
         );
@@ -535,7 +539,7 @@ export function createScriptService({ db }: { db: Database }) {
       version: number,
       actor: ScriptActor,
     ): Promise<void> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         requireScript(
           await scriptRepository.findById(tx, { projectId, scriptId }),
         );

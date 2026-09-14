@@ -1,8 +1,9 @@
 import type { CreateNoteInput, Note, UpdateNoteInput } from "@shared/contracts";
 import type { Database } from "../../db/client";
-import { withTransaction, type Transaction } from "../../db/transaction";
+import type { Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
 import { appendAuditEvent } from "../audit/audit-repository";
+import { withLiveProjectTransaction } from "../projects/live-project";
 import { projectRepository } from "../projects/project-repository";
 import { toUserRef } from "../users/user-ref";
 import {
@@ -79,8 +80,7 @@ export function createNoteService({ db }: { db: Database }) {
       input: CreateNoteInput,
       actor: NoteActor,
     ): Promise<Note> {
-      const id = await withTransaction(db, async (tx) => {
-        await requireProject(tx, projectId);
+      const id = await withLiveProjectTransaction(db, projectId, async (tx) => {
         const created = await noteRepository.insert(tx, {
           projectId,
           authorUserId: actor.userId,
@@ -117,7 +117,7 @@ export function createNoteService({ db }: { db: Database }) {
       const changedFields = (
         Object.keys(values) as (keyof NoteEditableFields)[]
       ).filter((key) => values[key] !== undefined);
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireNote(
           await noteRepository.findById(tx, { projectId, noteId }),
         );
@@ -149,7 +149,7 @@ export function createNoteService({ db }: { db: Database }) {
       version: number,
       actor: NoteActor,
     ): Promise<void> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireNote(
           await noteRepository.findById(tx, { projectId, noteId }),
         );

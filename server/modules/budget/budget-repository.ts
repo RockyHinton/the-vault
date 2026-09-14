@@ -321,19 +321,23 @@ export const budgetDepartmentRepository = {
     return row;
   },
 
-  /** Hard delete: departments exist only inside a draft, which has no history to keep. */
   /**
    * Physically removes a department of a draft version only. The predicate
    * is state-aware so a locked version's content can never be deleted, even
    * by a future service mistake: the row must belong to a version whose
-   * status is still `draft`.
+   * status is still `draft`. Compare-and-set on the expected version: zero
+   * rows means the caller is stale or the department is already gone.
    */
-  async delete(tx: Transaction, id: string): Promise<boolean> {
+  async delete(
+    tx: Transaction,
+    input: { id: string; expectedVersion: number },
+  ): Promise<boolean> {
     const rows = await tx
       .delete(budgetDepartments)
       .where(
         and(
-          eq(budgetDepartments.id, id),
+          eq(budgetDepartments.id, input.id),
+          eq(budgetDepartments.version, input.expectedVersion),
           inArray(
             budgetDepartments.budgetVersionId,
             tx

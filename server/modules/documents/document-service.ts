@@ -9,9 +9,10 @@ import type {
 } from "@shared/contracts";
 import type { FileObjectRow } from "@shared/schema";
 import type { Database } from "../../db/client";
-import { withTransaction, type Transaction } from "../../db/transaction";
+import type { Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
 import { appendAuditEvent } from "../audit/audit-repository";
+import { withLiveProjectTransaction } from "../projects/live-project";
 import { fileRepository } from "../files/file-repository";
 import { toFileObjectContract } from "../files/file-service";
 import { projectRepository } from "../projects/project-repository";
@@ -158,7 +159,6 @@ export async function createDocumentInTransaction(
 ): Promise<Document> {
   const { projectId, document, actor } = input;
   const id = randomUUID();
-  await requireProject(tx, projectId);
   const file = await claimStagedFile(tx, document.fileObjectId, actor);
   const row = await documentRepository.insert(tx, {
     id,
@@ -298,7 +298,7 @@ export function createDocumentService({ db }: { db: Database }) {
       input: CreateDocumentInput,
       actor: DocumentActor,
     ): Promise<Document> {
-      return withTransaction(db, (tx) =>
+      return withLiveProjectTransaction(db, projectId, (tx) =>
         createDocumentInTransaction(tx, { projectId, document: input, actor }),
       );
     },
@@ -309,7 +309,7 @@ export function createDocumentService({ db }: { db: Database }) {
       input: AddDocumentVersionInput,
       actor: DocumentActor,
     ): Promise<Document> {
-      return withTransaction(db, (tx) =>
+      return withLiveProjectTransaction(db, projectId, (tx) =>
         addDocumentVersionInTransaction(tx, {
           projectId,
           documentId,
@@ -335,34 +335,38 @@ export function createDocumentService({ db }: { db: Database }) {
       const changedFields = (
         Object.keys(values) as (keyof DocumentEditableFields)[]
       ).filter((key) => values[key] !== undefined);
-      const record = await withTransaction(db, async (tx) => {
-        const existing = requireDocument(
-          await documentRepository.findById(tx, { projectId, documentId }),
-        );
-        assertCurrent(
-          existing,
-          "Superseded versions are history; edit the current version.",
-        );
-        assertCanManage(actor, existing);
-        requireFresh(
-          await documentRepository.updateFields(tx, {
-            id: existing.document.id,
-            expectedVersion: version,
-            values,
-          }),
-        );
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "document.updated",
-          entityType: "document",
-          entityId: existing.document.id,
-          requestId: actor.requestId,
-          metadata: { projectId, changedFields },
-        });
-        return requireDocument(
-          await documentRepository.findById(tx, { projectId, documentId }),
-        );
-      });
+      const record = await withLiveProjectTransaction(
+        db,
+        projectId,
+        async (tx) => {
+          const existing = requireDocument(
+            await documentRepository.findById(tx, { projectId, documentId }),
+          );
+          assertCurrent(
+            existing,
+            "Superseded versions are history; edit the current version.",
+          );
+          assertCanManage(actor, existing);
+          requireFresh(
+            await documentRepository.updateFields(tx, {
+              id: existing.document.id,
+              expectedVersion: version,
+              values,
+            }),
+          );
+          await appendAuditEvent(tx, {
+            actorUserId: actor.userId,
+            action: "document.updated",
+            entityType: "document",
+            entityId: existing.document.id,
+            requestId: actor.requestId,
+            metadata: { projectId, changedFields },
+          });
+          return requireDocument(
+            await documentRepository.findById(tx, { projectId, documentId }),
+          );
+        },
+      );
       return toDocumentContract(record);
     },
 
@@ -378,7 +382,7 @@ export function createDocumentService({ db }: { db: Database }) {
       version: number,
       actor: DocumentActor,
     ): Promise<void> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireDocument(
           await documentRepository.findById(tx, { projectId, documentId }),
         );

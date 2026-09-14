@@ -10,9 +10,10 @@ import {
 } from "@shared/contracts";
 import type { ProjectRow } from "@shared/schema";
 import type { Database } from "../../db/client";
-import { withTransaction, type Transaction } from "../../db/transaction";
+import type { Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
 import { appendAuditEvent } from "../audit/audit-repository";
+import { withLiveProjectTransaction } from "../projects/live-project";
 import { documentRepository } from "../documents/document-repository";
 import { createDocumentInTransaction } from "../documents/document-service";
 import { projectRepository } from "../projects/project-repository";
@@ -183,30 +184,33 @@ export function createRightService({ db }: { db: Database }) {
       input: CreateRightInput,
       actor: RightActor,
     ): Promise<Right> {
-      const id = await withTransaction(db, async (tx) => {
-        const project = await requireProject(tx, projectId);
-        const status =
-          input.status ?? defaultRightsStatusForStage(project.stage);
-        assertStatusAllowed(project, status);
-        const created = await rightRepository.insert(tx, {
-          projectId,
-          rightsType: input.rightsType,
-          status,
-          rightsHolder: input.rightsHolder || null,
-          expiryDate: input.expiryDate ?? null,
-          notes: input.notes || null,
-          createdByUserId: actor.userId,
-        });
-        await appendAuditEvent(tx, {
-          actorUserId: actor.userId,
-          action: "right.created",
-          entityType: "project_right",
-          entityId: created.id,
-          requestId: actor.requestId,
-          metadata: { projectId, rightsType: input.rightsType, status },
-        });
-        return created.id;
-      });
+      const id = await withLiveProjectTransaction(
+        db,
+        projectId,
+        async (tx, project) => {
+          const status =
+            input.status ?? defaultRightsStatusForStage(project.stage);
+          assertStatusAllowed(project, status);
+          const created = await rightRepository.insert(tx, {
+            projectId,
+            rightsType: input.rightsType,
+            status,
+            rightsHolder: input.rightsHolder || null,
+            expiryDate: input.expiryDate ?? null,
+            notes: input.notes || null,
+            createdByUserId: actor.userId,
+          });
+          await appendAuditEvent(tx, {
+            actorUserId: actor.userId,
+            action: "right.created",
+            entityType: "project_right",
+            entityId: created.id,
+            requestId: actor.requestId,
+            metadata: { projectId, rightsType: input.rightsType, status },
+          });
+          return created.id;
+        },
+      );
       return load(db, projectId, id);
     },
 
@@ -225,7 +229,7 @@ export function createRightService({ db }: { db: Database }) {
       const changedFields = (
         Object.keys(values) as (keyof RightEditableFields)[]
       ).filter((key) => values[key] !== undefined);
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         requireRight(
           await rightRepository.findById(tx, { projectId, rightId }),
         );
@@ -254,8 +258,7 @@ export function createRightService({ db }: { db: Database }) {
       input: ChangeRightStatusInput,
       actor: RightActor,
     ): Promise<Right> {
-      await withTransaction(db, async (tx) => {
-        const project = await requireProject(tx, projectId);
+      await withLiveProjectTransaction(db, projectId, async (tx, project) => {
         const existing = requireRight(
           await rightRepository.findById(tx, { projectId, rightId }),
         );
@@ -297,7 +300,7 @@ export function createRightService({ db }: { db: Database }) {
       version: number,
       actor: RightActor,
     ): Promise<void> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireRight(
           await rightRepository.findById(tx, { projectId, rightId }),
         );
@@ -326,7 +329,7 @@ export function createRightService({ db }: { db: Database }) {
       input: AttachNewOwnerDocumentInput,
       actor: RightActor,
     ): Promise<Right> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireRight(
           await rightRepository.findById(tx, { projectId, rightId }),
         );
@@ -346,7 +349,7 @@ export function createRightService({ db }: { db: Database }) {
       documentId: string,
       actor: RightActor,
     ): Promise<Right> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireRight(
           await rightRepository.findById(tx, { projectId, rightId }),
         );
@@ -381,7 +384,7 @@ export function createRightService({ db }: { db: Database }) {
       documentId: string,
       actor: RightActor,
     ): Promise<Right> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireRight(
           await rightRepository.findById(tx, { projectId, rightId }),
         );

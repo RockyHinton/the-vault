@@ -196,11 +196,13 @@ export function useDeleteBudgetDepartment() {
     mutationFn: ({
       projectId,
       departmentId,
+      version,
     }: {
       projectId: string;
       departmentId: string;
+      version: number;
     }) =>
-      deleteBudgetDepartment(projectId, departmentId).then((r) =>
+      deleteBudgetDepartment(projectId, departmentId, version).then((r) =>
         remember(projectId, r),
       ),
     invalidate: afterChange,

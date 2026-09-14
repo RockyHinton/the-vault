@@ -539,7 +539,9 @@ function BudgetVersionView({
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90"
               onClick={() => {
-                if (deptToDelete) removeDepartment.mutate({ projectId, departmentId: deptToDelete.id });
+                // Send the department's version as rendered now, not as it was when the dialog opened.
+                const current = deptToDelete && version.departments.find((d) => d.id === deptToDelete.id);
+                if (current) removeDepartment.mutate({ projectId, departmentId: current.id, version: current.version });
                 setDeptToDelete(null);
               }}
             >

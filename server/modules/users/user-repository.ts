@@ -1,4 +1,4 @@
-import { and, asc, count, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { applicationUsers, type ApplicationUserRow } from "@shared/schema";
 import type { DatabaseExecutor, Transaction } from "../../db/transaction";
 
@@ -112,17 +112,25 @@ export const userRepository = {
     return row;
   },
 
-  async countActiveAdmins(executor: DatabaseExecutor): Promise<number> {
-    const [row] = await executor
-      .select({ value: count() })
+  /**
+   * Row-locks every active studio_admin (`FOR UPDATE`, in id order so
+   * concurrent callers queue identically) and returns their ids. Two
+   * commands that could each remove the last active admin therefore run one
+   * after the other, and the second sees the first one's committed result.
+   */
+  async lockActiveAdmins(tx: Transaction): Promise<string[]> {
+    const rows = await tx
+      .select({ id: applicationUsers.id })
       .from(applicationUsers)
       .where(
         and(
           eq(applicationUsers.role, "studio_admin"),
           eq(applicationUsers.status, "active"),
         ),
-      );
-    return row?.value ?? 0;
+      )
+      .orderBy(asc(applicationUsers.id))
+      .for("update");
+    return rows.map((row) => row.id);
   },
 
   changeRole(

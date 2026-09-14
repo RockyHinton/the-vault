@@ -5,10 +5,11 @@ import type {
   SubmitReviewInput,
 } from "@shared/contracts";
 import type { Database } from "../../db/client";
-import { withTransaction, type Transaction } from "../../db/transaction";
+import type { Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
 import { withUniqueViolationAsConflict } from "../../db/unique-violation";
 import { appendAuditEvent } from "../audit/audit-repository";
+import { withLiveProjectTransaction } from "../projects/live-project";
 import { projectRepository } from "../projects/project-repository";
 import { toUserRef } from "../users/user-ref";
 import {
@@ -143,8 +144,7 @@ export function createEvaluationService({ db }: { db: Database }) {
         "project_evaluations_pkey",
         () => conflictError(),
         () =>
-          withTransaction(db, async (tx) => {
-            await requireProject(tx, projectId);
+          withLiveProjectTransaction(db, projectId, async (tx) => {
             const existing = await evaluationRepository.findByProjectId(
               tx,
               projectId,
@@ -233,8 +233,7 @@ export function createEvaluationService({ db }: { db: Database }) {
         "project_reviews_project_author_unique",
         () => conflictError(),
         () =>
-          withTransaction(db, async (tx) => {
-            await requireProject(tx, projectId);
+          withLiveProjectTransaction(db, projectId, async (tx) => {
             const existing = await reviewRepository.findByAuthor(tx, {
               projectId,
               authorUserId: actor.userId,
@@ -289,7 +288,7 @@ export function createEvaluationService({ db }: { db: Database }) {
       version: number,
       actor: EvaluationActor,
     ): Promise<void> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = await reviewRepository.findById(tx, {
           projectId,
           reviewId,

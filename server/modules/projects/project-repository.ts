@@ -96,6 +96,23 @@ export const projectRepository = {
     return row;
   },
 
+  /**
+   * The live (not soft-deleted) project, share-locked until the transaction
+   * ends. `FOR SHARE` lets any number of child commands proceed together but
+   * blocks the project's own row updates, including soft delete, until they
+   * commit; a delete that committed first makes this return undefined.
+   * Archived projects are live.
+   */
+  async lockLive(tx: Transaction, id: string): Promise<ProjectRow | undefined> {
+    const [row] = await tx
+      .select()
+      .from(projects)
+      .where(and(eq(projects.id, id), isNull(projects.deletedAt)))
+      .limit(1)
+      .for("share");
+    return row;
+  },
+
   async insert(
     tx: Transaction,
     input: {

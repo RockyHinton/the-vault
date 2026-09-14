@@ -51,13 +51,20 @@ function requireFresh(row: ApplicationUserRow | undefined): ApplicationUserRow {
  * protected against leaving the deployment without a usable administrator.
  */
 export function createUserService({ db }: { db: Database }) {
-  /** The deployment must always keep at least one active studio_admin. */
+  /**
+   * The deployment must always keep at least one active studio_admin. Every
+   * command that can remove an active admin (demotion, suspension) calls this
+   * before its compare-and-set write. The active admins are row-locked, so
+   * concurrent removals serialise instead of both counting "two admins" and
+   * both proceeding. The lock is held until the command's transaction ends.
+   */
   async function assertNotLastActiveAdmin(
     tx: Transaction,
     target: ApplicationUserRow,
   ) {
     if (target.role !== "studio_admin" || target.status !== "active") return;
-    if ((await userRepository.countActiveAdmins(tx)) <= 1) {
+    const activeAdminIds = await userRepository.lockActiveAdmins(tx);
+    if (activeAdminIds.filter((id) => id !== target.id).length === 0) {
       throw new ApiError(
         409,
         "LAST_ADMIN_PROTECTED",

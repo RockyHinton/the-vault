@@ -10,10 +10,11 @@ import type {
   UpdateDistributionTerritoryNoteInput,
 } from "@shared/contracts";
 import type { Database } from "../../db/client";
-import { withTransaction, type Transaction } from "../../db/transaction";
+import type { Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
 import { withUniqueViolationAsConflict } from "../../db/unique-violation";
 import { appendAuditEvent } from "../audit/audit-repository";
+import { withLiveProjectTransaction } from "../projects/live-project";
 import { documentRepository } from "../documents/document-repository";
 import { createDocumentInTransaction } from "../documents/document-service";
 import { projectRepository } from "../projects/project-repository";
@@ -268,8 +269,7 @@ export function createDistributionService({ db }: { db: Database }) {
       actor: DistributionActor,
     ): Promise<DistributionTerritory> {
       const id = await guardingName(() =>
-        withTransaction(db, async (tx) => {
-          await requireProject(tx, projectId);
+        withLiveProjectTransaction(db, projectId, async (tx) => {
           await assertNameFree(tx, projectId, input.name);
           const created = await territoryRepository.insert(tx, {
             projectId,
@@ -309,7 +309,7 @@ export function createDistributionService({ db }: { db: Database }) {
         Object.keys(values) as (keyof TerritoryEditableFields)[]
       ).filter((k) => values[k] !== undefined);
       await guardingName(() =>
-        withTransaction(db, async (tx) => {
+        withLiveProjectTransaction(db, projectId, async (tx) => {
           const existing = requireTerritory(
             await territoryRepository.findById(tx, { projectId, territoryId }),
           );
@@ -348,7 +348,7 @@ export function createDistributionService({ db }: { db: Database }) {
       input: ChangeDistributionTerritoryStatusInput,
       actor: DistributionActor,
     ): Promise<DistributionTerritory> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireTerritory(
           await territoryRepository.findById(tx, { projectId, territoryId }),
         );
@@ -388,7 +388,7 @@ export function createDistributionService({ db }: { db: Database }) {
       version: number,
       actor: DistributionActor,
     ): Promise<void> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireTerritory(
           await territoryRepository.findById(tx, { projectId, territoryId }),
         );
@@ -421,7 +421,7 @@ export function createDistributionService({ db }: { db: Database }) {
       input: CreateDistributionTerritoryNoteInput,
       actor: DistributionActor,
     ): Promise<DistributionTerritory> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         requireTerritory(
           await territoryRepository.findById(tx, { projectId, territoryId }),
         );
@@ -450,7 +450,7 @@ export function createDistributionService({ db }: { db: Database }) {
       input: UpdateDistributionTerritoryNoteInput,
       actor: DistributionActor,
     ): Promise<DistributionTerritory> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         requireTerritory(
           await territoryRepository.findById(tx, { projectId, territoryId }),
         );
@@ -486,7 +486,7 @@ export function createDistributionService({ db }: { db: Database }) {
       version: number,
       actor: DistributionActor,
     ): Promise<DistributionTerritory> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         requireTerritory(
           await territoryRepository.findById(tx, { projectId, territoryId }),
         );
@@ -521,7 +521,7 @@ export function createDistributionService({ db }: { db: Database }) {
       input: AttachNewOwnerDocumentInput,
       actor: DistributionActor,
     ): Promise<DistributionTerritory> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         requireTerritory(
           await territoryRepository.findById(tx, { projectId, territoryId }),
         );
@@ -545,7 +545,7 @@ export function createDistributionService({ db }: { db: Database }) {
       documentId: string,
       actor: DistributionActor,
     ): Promise<DistributionTerritory> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         requireTerritory(
           await territoryRepository.findById(tx, { projectId, territoryId }),
         );
@@ -588,7 +588,7 @@ export function createDistributionService({ db }: { db: Database }) {
       documentId: string,
       actor: DistributionActor,
     ): Promise<DistributionTerritory> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = requireTerritory(
           await territoryRepository.findById(tx, { projectId, territoryId }),
         );

@@ -10,10 +10,11 @@ import {
   type UpdateFinanceSourceInput,
 } from "@shared/contracts";
 import type { Database } from "../../db/client";
-import { withTransaction, type Transaction } from "../../db/transaction";
+import type { Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
 import { withUniqueViolationAsConflict } from "../../db/unique-violation";
 import { appendAuditEvent } from "../audit/audit-repository";
+import { withLiveProjectTransaction } from "../projects/live-project";
 import {
   budgetLineItemRepository,
   budgetVersionRepository,
@@ -290,8 +291,7 @@ export function createFinancePlanService({ db }: { db: Database }) {
         "finance_plans_project_unique",
         planExists,
         () =>
-          withTransaction(db, async (tx) => {
-            await requireProject(tx, projectId);
+          withLiveProjectTransaction(db, projectId, async (tx) => {
             if (await financePlanRepository.findByProject(tx, projectId))
               throw planExists();
             const budgetVersion = await requireLockedBudgetVersion(
@@ -328,7 +328,7 @@ export function createFinancePlanService({ db }: { db: Database }) {
       actor: FinanceActor,
     ): Promise<FinancePlan> {
       assertCanRebase(actor);
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const plan = requirePlan(
           await financePlanRepository.findByProject(tx, projectId),
         );
@@ -372,7 +372,7 @@ export function createFinancePlanService({ db }: { db: Database }) {
       input: CreateFinanceSourceInput,
       actor: FinanceActor,
     ): Promise<FinancePlan> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const plan = requirePlan(
           await financePlanRepository.findByProject(tx, projectId),
         );
@@ -425,7 +425,7 @@ export function createFinancePlanService({ db }: { db: Database }) {
       const changedFields = (
         Object.keys(values) as (keyof FinanceSourceEditableFields)[]
       ).filter((key) => values[key] !== undefined);
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = await requireScopedSource(tx, projectId, sourceId);
         assertNotApproved(existing);
         requireFresh(
@@ -461,7 +461,7 @@ export function createFinancePlanService({ db }: { db: Database }) {
       input: ChangeFinanceSourceStatusInput,
       actor: FinanceActor,
     ): Promise<FinancePlan> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = await requireScopedSource(tx, projectId, sourceId);
         assertNotApproved(existing);
         if (existing.source.status === input.status)
@@ -503,7 +503,7 @@ export function createFinancePlanService({ db }: { db: Database }) {
       actor: FinanceActor,
     ): Promise<FinancePlan> {
       assertCanApprove(actor);
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = await requireScopedSource(tx, projectId, sourceId);
         assertNotApproved(existing);
         requireFresh(
@@ -537,7 +537,7 @@ export function createFinancePlanService({ db }: { db: Database }) {
       expectedVersion: number,
       actor: FinanceActor,
     ): Promise<FinancePlan> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = await requireScopedSource(tx, projectId, sourceId);
         assertNotApproved(existing);
         assertCanRemove(actor, existing);
@@ -570,7 +570,7 @@ export function createFinancePlanService({ db }: { db: Database }) {
       input: AttachNewOwnerDocumentInput,
       actor: FinanceActor,
     ): Promise<FinancePlan> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = await requireScopedSource(tx, projectId, sourceId);
         const document = await createDocumentInTransaction(tx, {
           projectId,
@@ -596,7 +596,7 @@ export function createFinancePlanService({ db }: { db: Database }) {
       documentId: string,
       actor: FinanceActor,
     ): Promise<FinancePlan> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = await requireScopedSource(tx, projectId, sourceId);
         const document = await documentRepository.findById(tx, {
           projectId,
@@ -638,7 +638,7 @@ export function createFinancePlanService({ db }: { db: Database }) {
       documentId: string,
       actor: FinanceActor,
     ): Promise<FinancePlan> {
-      await withTransaction(db, async (tx) => {
+      await withLiveProjectTransaction(db, projectId, async (tx) => {
         const existing = await requireScopedSource(tx, projectId, sourceId);
         assertNotApproved(existing);
         assertCanRemove(actor, existing);

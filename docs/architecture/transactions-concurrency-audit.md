@@ -8,14 +8,25 @@ not at all, and a stale command never overwrites newer work.
 1. **The service opens the unit of work.** One `withTransaction(db, async (tx) => …)` per
    command (ADR 0004). The read, the policy checks, the compare-and-set write, related rows
    and the audit event all use `tx`.
-2. **Repositories never open transactions.** They take the executor as their first argument.
-3. **Audit is inside the transaction.** `appendAuditEvent(tx, …)` from `server/modules/audit`
+2. **Project-owned commands write only into a live project.** Every command of a domain that
+   belongs to a project opens its unit of work with
+   `withLiveProjectTransaction(db, projectId, async (tx, project) => …)`
+   (`server/modules/projects/live-project.ts`) instead of `withTransaction`. It share-locks the
+   project row and answers `404 PROJECT_NOT_FOUND` for a soft-deleted project before anything
+   is written, and a project delete waits for in-flight child commands. Archived projects are
+   live. Lint forbids `withTransaction` in those modules; add a new project-owned module to the
+   rule in `eslint.config.js`.
+3. **Repositories never open transactions.** They take the executor as their first argument.
+4. **Audit is inside the transaction.** `appendAuditEvent(tx, …)` from `server/modules/audit`
    commits or rolls back with the state change. A failed command leaves no event.
-4. **CPU work before the transaction.** Password hashing happens before `withTransaction`.
-5. **Files are the one two-phase case.** Bytes are written to storage first, then the
+5. **CPU work before the transaction.** Password hashing happens before `withTransaction`.
+6. **Files are the one two-phase case.** Bytes are written to storage first, then the
    `file_objects` row; a document command later claims the staged row inside its own
    transaction. A failed claim leaves a staged orphan that the sweep retires; a row never
-   points at bytes that were not fully written.
+   points at bytes that were not fully written. The sweep moves a row `staged → deleted` by
+   compare-and-set *before* deleting bytes, and deletes bytes only for rows it retired, so a
+   concurrent claim wins or the sweep does, never both; a failed byte delete leaves a logged
+   orphan object, never a live row without bytes.
 
 ## Concurrency
 
@@ -26,7 +37,9 @@ not at all, and a stale command never overwrites newer work.
 - **Row locks where a cross-row invariant needs serialising.** Budget content commands lock
   the version row before checking it is still a draft; finance-source and cash-flow commands
   lock their parent row; `startRevision` locks the budget row before checking that nothing is
-  open. `SELECT … FOR UPDATE` through the repository's `lockRow`.
+  open; demoting or suspending an admin locks every active admin row (`lockActiveAdmins`)
+  before counting them, so two removals cannot both leave "one other admin". `SELECT … FOR
+  UPDATE` through the repository.
 - **PostgreSQL uniqueness is the backstop for create races.** "One per project", "one open
   version", "unique name" are unique or partial unique indexes. The service pre-checks them
   for a clear error and wraps the command in `withUniqueViolationAsConflict(constraintName, …)`

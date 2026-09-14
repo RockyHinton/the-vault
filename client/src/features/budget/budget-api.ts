@@ -75,11 +75,13 @@ export const renameBudgetDepartment = (
 export const deleteBudgetDepartment = (
   projectId: string,
   departmentId: string,
+  version: number,
 ) =>
   apiClient(
     "DELETE",
     `${base(projectId)}/departments/${departmentId}`,
     versionResponse,
+    { version },
   );
 
 export const createBudgetLineItem = (
