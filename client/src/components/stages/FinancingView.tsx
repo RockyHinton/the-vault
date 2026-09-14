@@ -229,6 +229,13 @@ export default function FinancingView() {
               <Metric label="First shortfall" value={cash.firstShortfallPeriodLabel ?? "None"} className={cash.firstShortfallPeriodLabel ? "text-destructive" : "text-green-500"} testId="overview-shortfall" />
               <Metric label="Unscheduled inflow" value={money(cash.unscheduledInflow)} caption="Approved money without a date" />
               <Metric label="Unscheduled outflow" value={money(cash.unscheduledOutflow)} caption="Departments without a window" />
+              {cash.unassignedItemCount > 0 && (
+                <p className="col-span-2 md:col-span-4 text-xs text-amber-600" data-testid="overview-unassigned">
+                  {cash.unassignedItemCount} cash-flow {cash.unassignedItemCount === 1 ? "item" : "items"} from a previous budget
+                  version {cash.unassignedItemCount === 1 ? "is" : "are"} not in this projection. Open Cash Flow to move or remove{" "}
+                  {cash.unassignedItemCount === 1 ? "it" : "them"}.
+                </p>
+              )}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground" data-testid="overview-shortfall">

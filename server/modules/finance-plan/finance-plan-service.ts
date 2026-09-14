@@ -19,6 +19,7 @@ import {
   budgetLineItemRepository,
   budgetVersionRepository,
 } from "../budget/budget-repository";
+import { reconcileCashFlowInTransaction } from "../cash-flow/cash-flow-rebase";
 import { documentRepository } from "../documents/document-repository";
 import { createDocumentInTransaction } from "../documents/document-service";
 import { projectRepository } from "../projects/project-repository";
@@ -321,7 +322,12 @@ export function createFinancePlanService({ db }: { db: Database }) {
       return load(db, projectId);
     },
 
-    /** Points the plan at another locked budget version; sources are untouched. */
+    /**
+     * Points the plan at another locked budget version; sources are untouched.
+     * The cash flow's authored scheduling is reconciled to the new version in
+     * the same transaction (see `reconcileCashFlowInTransaction`), so no window
+     * or payment can silently fall out of view.
+     */
     async rebase(
       projectId: string,
       input: RebaseFinancePlanInput,
@@ -350,6 +356,10 @@ export function createFinancePlanService({ db }: { db: Database }) {
             budgetVersionId: input.budgetVersionId,
           }),
         );
+        const cashFlow = await reconcileCashFlowInTransaction(tx, {
+          projectId,
+          budgetVersionId: input.budgetVersionId,
+        });
         await appendAuditEvent(tx, {
           actorUserId: actor.userId,
           action: "finance_plan.rebased",
@@ -361,6 +371,8 @@ export function createFinancePlanService({ db }: { db: Database }) {
             fromBudgetVersionId: plan.plan.budgetVersionId,
             toBudgetVersionId: input.budgetVersionId,
             toBudgetVersionNumber: target.version.versionNumber,
+            // Null when the project has no cash flow yet.
+            cashFlow,
           },
         });
       });

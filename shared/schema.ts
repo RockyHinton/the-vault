@@ -1022,10 +1022,20 @@ export const budgetDepartments = pgTable(
       .references(() => budgetVersions.id, { onDelete: "restrict" }),
     name: text("name").notNull(),
     position: integer("position").notNull(),
+    /**
+     * Stable identity of "this department" across budget versions: a new
+     * department starts its own lineage (its own id), a revision copy keeps
+     * its source's. Names and positions can change; the lineage cannot.
+     */
+    lineageId: uuid("lineage_id").notNull(),
     version: integer("version").notNull().default(1),
     ...timestamps,
   },
   (table) => [
+    uniqueIndex("budget_departments_version_lineage_unique").on(
+      table.budgetVersionId,
+      table.lineageId,
+    ),
     uniqueIndex("budget_departments_version_name_unique").on(
       table.budgetVersionId,
       sql`lower(${table.name})`,

@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { MessageSquare, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { QueryState } from "@/components/QueryState";
 import { useProjectWorkspace } from "@/features/projects/workspace-context";
 import { useCurrentUser } from "@/features/auth/use-current-user";
 import {
@@ -211,9 +212,8 @@ export default function ProjectNotesView() {
           </div>
 
           <div className="space-y-4">
-            {notesQuery.isLoading ? (
-              <div className="text-muted-foreground">Loading notes…</div>
-            ) : visible.length > 0 ? (
+            <QueryState queries={[notesQuery]} loading="Loading notes…" error="Project notes could not be loaded.">
+            {visible.length > 0 ? (
               visible.map((note) => {
                 const canManage = note.author.id === currentUserId || isStudioAdmin;
                 const edited = note.updatedAt !== note.createdAt;
@@ -320,6 +320,7 @@ export default function ProjectNotesView() {
                 </p>
               </div>
             )}
+            </QueryState>
           </div>
         </div>
       </div>

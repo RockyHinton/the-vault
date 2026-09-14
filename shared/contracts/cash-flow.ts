@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { centsToMoney, moneyToCents } from "./money";
+import {
+  centsToMoney,
+  moneyToCents,
+  signedMoneyTotalValueSchema,
+} from "./money";
 
 /**
  * The one cash-flow projection. The server runs it for every response and
@@ -12,9 +16,6 @@ export const cashFlowTimeframeValues = ["monthly", "weekly"] as const;
 export type CashFlowTimeframe = (typeof cashFlowTimeframeValues)[number];
 export const cashFlowDirectionValues = ["inflow", "outflow"] as const;
 export type CashFlowDirection = (typeof cashFlowDirectionValues)[number];
-
-/** A signed exact amount such as "-1200.50"; balances may be negative. */
-export const signedMoneyValueSchema = z.string().regex(/^-?\d{1,14}\.\d{2}$/);
 
 export interface CashFlowProjectionInput {
   timeframe: CashFlowTimeframe;
@@ -48,31 +49,31 @@ export const cashFlowPeriodSchema = z.object({
   label: z.string(),
   startDate: z.string(),
   endDate: z.string(),
-  inflow: signedMoneyValueSchema,
-  outflow: signedMoneyValueSchema,
-  net: signedMoneyValueSchema,
-  closingBalance: signedMoneyValueSchema,
+  inflow: signedMoneyTotalValueSchema,
+  outflow: signedMoneyTotalValueSchema,
+  net: signedMoneyTotalValueSchema,
+  closingBalance: signedMoneyTotalValueSchema,
 });
 export type CashFlowPeriod = z.infer<typeof cashFlowPeriodSchema>;
 
 export const cashFlowProjectionSchema = z.object({
   timeframe: z.enum(cashFlowTimeframeValues),
   periods: z.array(cashFlowPeriodSchema),
-  totalInflow: signedMoneyValueSchema,
-  totalOutflow: signedMoneyValueSchema,
-  closingBalance: signedMoneyValueSchema,
-  lowestBalance: signedMoneyValueSchema,
+  totalInflow: signedMoneyTotalValueSchema,
+  totalOutflow: signedMoneyTotalValueSchema,
+  closingBalance: signedMoneyTotalValueSchema,
+  lowestBalance: signedMoneyTotalValueSchema,
   lowestBalancePeriodId: z.string().nullable(),
   /** The first period whose closing balance is negative. */
   firstShortfallPeriodId: z.string().nullable(),
   /** Scheduled outflow per department: window spread plus outflow payments. */
   departmentOutflows: z.array(
-    z.object({ departmentId: z.string(), amount: signedMoneyValueSchema }),
+    z.object({ departmentId: z.string(), amount: signedMoneyTotalValueSchema }),
   ),
   /** Approved money with no expected date: never enters a period. */
-  unscheduledInflow: signedMoneyValueSchema,
+  unscheduledInflow: signedMoneyTotalValueSchema,
   /** Budget departments with no window: never enters a period. */
-  unscheduledOutflow: signedMoneyValueSchema,
+  unscheduledOutflow: signedMoneyTotalValueSchema,
 });
 export type CashFlowProjection = z.infer<typeof cashFlowProjectionSchema>;
 

@@ -378,6 +378,14 @@ export default function ProjectWorkspace() {
       projectId={safeParams?.id}
       loading={<div>Loading project…</div>}
       notFound={<div>Project not found</div>}
+      error={(retry) => (
+        <div role="alert">
+          The project could not be loaded.{" "}
+          <button type="button" className="underline" onClick={retry}>
+            Try again
+          </button>
+        </div>
+      )}
     >
       <WorkspaceShell categorySlug={safeParams?.category} subcategorySlug={safeParams?.subcategory} />
     </ProjectWorkspaceProvider>

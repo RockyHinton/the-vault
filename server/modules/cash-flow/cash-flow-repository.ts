@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import {
   applicationUsers,
   cashFlowDepartmentWindows,
@@ -200,6 +200,21 @@ export const cashFlowWindowRepository = {
       .returning({ id: cashFlowDepartmentWindows.id });
     return rows.length > 0;
   },
+
+  /** Rebase reconciliation only: re-points the window at the corresponding department. */
+  async moveToDepartment(
+    tx: Transaction,
+    input: { id: string; budgetDepartmentId: string },
+  ): Promise<void> {
+    await tx
+      .update(cashFlowDepartmentWindows)
+      .set({
+        budgetDepartmentId: input.budgetDepartmentId,
+        version: sql`${cashFlowDepartmentWindows.version} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(cashFlowDepartmentWindows.id, input.id));
+  },
 };
 
 /** Persistence for one-off payments. */
@@ -300,6 +315,21 @@ export const cashFlowPaymentRepository = {
       )
       .returning({ id: cashFlowPayments.id });
     return rows.length > 0;
+  },
+
+  /** Rebase reconciliation only: re-points the payment at the corresponding department. */
+  async moveToDepartment(
+    tx: Transaction,
+    input: { id: string; budgetDepartmentId: string },
+  ): Promise<void> {
+    await tx
+      .update(cashFlowPayments)
+      .set({
+        budgetDepartmentId: input.budgetDepartmentId,
+        version: sql`${cashFlowPayments.version} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(cashFlowPayments.id, input.id));
   },
 };
 

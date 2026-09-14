@@ -353,6 +353,7 @@ export function createBudgetService({ db }: { db: Database }) {
                 budgetVersionId: version.id,
                 name,
                 position,
+                lineageId: null,
               });
             }
             await appendAuditEvent(tx, {
@@ -527,10 +528,13 @@ export function createBudgetService({ db }: { db: Database }) {
               sourceIds,
             );
             for (const department of departments) {
+              // The copy continues the same department: Cash Flow follows the
+              // lineage when the finance plan is rebased onto this version.
               const copy = await budgetDepartmentRepository.insert(tx, {
                 budgetVersionId: draft.id,
                 name: department.name,
                 position: department.position,
+                lineageId: department.lineageId,
               });
               for (const item of lineItems.filter(
                 (i) => i.budgetDepartmentId === department.id,
@@ -616,6 +620,7 @@ export function createBudgetService({ db }: { db: Database }) {
                 tx,
                 versionId,
               ),
+              lineageId: null,
             });
             await budgetVersionRepository.touch(tx, versionId);
             await appendAuditEvent(tx, {

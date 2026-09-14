@@ -71,6 +71,7 @@ import {
 } from "@/features/distribution/use-distribution";
 import { distributionTerritoryStatuses, distributionTerritoryStatusLabels } from "@/features/distribution/labels";
 import { OwnerDocumentList } from "@/components/documents/OwnerDocumentList";
+import { ApiClientError } from "@/lib/api-client";
 
 const STATUS_STYLE: Record<DistributionTerritoryStatus, { color: string; Icon: typeof CircleDot }> = {
   available: { color: "bg-emerald-500/10 text-emerald-600 border-emerald-200", Icon: CircleDot },
@@ -265,13 +266,26 @@ function TerritoryWorkspace({ projectId, territoryId, onBack }: { projectId: str
   if (territoryQuery.isLoading) return <p className="text-sm text-muted-foreground">Loading territory…</p>;
   const territory = territoryQuery.data?.data;
   if (!territory) {
+    // Only the server's 404 means the territory is gone; any other failure is an error.
+    const gone =
+      !territoryQuery.isError ||
+      (territoryQuery.error instanceof ApiClientError && territoryQuery.error.status === 404);
     return (
       <div className="space-y-4">
         <button onClick={onBack} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" />
           All Territories
         </button>
-        <p className="text-sm text-destructive">This territory is no longer available.</p>
+        {gone ? (
+          <p className="text-sm text-destructive">This territory is no longer available.</p>
+        ) : (
+          <p className="text-sm text-destructive" role="alert">
+            This territory could not be loaded.{" "}
+            <button type="button" className="underline" onClick={() => void territoryQuery.refetch()}>
+              Try again
+            </button>
+          </p>
+        )}
       </div>
     );
   }

@@ -16,6 +16,7 @@ import {
 } from "@/features/scripts/use-scripts";
 import { usePdfDocument } from "@/features/scripts/use-pdf-document";
 import { scriptReaderPath } from "@/features/scripts/labels";
+import { ApiClientError } from "@/lib/api-client";
 
 /**
  * Full-screen reader for one exact script version. The version is part of
@@ -32,6 +33,16 @@ export default function ScriptReaderPage() {
 
   if (!projectId || !scriptId || !documentId) return <div className="p-8">Script not found</div>;
   if (scriptQuery.isLoading) return <div className="p-8 text-muted-foreground">Loading script…</div>;
+  // Only the server's 404 means the script is gone; any other failure is an error, never "not found".
+  if (scriptQuery.isError && !(scriptQuery.error instanceof ApiClientError && scriptQuery.error.status === 404))
+    return (
+      <div className="p-8 text-destructive" role="alert">
+        The script could not be loaded.{" "}
+        <Button variant="link" className="h-auto p-0" onClick={() => void scriptQuery.refetch()}>
+          Try again
+        </Button>
+      </div>
+    );
   if (!detail || !version) return <div className="p-8">Script version not found</div>;
 
   return (

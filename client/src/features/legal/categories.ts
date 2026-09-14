@@ -1,4 +1,5 @@
 import {
+  groupMoney,
   legalCategorySchema,
   type DocumentStatus,
   type LegalCategory,
@@ -159,7 +160,7 @@ export const legalCategoryConfig: Record<LegalCategory, LegalCategoryConfig> = {
       email,
     ],
     secondaryLine: (r) =>
-      `${detail(r, "currency")} ${Number(detail(r, "amount")).toLocaleString()} · ${detail(r, "commitment")}`,
+      `${detail(r, "currency")} ${groupMoney(detail(r, "amount"))} · ${detail(r, "commitment")}`,
   },
   co_production: {
     label: "Co-Production",

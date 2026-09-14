@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   formatMoney,
-  sumMoney,
   type CashFlow as CashFlowRecord,
   type CashFlowDepartment,
   type CashFlowDirection,
@@ -54,6 +53,7 @@ import {
   useCreateCashFlow,
   useCreatePayment,
   useDeletePayment,
+  useUpdatePayment,
   useSetDepartmentWindow,
   useSetSourceTiming,
   useCommitCashFlowSettings,
@@ -143,6 +143,7 @@ function CashFlowScreen({ cashFlow, fundingGap }: { cashFlow: CashFlowRecord; fu
   const clearWindow = useClearDepartmentWindow();
   const createPayment = useCreatePayment();
   const deletePayment = useDeletePayment();
+  const updatePayment = useUpdatePayment();
   const setTiming = useSetSourceTiming();
   const clearTiming = useClearSourceTiming();
 
@@ -150,8 +151,6 @@ function CashFlowScreen({ cashFlow, fundingGap }: { cashFlow: CashFlowRecord; fu
   const [pieView, setPieView] = useState<"total" | "outflow">("total");
   const [paymentDialog, setPaymentDialog] = useState<{ departmentId: string } | null>(null);
 
-  const totalBudget = sumMoney(cashFlow.departments.map((d) => d.total));
-  const secured = sumMoney(cashFlow.sources.map((s) => s.amount));
   const firstShortfall = projection.periods.find((p) => p.id === projection.firstShortfallPeriodId) ?? null;
   const canRemovePayment = (payment: CashFlowPayment) => isStudioAdmin || payment.createdBy.id === currentUserId;
 
@@ -166,8 +165,8 @@ function CashFlowScreen({ cashFlow, fundingGap }: { cashFlow: CashFlowRecord; fu
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <SummaryTile label="Total Budget" value={money(totalBudget)} testId="cash-total-budget" caption={`Locked budget v${cashFlow.budgetVersionNumber}`} />
-        <SummaryTile label="Secured Funding" value={money(secured)} testId="cash-secured" className="text-green-500" caption="Approved sources" />
+        <SummaryTile label="Total Budget" value={money(cashFlow.budgetTotal)} testId="cash-total-budget" caption={`Locked budget v${cashFlow.budgetVersionNumber}`} />
+        <SummaryTile label="Secured Funding" value={money(cashFlow.approvedFundingTotal)} testId="cash-secured" className="text-green-500" caption="Approved sources" />
         <SummaryTile
           label="Funding Gap"
           value={fundingGap ? money(fundingGap) : "—"}
@@ -215,6 +214,19 @@ function CashFlowScreen({ cashFlow, fundingGap }: { cashFlow: CashFlowRecord; fu
           </CardContent>
         </Card>
       </div>
+
+      {cashFlow.unassigned.length > 0 && (
+        <UnassignedScheduling
+          cashFlow={cashFlow}
+          money={money}
+          canRemovePayment={canRemovePayment}
+          onClearWindow={(departmentId, version) => clearWindow.mutate({ projectId, departmentId, version })}
+          onMovePayment={(payment, departmentId) =>
+            updatePayment.mutate({ projectId, paymentId: payment.id, input: { departmentId, version: payment.version } })
+          }
+          onRemovePayment={(payment) => deletePayment.mutate({ projectId, paymentId: payment.id, version: payment.version })}
+        />
+      )}
 
       <div className="grid grid-cols-12 gap-6 min-h-[600px]">
         <div className="col-span-12 lg:col-span-4 space-y-6 flex flex-col">
@@ -440,6 +452,94 @@ function CashFlowScreen({ cashFlow, fundingGap }: { cashFlow: CashFlowRecord; fu
         }}
       />
     </div>
+  );
+}
+
+/**
+ * Scheduling whose department is not in the referenced budget version (a rebase found no
+ * counterpart). It is kept, never projected, and shown here until it is moved or removed.
+ */
+function UnassignedScheduling({
+  cashFlow,
+  money,
+  canRemovePayment,
+  onClearWindow,
+  onMovePayment,
+  onRemovePayment,
+}: {
+  cashFlow: CashFlowRecord;
+  money: (value: string) => string;
+  canRemovePayment: (payment: CashFlowPayment) => boolean;
+  onClearWindow: (departmentId: string, version: number) => void;
+  onMovePayment: (payment: CashFlowPayment, departmentId: string) => void;
+  onRemovePayment: (payment: CashFlowPayment) => void;
+}) {
+  return (
+    <Card className="border-amber-500/50" data-testid="cash-unassigned">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 text-amber-500" /> Scheduling from a previous budget version
+        </CardTitle>
+        <CardDescription>
+          These departments are not in locked budget v{cashFlow.budgetVersionNumber}, so their spend windows and payments
+          are kept but left out of the projection. Move each payment to a current department or remove it.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {cashFlow.unassigned.map((item) => (
+          <div key={item.departmentId} className="border rounded-md p-3 space-y-2" data-testid="cash-unassigned-department" data-department-name={item.departmentName}>
+            <div className="text-sm font-medium">
+              {item.departmentName} <span className="text-xs text-muted-foreground font-normal">· budget v{item.budgetVersionNumber}</span>
+            </div>
+            {item.window && (
+              <div className="flex items-center justify-between text-xs">
+                <span>
+                  Spend window {item.window.startDate} – {item.window.endDate}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[10px] px-2"
+                  onClick={() => item.window && onClearWindow(item.departmentId, item.window.version)}
+                >
+                  Clear window
+                </Button>
+              </div>
+            )}
+            {item.payments.map((payment) => (
+              <div key={payment.id} data-testid="cash-unassigned-payment" className="flex items-center justify-between gap-2 bg-background border rounded px-2 py-1.5">
+                <div>
+                  <div className="font-medium text-xs">{payment.name}</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {payment.date} • {payment.direction === "inflow" ? "+" : "−"}
+                    {money(payment.amount)}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select onValueChange={(departmentId) => onMovePayment(payment, departmentId)}>
+                    <SelectTrigger className="h-7 w-44 text-xs" aria-label={`Move ${payment.name} to a department`}>
+                      <SelectValue placeholder="Move to department…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cashFlow.departments.map((department) => (
+                        <SelectItem key={department.id} value={department.id}>
+                          {department.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {canRemovePayment(payment) && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-destructive" aria-label={`Remove ${payment.name}`} onClick={() => onRemovePayment(payment)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 

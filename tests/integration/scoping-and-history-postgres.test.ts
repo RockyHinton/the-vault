@@ -9,7 +9,7 @@ import {
 /**
  * Cross-project scoping for the authored-record reference domains, the
  * projects routes as an ordinary member, locked-version document attachment,
- * a successful finance-plan rebase with its cash-flow orphan semantics, and
+ * a successful finance-plan rebase carrying cash-flow scheduling forward, and
  * the inline-disposition rule over HTTP.
  */
 type Agent = Awaited<ReturnType<TestContext["loginAs"]>>;
@@ -214,7 +214,7 @@ describe("budget history and finance-plan rebase", () => {
     ).toEqual([]);
   });
 
-  it("a successful rebase moves the baseline; cash-flow rows of the previous version leave the schedule but stay stored", async () => {
+  it("a successful rebase moves the baseline and carries the cash-flow window to the corresponding department", async () => {
     const plan = await member
       .post(api(projectId, "finance-plan"))
       .send({ budgetVersionId: v1Id });
@@ -281,23 +281,33 @@ describe("budget history and finance-plan rebase", () => {
       toBudgetVersionNumber: 2,
     });
 
-    // The cash flow now reads v2's departments; the v1 window is out of the schedule but still stored.
+    // The cash flow now reads v2's departments, and the window followed Production's lineage
+    // to v2's copy: nothing authored left the schedule.
     const after = (await member.get(api(projectId, "cash-flow"))).body.data;
     expect(after.budgetVersionId).toBe(v2Id);
-    expect(
-      after.departments.map((d: { id: string; window: unknown }) => [
-        d.id === v2Production.id,
-        d.window,
-      ]),
-    ).toContainEqual([true, null]);
-    expect(after.projection.totalOutflow).toBe("0.00");
-    expect(after.projection.unscheduledOutflow).toBe("1500.00");
-    const stored = await context.database.client.query(
-      "SELECT 1 FROM cash_flow_department_windows WHERE budget_department_id = $1",
-      [v1Production],
+    const production = after.departments.find(
+      (d: { id: string }) => d.id === v2Production.id,
     );
-    expect(stored.rows).toHaveLength(1);
-    // Scheduling the v1 department is now refused; v2's is accepted.
+    expect(production.window).toMatchObject({
+      startDate: "2027-01-01",
+      endDate: "2027-01-31",
+      version: 2,
+    });
+    expect(after.unassigned).toEqual([]);
+    expect(after.projection.totalOutflow).toBe("1500.00");
+    expect(after.projection.unscheduledOutflow).toBe("0.00");
+    expect(events.rows[1].metadata.cashFlow).toEqual({
+      windowsMoved: 1,
+      paymentsMoved: 0,
+      windowsUnassigned: 0,
+      paymentsUnassigned: 0,
+    });
+    const stored = await context.database.client.query(
+      "SELECT budget_department_id FROM cash_flow_department_windows WHERE budget_department_id = ANY($1)",
+      [[v1Production, v2Production.id]],
+    );
+    expect(stored.rows).toEqual([{ budget_department_id: v2Production.id }]);
+    // Scheduling the v1 department is now refused; v2's (moved) window is updated at its version.
     expect(
       (
         await member
@@ -311,7 +321,7 @@ describe("budget history and finance-plan rebase", () => {
           .put(
             api(projectId, `cash-flow/departments/${v2Production.id}/window`),
           )
-          .send({ startDate: "2027-02-01", endDate: "2027-02-28", version: 0 })
+          .send({ startDate: "2027-02-01", endDate: "2027-02-28", version: 2 })
       ).status,
     ).toBe(200);
   });

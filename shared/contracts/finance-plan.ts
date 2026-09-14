@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { centsToMoney, moneyToCents } from "./money";
+import { centsToMoney, moneyToCents, moneyTotalValueSchema } from "./money";
 
 export const financeSourceStatusValues = [
   "targeted",
@@ -16,16 +16,16 @@ export interface FinancingSummaryInput {
 }
 
 export const financingSummarySchema = z.object({
-  budgetTotal: z.string(),
-  targetedTotal: z.string(),
-  softCommittedTotal: z.string(),
-  approvedTotal: z.string(),
+  budgetTotal: moneyTotalValueSchema,
+  targetedTotal: moneyTotalValueSchema,
+  softCommittedTotal: moneyTotalValueSchema,
+  approvedTotal: moneyTotalValueSchema,
   /** Soft committed plus approved. */
-  committedTotal: z.string(),
+  committedTotal: moneyTotalValueSchema,
   /** Budget minus approved, never below zero. */
-  fundingGap: z.string(),
+  fundingGap: moneyTotalValueSchema,
   /** Approved minus budget when approved financing exceeds the budget, else "0.00". */
-  overFinancedBy: z.string(),
+  overFinancedBy: moneyTotalValueSchema,
 });
 export type FinancingSummary = z.infer<typeof financingSummarySchema>;
 

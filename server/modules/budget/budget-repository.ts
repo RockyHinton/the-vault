@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   applicationUsers,
@@ -292,12 +293,56 @@ export const budgetDepartmentRepository = {
     return Number(row?.next ?? 0);
   },
 
+  /**
+   * `lineageId` is required on purpose: `null` starts a new department's own
+   * lineage, a revision copy passes its source's `lineageId`.
+   */
   async insert(
     tx: Transaction,
-    input: { budgetVersionId: string; name: string; position: number },
+    input: {
+      budgetVersionId: string;
+      name: string;
+      position: number;
+      lineageId: string | null;
+    },
   ): Promise<BudgetDepartmentRow> {
-    const [row] = await tx.insert(budgetDepartments).values(input).returning();
+    const id = randomUUID();
+    const [row] = await tx
+      .insert(budgetDepartments)
+      .values({
+        id,
+        budgetVersionId: input.budgetVersionId,
+        name: input.name,
+        position: input.position,
+        lineageId: input.lineageId ?? id,
+      })
+      .returning();
     return row;
+  },
+
+  /** Departments of this project's budget by id, from any version, with their version number. */
+  async listByIds(
+    executor: DatabaseExecutor,
+    input: { projectId: string; ids: string[] },
+  ): Promise<{ department: BudgetDepartmentRow; versionNumber: number }[]> {
+    if (input.ids.length === 0) return [];
+    return executor
+      .select({
+        department: budgetDepartments,
+        versionNumber: budgetVersions.versionNumber,
+      })
+      .from(budgetDepartments)
+      .innerJoin(
+        budgetVersions,
+        eq(budgetDepartments.budgetVersionId, budgetVersions.id),
+      )
+      .innerJoin(budgets, eq(budgetVersions.budgetId, budgets.id))
+      .where(
+        and(
+          inArray(budgetDepartments.id, input.ids),
+          eq(budgets.projectId, input.projectId),
+        ),
+      );
   },
 
   async rename(

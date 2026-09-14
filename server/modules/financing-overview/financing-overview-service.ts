@@ -97,6 +97,11 @@ export function createFinancingOverviewService(deps: {
               periodCount: cashFlow.projection.periods.length,
               unscheduledInflow: cashFlow.projection.unscheduledInflow,
               unscheduledOutflow: cashFlow.projection.unscheduledOutflow,
+              unassignedItemCount: cashFlow.unassigned.reduce(
+                (count, item) =>
+                  count + (item.window ? 1 : 0) + item.payments.length,
+                0,
+              ),
             }
           : null,
       };

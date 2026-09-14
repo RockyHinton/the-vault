@@ -325,7 +325,9 @@ function PlanScreen({
             <DialogTitle>Change budget version</DialogTitle>
             <DialogDescription>
               Point this plan at another locked budget version. Funding sources are unchanged; the budget total and
-              funding gap are recalculated against the new baseline.
+              funding gap are recalculated against the new baseline. Cash-flow spend windows and payments move to the
+              same departments in that version, renamed ones included. Anything on a department that version does not
+              have is kept and listed in Cash Flow for you to move or remove.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-2 py-2">

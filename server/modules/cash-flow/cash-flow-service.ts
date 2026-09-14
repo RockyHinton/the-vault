@@ -1,5 +1,6 @@
 import {
   projectCashFlow,
+  summarizeFinancing,
   type CashFlow,
   type CashFlowDepartment,
   type CashFlowPayment,
@@ -10,6 +11,7 @@ import {
   type UpdateCashFlowInput,
   type UpdateCashFlowPaymentInput,
 } from "@shared/contracts";
+import type { CashFlowDepartmentWindowRow } from "@shared/schema";
 import type { Database } from "../../db/client";
 import type { Transaction } from "../../db/transaction";
 import { ApiError } from "../../http/errors";
@@ -97,6 +99,19 @@ function toPayment(record: CashFlowPaymentRecord): CashFlowPayment {
   };
 }
 
+function toWindow(
+  window: CashFlowDepartmentWindowRow | undefined,
+): CashFlowDepartment["window"] {
+  return window
+    ? {
+        startDate: window.startDate,
+        endDate: window.endDate,
+        version: window.version,
+        updatedAt: window.updatedAt.toISOString(),
+      }
+    : null;
+}
+
 /** Today as a UTC calendar date; the projection range always includes it. */
 const todayUtc = () => new Date().toISOString().slice(0, 10);
 
@@ -137,39 +152,62 @@ export function createCashFlowService({ db }: { db: Database }) {
       plan.plan.budgetVersionId,
     );
     const departmentIds = departments.map((d) => d.id);
-    const [totals, sources, windows, payments, timings] = await Promise.all([
-      budgetLineItemRepository.totalsByDepartment(executor, departmentIds),
-      financeSourceRepository.listByPlan(executor, plan.plan.id),
-      cashFlowWindowRepository.listByCashFlow(executor, cashFlowId),
-      cashFlowPaymentRepository.listByCashFlow(executor, cashFlowId),
-      cashFlowSourceTimingRepository.listByCashFlow(executor, cashFlowId),
-    ]);
-    // Rows that reference departments of a version the plan no longer points
-    // at (after a rebase) are kept for provenance but are not part of the schedule.
+    const [totals, versionTotals, sources, windows, payments, timings] =
+      await Promise.all([
+        budgetLineItemRepository.totalsByDepartment(executor, departmentIds),
+        budgetLineItemRepository.totalsByVersion(executor, [
+          plan.plan.budgetVersionId,
+        ]),
+        financeSourceRepository.listByPlan(executor, plan.plan.id),
+        cashFlowWindowRepository.listByCashFlow(executor, cashFlowId),
+        cashFlowPaymentRepository.listByCashFlow(executor, cashFlowId),
+        cashFlowSourceTimingRepository.listByCashFlow(executor, cashFlowId),
+      ]);
+    const scheduledOn = (departmentId: string) => ({
+      window: toWindow(
+        windows.find((w) => w.budgetDepartmentId === departmentId),
+      ),
+      payments: payments
+        .filter((p) => p.payment.budgetDepartmentId === departmentId)
+        .map(toPayment),
+    });
     const contractDepartments: CashFlowDepartment[] = departments.map(
-      (department) => {
-        const window = windows.find(
-          (w) => w.budgetDepartmentId === department.id,
-        );
-        return {
-          id: department.id,
-          name: department.name,
-          position: department.position,
-          total: totals.get(department.id) ?? ZERO,
-          window: window
-            ? {
-                startDate: window.startDate,
-                endDate: window.endDate,
-                version: window.version,
-                updatedAt: window.updatedAt.toISOString(),
-              }
-            : null,
-          payments: payments
-            .filter((p) => p.payment.budgetDepartmentId === department.id)
-            .map(toPayment),
-        };
-      },
+      (department) => ({
+        id: department.id,
+        name: department.name,
+        position: department.position,
+        total: totals.get(department.id) ?? ZERO,
+        ...scheduledOn(department.id),
+      }),
     );
+    // Scheduling on a department outside the referenced version (a rebase
+    // found no counterpart for it) is never hidden: it is listed for the
+    // team to move or remove, and it stays out of the projection.
+    const current = new Set(departmentIds);
+    const strayIds = Array.from(
+      new Set([
+        ...windows.map((w) => w.budgetDepartmentId),
+        ...payments.map((p) => p.payment.budgetDepartmentId),
+      ]),
+    ).filter((id) => !current.has(id));
+    const unassigned: CashFlow["unassigned"] = (
+      await budgetDepartmentRepository.listByIds(executor, {
+        projectId,
+        ids: strayIds,
+      })
+    )
+      .sort(
+        (a, b) =>
+          b.versionNumber - a.versionNumber ||
+          a.department.position - b.department.position,
+      )
+      .map(({ department, versionNumber }) => ({
+        departmentId: department.id,
+        departmentName: department.name,
+        budgetVersionNumber: versionNumber,
+        ...scheduledOn(department.id),
+      }));
+    const budgetTotal = versionTotals.get(plan.plan.budgetVersionId) ?? ZERO;
     const contractSources: CashFlowSource[] = sources
       .filter((s) => s.source.status === "approved")
       .map(({ source }) => {
@@ -199,8 +237,17 @@ export function createCashFlowService({ db }: { db: Database }) {
       currency: plan.currency,
       timeframe: record.cashFlow.timeframe,
       openingBalance: record.cashFlow.openingBalance,
+      budgetTotal,
+      approvedFundingTotal: summarizeFinancing({
+        budgetTotal,
+        sources: sources.map(({ source }) => ({
+          status: source.status,
+          amount: source.amount,
+        })),
+      }).approvedTotal,
       departments: contractDepartments,
       sources: contractSources,
+      unassigned,
       projection: projectCashFlow({
         timeframe: record.cashFlow.timeframe,
         today: todayUtc(),

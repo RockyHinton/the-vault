@@ -84,6 +84,7 @@ Domains read each other; they never write each other's tables.
    domains' contracts (Financing Overview) takes the services as dependencies and calls
    their read methods; it owns no table and no transaction.
 3. **Never call another domain's service from inside your transaction,** and never import a
-   service from a domain that imports yours. The one shared write primitive is the Documents
-   domain's `createDocumentInTransaction` / `addDocumentVersionInTransaction`, exported for
-   owners to call with their `tx`.
+   service from a domain that imports yours. Shared write primitives are exported by the domain
+   that owns the table, for callers to run with their `tx`: the Documents domain's
+   `createDocumentInTransaction` / `addDocumentVersionInTransaction`, and the Cash Flow
+   domain's `reconcileCashFlowInTransaction`, which the Finance Plan rebase calls.

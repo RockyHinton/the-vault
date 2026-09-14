@@ -1,7 +1,13 @@
 import { z } from "zod";
 import { rightsStatusValues } from "./rights-status";
 import { isoDateSchema } from "./dates";
-import { currencyCodeSchema, moneySchema, moneyValueSchema } from "./money";
+import {
+  currencyCodeSchema,
+  moneySchema,
+  moneyTotalValueSchema,
+  signedMoneyTotalValueSchema,
+  storedMoneyValueSchema,
+} from "./money";
 import {
   financeSourceStatusValues,
   financingSummarySchema,
@@ -10,7 +16,6 @@ import {
   cashFlowDirectionValues,
   cashFlowProjectionSchema,
   cashFlowTimeframeValues,
-  signedMoneyValueSchema,
 } from "./cash-flow";
 
 export const apiErrorSchema = z.object({
@@ -1155,7 +1160,7 @@ export const budgetLineItemSchema = z.object({
   departmentId: z.string().uuid(),
   name: z.string(),
   /** Directly authored; there is no quantity × unit cost in the product. */
-  amount: moneyValueSchema,
+  amount: storedMoneyValueSchema,
   note: z.string().nullable(),
   position: z.number().int().nonnegative(),
   version: z.number().int().positive(),
@@ -1170,7 +1175,7 @@ export const budgetDepartmentSchema = z.object({
   name: z.string(),
   position: z.number().int().nonnegative(),
   /** Sum of this department's line items, computed by PostgreSQL. */
-  total: moneyValueSchema,
+  total: moneyTotalValueSchema,
   lineItems: z.array(budgetLineItemSchema),
   documents: z.array(documentSchema),
   version: z.number().int().positive(),
@@ -1186,7 +1191,7 @@ export const budgetVersionSummarySchema = z.object({
   versionNumber: z.number().int().positive(),
   status: budgetVersionStatusSchema,
   /** Sum of every line item in the version, computed by PostgreSQL. */
-  total: moneyValueSchema,
+  total: moneyTotalValueSchema,
   createdBy: userRefSchema,
   createdAt: z.string().datetime(),
   submittedBy: userRefSchema.nullable(),
@@ -1308,7 +1313,7 @@ export const financeSourceSchema = z.object({
   financePlanId: z.string().uuid(),
   name: z.string(),
   type: financeSourceTypeSchema,
-  amount: moneyValueSchema,
+  amount: storedMoneyValueSchema,
   status: financeSourceStatusSchema,
   expectedDate: isoDate.nullable(),
   notes: z.string().nullable(),
@@ -1410,7 +1415,7 @@ export const cashFlowPaymentSchema = z.object({
   cashFlowId: z.string().uuid(),
   departmentId: z.string().uuid(),
   name: z.string(),
-  amount: moneyValueSchema,
+  amount: storedMoneyValueSchema,
   direction: cashFlowDirectionSchema,
   date: isoDate,
   note: z.string().nullable(),
@@ -1437,7 +1442,7 @@ export const cashFlowDepartmentSchema = z.object({
   name: z.string(),
   position: z.number().int().nonnegative(),
   /** Exact department total in the locked version, never authored here. */
-  total: moneyValueSchema,
+  total: moneyTotalValueSchema,
   window: cashFlowDepartmentWindowSchema.nullable(),
   payments: z.array(cashFlowPaymentSchema),
 });
@@ -1448,7 +1453,7 @@ export const cashFlowSourceSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   type: financeSourceTypeSchema,
-  amount: moneyValueSchema,
+  amount: storedMoneyValueSchema,
   /** The Finance Plan's expected date. */
   expectedDate: isoDate.nullable(),
   /** A cash-flow-only override; the source itself is never changed. */
@@ -1464,6 +1469,22 @@ export const cashFlowSourceSchema = z.object({
 });
 export type CashFlowSource = z.infer<typeof cashFlowSourceSchema>;
 
+/**
+ * Scheduling authored against a department that is not in the referenced
+ * version: a rebase found no counterpart for it (the department was removed
+ * from the new version). It is never dropped: it is listed here to be moved
+ * or removed, and it is not part of the projection.
+ */
+export const cashFlowUnassignedSchema = z.object({
+  departmentId: z.string().uuid(),
+  departmentName: z.string(),
+  /** The budget version that department belongs to. */
+  budgetVersionNumber: z.number().int().positive(),
+  window: cashFlowDepartmentWindowSchema.nullable(),
+  payments: z.array(cashFlowPaymentSchema),
+});
+export type CashFlowUnassigned = z.infer<typeof cashFlowUnassignedSchema>;
+
 export const cashFlowSchema = z.object({
   id: z.string().uuid(),
   projectId: z.string().uuid(),
@@ -1473,9 +1494,14 @@ export const cashFlowSchema = z.object({
   budgetVersionNumber: z.number().int().positive(),
   currency: currencyCodeSchema,
   timeframe: cashFlowTimeframeSchema,
-  openingBalance: moneyValueSchema,
+  openingBalance: storedMoneyValueSchema,
+  /** Exact total of the referenced locked version, computed by PostgreSQL. */
+  budgetTotal: moneyTotalValueSchema,
+  /** Approved financing from `summarizeFinancing`: the money the inflows draw on. */
+  approvedFundingTotal: moneyTotalValueSchema,
   departments: z.array(cashFlowDepartmentSchema),
   sources: z.array(cashFlowSourceSchema),
+  unassigned: z.array(cashFlowUnassignedSchema),
   projection: cashFlowProjectionSchema,
   createdBy: userRefSchema,
   /** Optimistic concurrency for the cash flow's own fields (opening balance, timeframe). */
@@ -1584,7 +1610,7 @@ export const financingOverviewSchema = z.object({
         .object({
           id: z.string().uuid(),
           versionNumber: z.number().int().positive(),
-          total: moneyValueSchema,
+          total: moneyTotalValueSchema,
           lockedBy: userRefSchema.nullable(),
           lockedAt: z.string().datetime().nullable(),
         })
@@ -1605,7 +1631,7 @@ export const financingOverviewSchema = z.object({
           name: z.string(),
           type: financeSourceTypeSchema,
           status: financeSourceStatusSchema,
-          amount: moneyValueSchema,
+          amount: storedMoneyValueSchema,
         }),
       ),
     })
@@ -1614,16 +1640,18 @@ export const financingOverviewSchema = z.object({
     .object({
       id: z.string().uuid(),
       timeframe: cashFlowTimeframeSchema,
-      openingBalance: moneyValueSchema,
-      totalInflow: signedMoneyValueSchema,
-      totalOutflow: signedMoneyValueSchema,
-      closingBalance: signedMoneyValueSchema,
-      lowestBalance: signedMoneyValueSchema,
+      openingBalance: storedMoneyValueSchema,
+      totalInflow: signedMoneyTotalValueSchema,
+      totalOutflow: signedMoneyTotalValueSchema,
+      closingBalance: signedMoneyTotalValueSchema,
+      lowestBalance: signedMoneyTotalValueSchema,
       lowestBalancePeriodLabel: z.string().nullable(),
       firstShortfallPeriodLabel: z.string().nullable(),
       periodCount: z.number().int().nonnegative(),
-      unscheduledInflow: signedMoneyValueSchema,
-      unscheduledOutflow: signedMoneyValueSchema,
+      unscheduledInflow: signedMoneyTotalValueSchema,
+      unscheduledOutflow: signedMoneyTotalValueSchema,
+      /** Windows and payments kept from a previous budget version and not in this projection. */
+      unassignedItemCount: z.number().int().nonnegative(),
     })
     .nullable(),
 });

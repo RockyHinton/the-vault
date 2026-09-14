@@ -127,9 +127,27 @@ Locked Budget Version ──▶ Finance Plan ──▶ Approved Finance Sources 
   (`422 FINANCE_PLAN_REQUIRED`); a window or payment may reference only a department of the
   version the plan references (`422 DEPARTMENT_NOT_IN_REFERENCED_VERSION`, 404 outside the
   project); a timing override only an approved source of the plan
-  (`422 FINANCE_SOURCE_NOT_APPROVED`). After a rebase, rows that reference departments of the
-  previous version stay in the table for provenance and are not part of the schedule. Edits to
-  a draft budget revision never reach the schedule.
+  (`422 FINANCE_SOURCE_NOT_APPROVED`). Edits to a draft budget revision never reach the
+  schedule.
+- **Rebase never hides authored work.** Departments carry a `lineage_id` (a new department
+  starts its own; a revision copy keeps its source's; unique per version), so "the same
+  department" is known across versions regardless of renames. The Finance Plan rebase calls
+  `reconcileCashFlowInTransaction` (`server/modules/cash-flow/cash-flow-rebase.ts`) in its own
+  transaction: every window and payment whose department lineage exists in the target version
+  moves to that department (version incremented); anything without a counterpart (the
+  department was removed, or re-created as a new department under the same name) stays on its
+  original department row and the cash flow lists it under `unassigned`, outside the
+  projection, until someone moves the payment to a current department or removes it, or clears
+  the window. The overview reports `unassignedItemCount`. `finance_plan.rebased` records the
+  counts (`cashFlow: { windowsMoved, paymentsMoved, windowsUnassigned, paymentsUnassigned }`).
+  Departments that existed before lineage was introduced were backfilled with their own id, so
+  no correspondence is inferred for them: their scheduling can only surface as unassigned.
+- **Totals shown by the screen come from the server:** `budgetTotal` (PostgreSQL sum of the
+  referenced version) and `approvedFundingTotal` (`summarizeFinancing`) are on the cash-flow
+  response. Stored amounts are `storedMoneyValueSchema` (twelve integer digits, exactly
+  `numeric(14,2)`); sums and balances are `moneyTotalValueSchema` /
+  `signedMoneyTotalValueSchema` (eighteen integer digits), because a sum of many stored amounts
+  can exceed any single column.
 - **No allocation caps.** The product spreads a department's whole total across its window and
   treats payments as additional movements; there is no rule that allocations must equal or
   may not exceed the budget, so none is enforced.

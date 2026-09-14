@@ -23,8 +23,27 @@ export const moneySchema = z
   .regex(MONEY_PATTERN, "Enter an amount such as 25000 or 25000.50.")
   .transform(normalizeMoney);
 
-/** The same shape as `moneySchema` but for values the server already normalised. */
-export const moneyValueSchema = z.string().regex(/^\d{1,13}\.\d{2}$/);
+/**
+ * A single stored amount as the server returns it: exactly what numeric(14,2)
+ * can hold, at most twelve integer digits (999,999,999,999.99). Line items,
+ * sources, payments and opening balances.
+ */
+export const storedMoneyValueSchema = z.string().regex(/^\d{1,12}\.\d{2}$/);
+
+/**
+ * A total derived by adding stored amounts (PostgreSQL SUM or BigInt cents):
+ * department and version totals, financing summaries. A sum is not bounded by
+ * the column's precision, so its bound is explicit and deliberately wide:
+ * eighteen integer digits holds one million maximum stored amounts
+ * (999,999,999,999.99 × 10⁶ < 10¹⁸). The shape stays exact: digits, a point,
+ * two decimals, nothing else.
+ */
+export const moneyTotalValueSchema = z.string().regex(/^\d{1,18}\.\d{2}$/);
+
+/** A derived total that may be negative (cash-flow net movements and balances); same bound. */
+export const signedMoneyTotalValueSchema = z
+  .string()
+  .regex(/^-?\d{1,18}\.\d{2}$/);
 
 export function moneyToCents(value: string): bigint {
   const [whole, fraction = "00"] = normalizeMoney(value).split(".");
@@ -52,12 +71,19 @@ const currencySymbols: Record<CurrencyCode, string> = {
   EUR: "€",
 };
 
-/** Groups thousands without touching floating point: "1234567.80" → "$1,234,567.80". */
-export function formatMoney(value: string, currency: CurrencyCode): string {
-  const normalized = normalizeMoney(
-    value.startsWith("-") ? value.slice(1) : value,
-  );
-  const [whole, fraction] = normalized.split(".");
+/** Groups thousands without touching floating point: "-1234567.8" → "-1,234,567.80". */
+export function groupMoney(value: string): string {
+  const negative = value.startsWith("-");
+  const [whole, fraction] = normalizeMoney(
+    negative ? value.slice(1) : value,
+  ).split(".");
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `${value.startsWith("-") ? "-" : ""}${currencySymbols[currency]}${grouped}.${fraction}`;
+  return `${negative ? "-" : ""}${grouped}.${fraction}`;
+}
+
+/** The grouped amount with its currency symbol: "1234567.80" → "$1,234,567.80". */
+export function formatMoney(value: string, currency: CurrencyCode): string {
+  const grouped = groupMoney(value);
+  const negative = grouped.startsWith("-");
+  return `${negative ? "-" : ""}${currencySymbols[currency]}${negative ? grouped.slice(1) : grouped}`;
 }
