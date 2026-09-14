@@ -54,9 +54,22 @@ the audit event with the same `tx`, and return the contract shape (`to<Contract>
 own cross-domain reads (see the read rule) and are the only place product rules live.
 
 **Routes.** `Router({ mergeParams: true })`, `validate(schema, req.params | req.body)`,
-`handle(async …)`, the actor built from `req.localUser` (never from the body), the
-`{ data, requestId }` envelope, 201 for creates, 204 for deletes. `requireStudioAdmin` is
-applied here only when the whole endpoint is administrative.
+`handle(async …)`, the actor built from `req.localUser` (never from the body), a call to the
+domain's service (routes never receive the database or call a repository), and the
+`{ data, requestId }` envelope. Status codes: `201` for creates; for deletes, `204` with no
+body when the command removes the record the URL addresses (a project, person, note,
+territory, document lineage, script), and `200` with the updated parent aggregate when it
+removes a part of an aggregate the client re-renders whole (a budget department or line item,
+a finance source, a cash-flow window, payment or timing, a territory note, a document link).
+`requireStudioAdmin` is applied here only when the whole endpoint is administrative.
+
+**Updates and lifecycle.** An update schema is a Zod object listing only the editable fields,
+plus `version` and an "at least one field" refinement. Zod strips keys a schema does not
+declare, so a `status` (or any other undeclared key) sent to a PATCH is silently ignored; a
+body with nothing editable besides it is `400 VALIDATION_ERROR`. Status and lifecycle change
+only through explicit commands (`…/status`, `…/complete`, `…/approve`, `…/lock`), each with its
+own audit event. The one generic PATCH that does carry a status is the Documents metadata
+edit, because document status is the Documents domain's own field.
 
 **Client.** A feature module owns its typed API, its query keys and its hooks. Components
 read hooks and keep unsaved drafts in local state. See [frontend-state.md](frontend-state.md).

@@ -25,7 +25,7 @@ provider-specific sits behind a narrow boundary:
 
 | Boundary | Where | Provider-specific today |
 | --- | --- | --- |
-| Environment | `server/config/env.ts` | `REPLIT_DOMAINS` / `REPLIT_DEV_DOMAIN` are the hostname allowlist inputs; any host can set them |
+| Environment | `server/config/env.ts` | `VAULT_ALLOWED_HOSTS` is the hostname allowlist; `REPLIT_DOMAINS` / `REPLIT_DEV_DOMAIN` are read only as Replit-provided fallbacks |
 | File bytes | `server/files/file-storage.ts` interface, `storage-factory.ts` factory | `local` adapter; `replit` names the object-storage adapter, which is not yet implemented and fails closed |
 | Build and start | `script/build.ts`, `package.json` scripts, `.replit` | `.replit` runs the same `npm run build` / `npm start` any host would |
 | Proxy | `app.set("trust proxy", 1)` in `server/app.ts` | correct behind one reverse-proxy hop |
@@ -40,7 +40,7 @@ needed, a `FileStorage` adapter that passes `tests/support/storage-contract.ts`.
 | Variable | Purpose |
 | --- | --- |
 | `DATABASE_URL` | the instance's PostgreSQL database (migrated explicitly, never at startup) |
-| `REPLIT_DOMAINS` | comma-separated hostnames the instance serves; the host guard refuses others |
+| `VAULT_ALLOWED_HOSTS` | comma-separated bare hostnames the instance serves; the host and origin guards refuse others (on Replit, `REPLIT_DOMAINS` is used when this is unset) |
 | `VAULT_STORAGE_PROVIDER` | `local` on a persistent volume, or the object-storage adapter once it ships |
 | `VAULT_STORAGE_LOCAL_DIR` | directory for the `local` provider |
 | `PORT` | listening port (the host usually sets it) |

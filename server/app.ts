@@ -13,6 +13,7 @@ import {
   createRequireLocalUser,
 } from "./modules/auth/auth-service";
 import type { CookiePolicy } from "./modules/auth/session-cookie";
+import { createAuditService } from "./modules/audit/audit-service";
 import { createBudgetService } from "./modules/budget/budget-service";
 import { createDocumentService } from "./modules/documents/document-service";
 import { createFinancePlanService } from "./modules/finance-plan/finance-plan-service";
@@ -156,6 +157,7 @@ export async function createVaultServer(
     "/api/v1",
     createApiRouter({
       db,
+      auditService: createAuditService({ db }),
       auth,
       cookiePolicy,
       requireLocalUser,

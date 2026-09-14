@@ -26,8 +26,8 @@ commercial record that carries free-text terms rather than ledger entries.
   index on `(project_id, lower(name)) WHERE deleted_at IS NULL` enforces it. Soft deletion
   frees the name. Ordering is creation order.
 - **Status** (`distribution_territory_status`: `available`, `in_discussion`, `licensed`,
-  `delivered`, `closed`) changes only through `POST …/territories/:id/status`; `PATCH`
-  rejects it. The product has no transition rules and no state implies immutability, so none
+  `delivered`, `closed`) changes only through `POST …/territories/:id/status`; the update
+  schema has no `status`, so a PATCH cannot change it. The product has no transition rules and no state implies immutability, so none
   are enforced; a repeated status is `409 STATUS_UNCHANGED`.
 - **Deal information is text, not money.** `distributor`, `contact`, `signature_payment`,
   `delivery_payment` and `general_notes` are nullable text columns edited together through

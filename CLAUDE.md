@@ -27,8 +27,11 @@ index lists what is current), and `docs/ENGINEERING_STANDARDS.md`.
 
 - Layering: shared Zod contract → Drizzle schema → migration → repository → service (owns the
   transaction and the policy) → audit → route → typed client API → React Query → UI.
-- Services own transactions; repositories take the executor and hold no policy; routes hold
-  no business rules; contracts never expose database rows.
+- Services own transactions; repositories take the executor and hold no policy; routes call
+  services, never repositories, and hold no business rules; contracts never expose database rows.
+- Project-owned commands open `withLiveProjectTransaction` (a soft-deleted project accepts no
+  writes). Another domain's tables are written only through its sanctioned write primitives
+  (listed in transactions-concurrency-audit).
 - Authorization is server-side: two roles (`studio_admin`, `user`), studio-wide visibility,
   ownership rules per command, `requireStudioAdmin` only for whole-endpoint administration.
 - Every editable aggregate has an optimistic `version`; stale writes are 409 with no side

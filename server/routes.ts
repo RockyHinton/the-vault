@@ -3,6 +3,7 @@ import type { Database } from "./db/client";
 import { notFound } from "./http/errors";
 import { handle } from "./http/handler";
 import { createAuditRouter } from "./modules/audit/audit-routes";
+import type { AuditService } from "./modules/audit/audit-service";
 import { createAuthRouter } from "./modules/auth/auth-routes";
 import type { AuthService } from "./modules/auth/auth-service";
 import type { CookiePolicy } from "./modules/auth/session-cookie";
@@ -43,7 +44,9 @@ import { createUserRouter } from "./modules/users/user-routes";
 import type { UserService } from "./modules/users/user-service";
 
 export interface ApiRouterDependencies {
+  /** Used only by the readiness probe; domain routers receive services, never the database. */
   db: Database;
+  auditService: AuditService;
   auth: AuthService;
   cookiePolicy: CookiePolicy;
   requireLocalUser: RequestHandler;
@@ -168,7 +171,11 @@ export function createApiRouter(deps: ApiRouterDependencies): Router {
   );
   api.use("/files", deps.requireLocalUser, createFileRouter(deps.fileService));
   api.use("/users", deps.requireLocalUser, createUserRouter(deps.userService));
-  api.use("/audit-events", deps.requireLocalUser, createAuditRouter(deps.db));
+  api.use(
+    "/audit-events",
+    deps.requireLocalUser,
+    createAuditRouter(deps.auditService),
+  );
   api.use(notFound);
 
   return api;

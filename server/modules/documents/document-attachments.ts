@@ -12,8 +12,8 @@ import {
 import type { DatabaseExecutor, Transaction } from "../../db/transaction";
 import { withUniqueViolationAsConflict } from "../../db/unique-violation";
 import { ApiError } from "../../http/errors";
+import { toDocumentContract } from "./document-contract";
 import { documentRepository } from "./document-repository";
-import { toDocumentContract } from "./document-service";
 
 /** The row shape every owner→documents join table shares (see `attachmentColumns` in the schema). */
 export interface AttachmentRow {

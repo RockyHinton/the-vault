@@ -3,7 +3,7 @@
 ```
 SERVER STATE            React Query, one feature module per domain
 UNSAVED / TRANSIENT     local React state in the component or form
-GLOBAL CLIENT STORE     none; there is no prototype database on the client
+GLOBAL CLIENT STORE     none; durable server data lives only in React Query
 ```
 
 ## Feature modules
@@ -43,10 +43,21 @@ A surface renders its business content only after every query it depends on has 
 lists use `isSuccess` before showing "nothing here yet". An outage must never read as an
 empty project, zero legal completion, or a non-admin user.
 
+Only the server's `404` means "not found" (for example `Project not found`,
+`Script version not found`); any other failure renders an error with a retry, never a
+not-found or empty state.
+
+## Money on the client
+
+Financial figures are rendered from the server's exact strings. Exact helpers from
+`shared/contracts/money.ts` (`formatMoney`, `groupMoney`) may reformat them; `Number` is used
+only for chart geometry; no component computes an authoritative total. See
+[finance.md](finance.md).
+
 ## Documents embedded in owners
 
-Six domains embed `Document` contracts (people, rights, legal records, scripts, budget
-departments, finance sources, distribution territories). Every document mutation invalidates
+Seven feature families embed `Document` contracts (people, rights, legal records, scripts,
+budget departments, finance sources, distribution territories). Every document mutation invalidates
 the library **and** every owner family listed in
 `client/src/features/documents/document-owner-keys.ts`; a unit test pins that list to each
 feature's root key. When a new domain embeds documents, add its key there.

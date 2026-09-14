@@ -4,7 +4,6 @@ import type {
   CreateDocumentInput,
   Document,
   DocumentFolder,
-  DocumentStatus,
   UpdateDocumentInput,
 } from "@shared/contracts";
 import type { FileObjectRow } from "@shared/schema";
@@ -14,10 +13,9 @@ import { ApiError } from "../../http/errors";
 import { appendAuditEvent } from "../audit/audit-repository";
 import { withLiveProjectTransaction } from "../projects/live-project";
 import { fileRepository } from "../files/file-repository";
-import { toFileObjectContract } from "../files/file-service";
 import { projectRepository } from "../projects/project-repository";
 import { scriptRepository } from "../scripts/script-repository";
-import { toUserRef } from "../users/user-ref";
+import { toDocumentContract } from "./document-contract";
 import {
   documentRepository,
   type DocumentEditableFields,
@@ -30,26 +28,8 @@ export interface DocumentActor {
   requestId: string;
 }
 
-/** Also used by owning domains that embed attached documents in their own contracts. */
-export function toDocumentContract(record: DocumentRecord): Document {
-  const { document, file, createdBy } = record;
-  return {
-    id: document.id,
-    projectId: document.projectId,
-    lineageId: document.lineageId,
-    versionNumber: document.versionNumber,
-    isCurrent: document.isCurrent,
-    folder: document.folder as DocumentFolder,
-    title: document.title,
-    status: document.status as DocumentStatus,
-    notes: document.notes,
-    file: toFileObjectContract(file),
-    createdBy: toUserRef(createdBy),
-    version: document.version,
-    createdAt: document.createdAt.toISOString(),
-    updatedAt: document.updatedAt.toISOString(),
-  };
-}
+/** The mapper lives in `document-contract.ts`; re-exported for owners that already import it here. */
+export { toDocumentContract };
 
 function requireDocument(record: DocumentRecord | undefined): DocumentRecord {
   if (!record)

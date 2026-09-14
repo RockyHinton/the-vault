@@ -152,7 +152,8 @@ whole team. Mirror these rules when a new domain has the same shape.
   `version: 0` creates, the current version replaces, and the recommendation is derived on the
   server (`review-recommendation.ts`) so every stored verdict follows the same rule.
 - **Lifecycle commands, not status fields.** Task status changes only through
-  `POST …/tasks/:id/complete` and `…/reopen`; `PATCH` rejects `status`. The
+  `POST …/tasks/:id/complete` and `…/reopen`; the task update schema has no `status`, so a
+  PATCH cannot change it (the key is stripped; a body with nothing else is `400`). The
   `completed_at`/`status` pair is a CHECK constraint. Each command appends its own audit event
   (`task.completed`, `task.reopened`) with the actor who ran it.
 - **Deletion.** Notes and tasks are soft-deleted (`deleted_at`) so audit trails keep their

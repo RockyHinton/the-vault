@@ -52,8 +52,9 @@ win, so hosts and CI override the file. Production never reads the file.
 | `VAULT_STORAGE_LOCAL_DIR` | no | directory for `local` storage; default `.vault-data/files` (git-ignored) |
 | `VAULT_MAX_UPLOAD_BYTES` | no | default 50 MiB |
 | `VAULT_BOOTSTRAP_ADMIN_EMAIL`, `_PASSWORD`, `_NAME` | bootstrap only | read only by `npm run bootstrap:admin`; remove the password afterwards |
-| `REPLIT_DOMAINS` | production | comma-separated allowed hostnames (any host can set them) |
-| `REPLIT_DEV_DOMAIN` | no | extra allowed host in development |
+| `VAULT_ALLOWED_HOSTS` | production | comma-separated bare hostnames the deployment serves; outside production they are allowed in addition to loopback |
+| `REPLIT_DOMAINS` | no | set by Replit deployments; the production host list when `VAULT_ALLOWED_HOSTS` is absent |
+| `REPLIT_DEV_DOMAIN` | no | set by Replit workspaces; an extra allowed host outside production |
 
 ## Accounts
 

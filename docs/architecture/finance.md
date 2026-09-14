@@ -14,11 +14,15 @@ Finance is one bounded context built as separate subdomains. The Budget is the f
 sets the money conventions the later Finance Plan and Cash Flow modules follow (ADR 0011).
 
 - **Money.** `numeric(14,2)` in PostgreSQL, decimal strings such as `"125000.00"` on the wire
-  (`moneySchema` normalises authored input; `moneyValueSchema` describes server output), and
-  `shared/contracts/money.ts` for exact BigInt-cents sums and float-free formatting on the
-  client. Totals are never stored: PostgreSQL sums line items per department and per version
-  (`totalsByDepartment`, `totalsByVersion`) and the API returns them as strings. Nothing in the
-  product converts money through `Number`.
+  (`moneySchema` normalises authored input; `storedMoneyValueSchema` and
+  `moneyTotalValueSchema` describe server output), and `shared/contracts/money.ts` for exact
+  BigInt-cents arithmetic and float-free formatting. Totals are never stored: PostgreSQL sums
+  line items per department and per version (`totalsByDepartment`, `totalsByVersion`) and the
+  API returns them as strings. **The client-side rule:** every authoritative figure comes from
+  the server or a shared calculation run on the server (`summarizeFinancing`,
+  `projectCashFlow`); floating point never determines a financial value; exact helpers
+  (`formatMoney`, `groupMoney`) may reformat the server's strings for display; `Number` is used
+  only for chart geometry.
 - **Currency** lives once, on `budgets.currency` (`currency_code` enum), fixed for every
   version. There is no FX and no per-line currency.
 - **Budget vs version.** `budgets` is the stable project concept (one per project);
@@ -73,8 +77,9 @@ later Cash Flow module reads for inflows.
 - **Sources** (`finance_sources`): name, type (`finance_source_type`), `amount numeric(14,2)`
   non-negative, status (`targeted`, `soft_committed`, `approved`), optional `expected_date`
   (`date`, exact for cash flow), notes, deterministic `position` (unique per plan), creator,
-  approver, `approved_at`, own optimistic `version`. Edits (`PATCH`) are collaborative and never
-  carry status. `POST …/status` moves between `targeted` and `soft_committed`.
+  approver, `approved_at`, own optimistic `version`. Edits (`PATCH`) are collaborative; the
+  update schema has no status, so a PATCH cannot change it. `POST …/status` moves between
+  `targeted` and `soft_committed`.
 - **Approval is a sign-off.** `POST …/sources/:id/approve` is studio_admin-only, irreversible,
   records `approved_by_user_id` and `approved_at` (CHECK
   `finance_sources_approval_matches_status` ties both to the status), and freezes the source:
@@ -84,8 +89,8 @@ later Cash Flow module reads for inflows.
   living register; the budget version it references is what is locked.
 - **Concurrency.** Every source command runs in one transaction, locks the plan row
   (`SELECT … FOR UPDATE`) and compare-and-sets the source's `version`; the rebase command uses the
-  plan's `version`. Every command returns the whole plan with its summary so the client never
-  adds money.
+  plan's `version`. Every command returns the whole plan with its summary, so the client
+  renders the server's totals instead of computing its own.
 - **Documents** attach to a source through `finance_source_documents` (owner convention,
   folder `financing/finance-plan`). Attaching to an approved source is allowed (evidence keeps
   arriving); detaching from one is not.

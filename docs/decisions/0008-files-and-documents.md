@@ -36,6 +36,15 @@ such as Legal derive from it and expose no status command of their own. The ADR'
 rule stands: no polymorphic column, no paths or URLs on owners, bytes only through the Files
 domain.
 
+**Amendment (Canonical V1 remediation, 2026-09-14).** Two statements below are refined by the
+implementation. (1) Sweep order: `sweepStagedUploads` moves a row `staged → deleted` by
+compare-and-set (still staged, still older than the cutoff) *before* deleting bytes, and deletes
+bytes only for rows it retired, so it is safe to run concurrently with document claims; a
+failed byte delete leaves a logged orphan object, never a live row without bytes. Scheduling the
+sweep remains deployment work. (2) Staged visibility: a staged file is visible and claimable by
+its uploader or a studio_admin, not the uploader alone. Current rules live in
+`docs/architecture/files-and-documents.md`.
+
 ## Lifecycle and failure semantics
 
 Object storage and PostgreSQL are not one transaction, so the order is fixed:
