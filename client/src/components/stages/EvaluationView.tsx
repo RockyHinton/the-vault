@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
-import type { Evaluation, EvaluationGates } from "@shared/contracts";
+import {
+  developmentBlockers,
+  evaluationGateLabels,
+  type Evaluation,
+  type EvaluationGates,
+} from "@shared/contracts";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -46,13 +51,7 @@ import {
 } from "@/features/evaluation/use-evaluation";
 import { averageScores, financeTypeLabels } from "@/features/evaluation/labels";
 
-const gateLabels: Record<keyof EvaluationGates, string> = {
-  scriptApproved: "Script approved",
-  budgetApproved: "Budget approved",
-  financeApproved: "Finance approved",
-  talentAttached: "Talent attached",
-};
-const gateKeys = Object.keys(gateLabels) as (keyof EvaluationGates)[];
+const gateKeys = Object.keys(evaluationGateLabels) as (keyof EvaluationGates)[];
 
 /**
  * The Evaluation stage home: the project's evaluation profile and gates
@@ -86,7 +85,8 @@ export default function EvaluationView() {
 
   const reviews = reviewsQuery.data?.data.items ?? [];
   const averages = averageScores(reviews);
-  const allGatesMet = gateKeys.every((key) => evaluation.gates[key]);
+  // A preview of the server's rule: the stage-transition command re-checks the saved gates.
+  const allGatesMet = developmentBlockers(evaluation.gates).length === 0;
 
   const toggleGate = (key: keyof EvaluationGates) => {
     if (!isStudioAdmin || saveEvaluation.isPending) return;
@@ -271,7 +271,7 @@ export default function EvaluationView() {
                     type="button"
                     role="checkbox"
                     aria-checked={checked}
-                    aria-label={gateLabels[key]}
+                    aria-label={evaluationGateLabels[key]}
                     disabled={!isStudioAdmin || saveEvaluation.isPending}
                     className="flex items-center gap-3 group w-full text-left disabled:cursor-default"
                     onClick={() => toggleGate(key)}
@@ -294,7 +294,7 @@ export default function EvaluationView() {
                           : "text-muted-foreground",
                       )}
                     >
-                      {gateLabels[key]}
+                      {evaluationGateLabels[key]}
                     </span>
                   </button>
                 );

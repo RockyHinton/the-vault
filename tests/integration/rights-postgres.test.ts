@@ -5,6 +5,7 @@ import {
   memberCredentials,
   type TestContext,
 } from "../support/test-context";
+import { meetEvaluationGates } from "../support/project-readiness";
 
 type Agent = Awaited<ReturnType<TestContext["loginAs"]>>;
 
@@ -187,6 +188,7 @@ describe("rights: scoping, edits, status and concurrency", () => {
   it("after the project moves to development, the development vocabulary applies and the old status stays readable", async () => {
     const project = (await admin.get(`/api/v1/projects/${projectId}`)).body
       .data;
+    await meetEvaluationGates(admin, projectId);
     const transition = await admin
       .post(`/api/v1/projects/${projectId}/stage-transitions`)
       .send({ toStage: "development", version: project.version });

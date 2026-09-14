@@ -72,6 +72,26 @@ function assertCurrent(record: DocumentRecord, message: string): void {
     throw new ApiError(409, "NOT_CURRENT_VERSION", message);
 }
 
+/** The folder a live Script's lineage must stay in (the Scripts domain files it there). */
+const SCRIPT_FOLDER: DocumentFolder = "script";
+
+/**
+ * A lineage that is the identity of a live Script belongs to the Scripts
+ * domain for everything Scripts governs: its versions (which must pass the
+ * Scripts format rule), its Script folder and its removal. The generic library
+ * commands refuse those changes before claiming, retiring or auditing
+ * anything; once the script is removed the lineage is an ordinary document
+ * again. Scripts itself reaches the primitives directly, never these commands.
+ */
+async function assertNotScriptLineage(
+  tx: Transaction,
+  record: DocumentRecord,
+  message: string,
+): Promise<void> {
+  if (await scriptRepository.findLiveByLineage(tx, record.document.lineageId))
+    throw new ApiError(409, "DOCUMENT_BACKS_SCRIPT", message);
+}
+
 /**
  * The staged upload a document command may claim: it must exist, still be
  * staged, and belong to the caller (or the caller is an admin). Any other
@@ -289,14 +309,27 @@ export function createDocumentService({ db }: { db: Database }) {
       input: AddDocumentVersionInput,
       actor: DocumentActor,
     ): Promise<Document> {
-      return withLiveProjectTransaction(db, projectId, (tx) =>
-        addDocumentVersionInTransaction(tx, {
+      return withLiveProjectTransaction(db, projectId, async (tx) => {
+        const current = requireDocument(
+          await documentRepository.findById(tx, { projectId, documentId }),
+        );
+        assertCurrent(
+          current,
+          "New versions are added to the current version of a document.",
+        );
+        assertCanManage(actor, current);
+        await assertNotScriptLineage(
+          tx,
+          current,
+          "This document is the project's script. Upload new drafts from the Script page.",
+        );
+        return addDocumentVersionInTransaction(tx, {
           projectId,
           documentId,
           version: input,
           actor,
-        }),
-      );
+        });
+      });
     },
 
     async update(
@@ -327,6 +360,12 @@ export function createDocumentService({ db }: { db: Database }) {
             "Superseded versions are history; edit the current version.",
           );
           assertCanManage(actor, existing);
+          if (values.folder !== undefined && values.folder !== SCRIPT_FOLDER)
+            await assertNotScriptLineage(
+              tx,
+              existing,
+              "This document is the project's script and stays in the Script folder. Remove the script from the Script page first.",
+            );
           requireFresh(
             await documentRepository.updateFields(tx, {
               id: existing.document.id,
@@ -371,17 +410,11 @@ export function createDocumentService({ db }: { db: Database }) {
           "Superseded versions are history; delete the document from its current version.",
         );
         assertCanManage(actor, existing);
-        if (
-          await scriptRepository.findLiveByLineage(
-            tx,
-            existing.document.lineageId,
-          )
-        )
-          throw new ApiError(
-            409,
-            "DOCUMENT_BACKS_SCRIPT",
-            "This document is the project's script. Remove the script from the Script page first.",
-          );
+        await assertNotScriptLineage(
+          tx,
+          existing,
+          "This document is the project's script. Remove the script from the Script page first.",
+        );
         const deletedAt = new Date();
         requireFresh(
           await documentRepository.softDeleteCurrent(tx, {

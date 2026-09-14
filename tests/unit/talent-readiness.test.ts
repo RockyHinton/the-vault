@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Person } from "@shared/contracts";
-import { talentReadiness } from "../../client/src/features/people/readiness";
+import { talentReadiness, type Person } from "@shared/contracts";
 
 const person = (
   creativeRoleType: Person["creativeRoleType"],

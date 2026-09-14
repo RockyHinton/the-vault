@@ -197,6 +197,17 @@ function ScriptReader({
         </main>
 
         <aside className="w-[400px] shrink-0 z-20 shadow-2xl bg-card">
+          {/* Only a successful load proves "no notes"; a failure is an error with a retry. */}
+          {annotationsQuery.isError ? (
+            <div className="p-6 text-sm text-destructive" role="alert">
+              Notes for this version could not be loaded.{" "}
+              <Button variant="link" className="h-auto p-0" onClick={() => void annotationsQuery.refetch()}>
+                Try again
+              </Button>
+            </div>
+          ) : annotationsQuery.isLoading ? (
+            <div className="p-6 text-sm text-muted-foreground">Loading notes…</div>
+          ) : (
           <NotesPanel
             annotations={annotations}
             currentUserId={currentUserId}
@@ -219,6 +230,7 @@ function ScriptReader({
               setIsCreatingNote(true);
             }}
           />
+          )}
         </aside>
       </div>
     </div>

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import { useUpdateProject } from "@/features/projects/use-projects";
 import type { Project } from "@shared/contracts";
 import { Button } from "@/components/ui/button";
@@ -37,10 +36,9 @@ export function EditProjectMetadataDialog({
         id: project.id,
         input: { version: project.version, title, logline: logline || null, genre: genre || null },
       });
-      toast.success("Project metadata updated");
       onOpenChange(false);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Project metadata could not be updated");
+    } catch {
+      // useVaultMutation already reported the failure.
     }
   };
 

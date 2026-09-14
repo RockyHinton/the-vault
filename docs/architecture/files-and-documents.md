@@ -104,8 +104,12 @@ carries documents; never add a second upload path.
 - Superseded versions are history: their metadata is never rewritten and they are never
   deleted individually (`409 NOT_CURRENT_VERSION`).
 - Document status has one owner (the Documents PATCH); owners derive meaning from it.
-- A lineage that is the identity of a live Script cannot be deleted from the library
-  (`409 DOCUMENT_BACKS_SCRIPT`); the Script page removes the script first.
+- A lineage that is the identity of a live Script belongs to the Scripts domain: the library
+  refuses to delete it, add a version to it or move it out of the `script` folder
+  (`409 DOCUMENT_BACKS_SCRIPT`, before anything is claimed, retired or audited). New drafts go
+  through the Script page, which applies the Scripts format rule; the Script page removes the
+  script first. Title, status and notes stay editable in the library, and once the script is
+  removed the lineage is an ordinary document again.
 - No contract ever carries a storage key, a path or a URL to bytes.
 - The storage provider is chosen once in `server/files/storage-factory.ts`; a new adapter
   implements `FileStorage` and passes `tests/support/storage-contract.ts`.

@@ -30,11 +30,16 @@ import { TaskManager } from "@/components/features/TaskManager";
 import { cn } from "@/lib/utils";
 import { useTransitionProjectStage } from "@/features/projects/use-projects";
 import { usePeople } from "@/features/people/use-people";
-import { talentReadiness } from "@/features/people/readiness";
 import { useLegalRecords } from "@/features/legal/use-legal-records";
 import { useFinancingOverview } from "@/features/financing-overview/use-financing-overview";
-import { formatMoney, summarizeLegalCategory } from "@shared/contracts";
-import { toast } from "sonner";
+import {
+  formatMoney,
+  legalCategoryCompletion,
+  productionBlockers,
+  summarizeLegalCategory,
+  talentReadiness,
+  type StageBlocker,
+} from "@shared/contracts";
 
 interface DevelopmentViewProps {
   project: Project;
@@ -81,18 +86,14 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
     financeReason = "Budget is not locked yet.";
   }
 
-  // B. TALENT READINESS: the named rule in features/people/readiness.ts.
+  // B. TALENT READINESS: the named rule in @shared/contracts (stage-readiness).
   const projectCreatives = creativesQuery.data?.data.items ?? [];
   const { status: talentStatus, reason: talentReason } = talentReadiness(projectCreatives);
 
   // C. LEGAL READINESS (from the Legal Records domain, same derivation as the overview)
   const legalRecords = legalRecordsQuery.data?.data.items ?? [];
   const categoryCompletion = (category: "chain_of_title" | "investment_agreements" | "cast_agreements") =>
-    summarizeLegalCategory(
-      legalRecords
-        .filter((record) => record.category === category)
-        .map((record) => ({ documentStatuses: record.documents.map((d) => d.status) })),
-    ).completion;
+    legalCategoryCompletion(legalRecords, category);
   const overall = summarizeLegalCategory(
     legalRecords.map((record) => ({ documentStatuses: record.documents.map((d) => d.status) })),
   );
@@ -115,39 +116,27 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
   }
 
 
-  // --- 2. BLOCKERS LOGIC ---
-  interface Blocker {
-    id: string;
-    text: string;
-    tag: 'Finance' | 'Legal' | 'Talent';
-    link: string;
-  }
-
-  const blockers: Blocker[] = [];
-
-  // Finance Blockers
-  if (!budgetLocked) {
-    blockers.push({ id: 'f1', text: "Budget is not locked yet.", tag: 'Finance', link: `/project/${project.id}/financing/budget` });
-  }
-  if (budgetLocked && !fullyFunded) {
-    blockers.push({ id: 'f2', text: fundingGapLabel ? `Funding gap of ${fundingGapLabel} remains.` : "No finance plan yet.", tag: 'Finance', link: `/project/${project.id}/financing/finance-plan` });
-  }
-  if (hasCashflowIssues) {
-    blockers.push({ id: 'f3', text: "Cashflow shortfall projected.", tag: 'Finance', link: `/project/${project.id}/financing/cashflow` });
-  }
-
-  // Legal Blockers
-  if (categoryCompletion('chain_of_title') !== 'completed') {
-    blockers.push({ id: 'l1', text: "Chain of Title not complete.", tag: 'Legal', link: `/project/${project.id}/legal` });
-  }
-  if (categoryCompletion('cast_agreements') === 'in_progress') {
-    blockers.push({ id: 'l2', text: "Cast agreements pending approval.", tag: 'Legal', link: `/project/${project.id}/legal` });
-  }
-
-  // Talent Blockers
-  if (talentStatus === 'Incomplete') {
-    blockers.push({ id: 't1', text: "Key talent not confirmed.", tag: 'Talent', link: `/project/${project.id}/creatives` });
-  }
+  // --- 2. BLOCKERS: a preview of the server's stage-readiness rule over the same data ---
+  // Greenlight is decided by the stage-transition command, which re-evaluates this
+  // rule from authoritative state and refuses while anything blocks.
+  const blockers: StageBlocker[] = overview
+    ? productionBlockers({ financing: overview, legalRecords, creatives: projectCreatives })
+    : [];
+  const blockerTags: Record<StageBlocker["area"], string> = {
+    evaluation: "Evaluation",
+    finance: "Finance",
+    legal: "Legal",
+    talent: "Talent",
+  };
+  const blockerLinks: Record<string, string> = {
+    BUDGET_NOT_LOCKED: `/project/${project.id}/financing/budget`,
+    FUNDING_GAP: `/project/${project.id}/financing/finance-plan`,
+    FINANCE_PLAN_MISSING: `/project/${project.id}/financing/finance-plan`,
+    CASH_FLOW_SHORTFALL: `/project/${project.id}/financing/cashflow`,
+    CHAIN_OF_TITLE_INCOMPLETE: `/project/${project.id}/legal`,
+    CAST_AGREEMENTS_PENDING: `/project/${project.id}/legal`,
+    TALENT_NOT_CONFIRMED: `/project/${project.id}/creatives`,
+  };
 
 
   // --- HELPERS ---
@@ -320,19 +309,19 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
                     ) : (
                         <div className="space-y-3">
                             {blockers.slice(0, 5).map((blocker) => (
-                                <div 
-                                    key={blocker.id}
+                                <div
+                                    key={blocker.code}
                                     className="p-3 rounded-lg border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors cursor-pointer flex flex-col gap-2"
-                                    onClick={() => setLocation(blocker.link)}
+                                    onClick={() => setLocation(blockerLinks[blocker.code] ?? `/project/${project.id}`)}
                                 >
                                     <div className="flex items-start justify-between gap-2">
                                         <p className="text-sm font-medium text-destructive-foreground/90 leading-tight">
-                                            {blocker.text}
+                                            {blocker.message}
                                         </p>
                                         <ArrowRight className="h-3.5 w-3.5 text-destructive/50 shrink-0 mt-0.5" />
                                     </div>
                                     <Badge variant="outline" className="w-fit text-[10px] h-4 px-1.5 bg-background/50 border-destructive/20 text-destructive">
-                                        {blocker.tag}
+                                        {blockerTags[blocker.area]}
                                     </Badge>
                                 </div>
                             ))}
@@ -386,9 +375,8 @@ export default function DevelopmentView({ project }: DevelopmentViewProps) {
                 try {
                   await transition.mutateAsync({ id: project.id, input: { toStage: "production", version: project.version } });
                   setShowPromoteDialog(false);
-                  toast.success("Project moved to Production");
-                } catch (error) {
-                  toast.error(error instanceof Error ? error.message : "Unable to change project stage");
+                } catch {
+                  // useVaultMutation already reported the failure.
                 }
               }}
             >

@@ -69,7 +69,7 @@ docs/                           this architecture set, development guides, ADRs
 
 Domains today: auth, users, audit, projects, files, documents, evaluation (with reviews),
 notes, tasks, people, rights, legal, scripts, budget, finance-plan, cash-flow,
-financing-overview (read model), distribution. Per-domain rules that are not covered by a
+financing-overview (read model), stage-readiness (read model), distribution. Per-domain rules that are not covered by a
 dedicated guide are in [domain-reference.md](domain-reference.md).
 
 ## Source-of-truth rules

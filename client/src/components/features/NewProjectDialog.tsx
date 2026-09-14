@@ -27,14 +27,11 @@ export function NewProjectDialog({ isOpen, onClose }: NewProjectDialogProps) {
         title,
       });
 
-      toast.success("Project created successfully");
-    // Optionally set current project or navigate
-    
     // Reset form
     setTitle("");
       onClose();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Project could not be created");
+    } catch {
+      // useVaultMutation already reported the failure.
     }
   };
 

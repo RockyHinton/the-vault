@@ -26,6 +26,7 @@ import { createLegalRecordService } from "./modules/legal/legal-record-service";
 import { createPersonService } from "./modules/people/person-service";
 import { createRightService } from "./modules/rights/right-service";
 import { createScriptService } from "./modules/scripts/script-service";
+import { createStageReadinessService } from "./modules/stage-readiness/stage-readiness-service";
 import { createTaskService } from "./modules/tasks/task-service";
 import { createFileService } from "./modules/files/file-service";
 import { createProjectService } from "./modules/projects/project-service";
@@ -153,6 +154,21 @@ export async function createVaultServer(
   const budgetService = createBudgetService({ db });
   const financePlanService = createFinancePlanService({ db });
   const cashFlowService = createCashFlowService({ db });
+  const financingOverviewService = createFinancingOverviewService({
+    db,
+    budgetService,
+    financePlanService,
+    cashFlowService,
+  });
+  const evaluationService = createEvaluationService({ db });
+  const personService = createPersonService({ db });
+  const legalRecordService = createLegalRecordService({ db });
+  const stageReadiness = createStageReadinessService({
+    evaluationService,
+    financingOverviewService,
+    legalRecordService,
+    personService,
+  });
   app.use(
     "/api/v1",
     createApiRouter({
@@ -161,7 +177,7 @@ export async function createVaultServer(
       auth,
       cookiePolicy,
       requireLocalUser,
-      projectService: createProjectService({ db }),
+      projectService: createProjectService({ db, stageReadiness }),
       userService: createUserService({ db }),
       fileService: createFileService({
         db,
@@ -169,21 +185,16 @@ export async function createVaultServer(
         maxUploadBytes: env.VAULT_MAX_UPLOAD_BYTES,
       }),
       documentService: createDocumentService({ db }),
-      evaluationService: createEvaluationService({ db }),
+      evaluationService,
       noteService: createNoteService({ db }),
-      personService: createPersonService({ db }),
+      personService,
       rightService: createRightService({ db }),
-      legalRecordService: createLegalRecordService({ db }),
+      legalRecordService,
       scriptService: createScriptService({ db }),
       budgetService,
       financePlanService,
       cashFlowService,
-      financingOverviewService: createFinancingOverviewService({
-        db,
-        budgetService,
-        financePlanService,
-        cashFlowService,
-      }),
+      financingOverviewService,
       taskService: createTaskService({ db }),
       distributionService: createDistributionService({ db }),
     }),

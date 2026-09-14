@@ -44,10 +44,11 @@ script-side version counter and today no mutable script field, so the script row
   asset. No object URL, no public link, no storage key leaves the server.
 - **Authorization.** Any active user reads, uploads a first draft and annotates; a new version
   follows the Documents rule (the current version's uploader or a studio_admin); removing a
-  script or another author's note is creator-or-admin. Deleting the script's document lineage
-  through the Documents library is refused while the script is live
-  (`409 DOCUMENT_BACKS_SCRIPT`): the Script page removes the script, and only then may the
-  lineage be deleted.
+  script or another author's note is creator-or-admin. While the script is live, the Documents
+  library refuses to delete its lineage, add a version to it or move it out of the `script`
+  folder (`409 DOCUMENT_BACKS_SCRIPT`), so the Script command is the only path to a new version
+  and the PDF rule is never bypassed; title, status and notes remain library edits. Once the
+  Script page removes the script, the lineage is an ordinary document again.
 - **Audit vocabulary:** `script.created|version_added|deleted` (alongside the Documents
   domain's own `document.created|version_added`) and
   `script_annotation.created|updated|deleted`.

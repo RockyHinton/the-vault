@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { adminCredentials, signIn } from "./support";
+import {
+  adminCredentials,
+  meetEvaluationGates,
+  meetProductionReadiness,
+  signIn,
+} from "./support";
 
 test("the seeded admin signs in, creates a project and opens its workspace", async ({
   page,
@@ -39,7 +44,9 @@ test("the seeded admin signs in, creates a project and opens its workspace", asy
     );
     expect(response.status()).toBe(200);
   };
+  await meetEvaluationGates(page.request, projectId);
   await transition("development");
+  await meetProductionReadiness(page.request, projectId);
   await transition("production");
   await page.reload();
   await expect(

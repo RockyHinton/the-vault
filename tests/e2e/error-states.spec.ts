@@ -96,6 +96,32 @@ test("failed loads render errors, never an empty or not-found state", async ({
   );
   await expect(page.getByText("Script version not found")).toBeVisible();
 
+  // Script reader notes: an outage is not "No notes on this version yet", and retry recovers.
+  const readerUrl = `/script-reader/${projectId}/${detail.script.id}/${detail.versions[0]!.id}`;
+  const annotationsApi = `${scriptApi}/versions/${detail.versions[0]!.id}/annotations`;
+  await failGet(page, annotationsApi);
+  await page.goto(readerUrl);
+  await expect(
+    page.getByText("Notes for this version could not be loaded."),
+  ).toBeVisible();
+  await expect(page.getByText(/No notes on this version yet/)).toHaveCount(0);
+  await page.unroute(annotationsApi);
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(
+    page.getByText("No notes on this version yet. Click the page to add one."),
+  ).toBeVisible();
+
+  // Script page: an outage is not "No previous versions yet.", and retry recovers.
+  await failGet(page, scriptApi);
+  await page.goto(`${projectUrl}/script`);
+  await expect(
+    page.getByText("Version history could not be loaded."),
+  ).toBeVisible();
+  await expect(page.getByText("No previous versions yet.")).toHaveCount(0);
+  await page.unroute(scriptApi);
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByText("No previous versions yet.")).toBeVisible();
+
   // Territory detail: an outage renders an explicit error, not a blank or "no longer available".
   const territory = await page.request.post(
     `/api/v1/projects/${projectId}/distribution/territories`,
@@ -117,4 +143,40 @@ test("failed loads render errors, never an empty or not-found state", async ({
   await page.unroute(territoryApi);
   await page.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByRole("heading", { name: "Japan" })).toBeVisible();
+});
+
+test("a session-check outage is not a sign-out; only a missing session signs the user out", async ({
+  page,
+}) => {
+  await signIn(page, adminCredentials);
+  const me = "**/api/v1/auth/me";
+
+  // A 5xx from /auth/me is an outage: the user stays put and can retry.
+  await failGet(page, me);
+  await page.goto("/projects");
+  await expect(
+    page.getByText("The Vault could not confirm your session."),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/projects$/);
+  await expect(page.getByLabel("Password")).toHaveCount(0);
+  await page.unroute(me);
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+
+  // A network failure is an outage too.
+  await page.route(me, (route) => route.abort("failed"));
+  await page.goto("/projects");
+  await expect(
+    page.getByText("The Vault could not confirm your session."),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/projects$/);
+  await page.unroute(me);
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+
+  // A genuinely missing session (401) still goes to sign-in.
+  await page.context().clearCookies();
+  await page.goto("/projects");
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByLabel("Password")).toBeVisible();
 });

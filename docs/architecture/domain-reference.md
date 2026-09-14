@@ -11,6 +11,24 @@ Each state transition and audit event is committed in the same transaction. Dele
 retain provenance; it is hidden from all product reads and writes. Lists are cursor-paginated
 and fetch one extra row so `nextCursor` is set only when more rows exist.
 
+**Stage readiness** is enforced by the stage-transition command, never by the UI. The rule is
+stated once in `shared/contracts/stage-readiness.ts`:
+
+- *Evaluation → Development* (`developmentBlockers`): every Evaluation decision-checklist gate
+  is met (script, budget, finance approved; talent attached).
+- *Development → Production* (`productionBlockers`): the budget has a locked version, the
+  finance plan leaves no funding gap, the cash flow projects no shortfall, chain of title is
+  complete, no cast agreement is pending, and at least one cast member has committed.
+
+`server/modules/stage-readiness` composes those inputs from the owning services (Evaluation,
+Financing Overview, Legal Records, People) at command time, outside the transaction, like any
+read model. `projectService.transition` checks archive state and the stage order, then refuses
+with `422 PROJECT_NOT_READY` and `details.blockers` while anything blocks, before its
+transaction, so a refusal changes no version, stage history or audit. Readiness is a
+precondition of the command, not an invariant maintained afterwards. The Evaluation and
+Development screens call the same functions to preview it; every caller (workspace buttons,
+the Projects list's Advance Stage, the API) receives the server's answer.
+
 Users & Access is the second reference domain and follows the same shape.
 
 ## Distribution

@@ -4,6 +4,14 @@ import {
   createTestContext,
   type TestContext,
 } from "../support/test-context";
+import {
+  addApprovedSource,
+  commitCast,
+  completeChainOfTitle,
+  createFinancePlan,
+  lockBudget,
+  meetEvaluationGates,
+} from "../support/project-readiness";
 
 let context: TestContext;
 let app: Awaited<ReturnType<TestContext["loginAs"]>>;
@@ -71,6 +79,7 @@ describe("Projects API against an isolated PostgreSQL database", () => {
       .send({ version: 1, logline: "A real persisted project." });
     expect(updated.status).toBe(200);
     expect(updated.body.data.version).toBe(2);
+    await meetEvaluationGates(app, project.id);
 
     // A stale write is rejected and leaves no audit or history rows behind.
     const auditBefore = await countRows("audit_events");
@@ -146,6 +155,7 @@ describe("Projects API against an isolated PostgreSQL database", () => {
     expect(audit.rows.map((row) => row.action)).toEqual([
       "project.created",
       "project.updated",
+      "evaluation.created",
       "project.stage_changed",
       "project.archived",
       "project.restored",
@@ -168,6 +178,149 @@ describe("Projects API against an isolated PostgreSQL database", () => {
     expect(await countRows("audit_events")).toBe(auditBefore);
     const unchanged = await app.get(`/api/v1/projects/${project.id}`);
     expect(unchanged.body.data.version).toBe(project.version);
+  });
+
+  it("refuses Evaluation → Development until the decision checklist is met, changing nothing", async () => {
+    const project = await createProject("Checklist");
+    const transition = `/api/v1/projects/${project.id}/stage-transitions`;
+    const state = async () => ({
+      project: (await app.get(`/api/v1/projects/${project.id}`)).body.data,
+      history: await countRows("project_stage_history"),
+      audit: await countRows("audit_events"),
+    });
+
+    const before = await state();
+    // The client cannot vouch for readiness: undeclared fields are not evidence.
+    const refused = await app.post(transition).send({
+      version: project.version,
+      toStage: "development",
+      ready: true,
+      blockers: [],
+    });
+    expect(refused.status).toBe(422);
+    expect(refused.body.error.code).toBe("PROJECT_NOT_READY");
+    expect(refused.body.error.details.toStage).toBe("development");
+    expect(
+      refused.body.error.details.blockers.map((b: { code: string }) => b.code),
+    ).toEqual(Array(4).fill("EVALUATION_GATE_UNMET"));
+    expect(await state()).toEqual(before);
+
+    const evaluation = await app.get(
+      `/api/v1/projects/${project.id}/evaluation`,
+    );
+    const partial = await app
+      .put(`/api/v1/projects/${project.id}/evaluation`)
+      .send({
+        writer: null,
+        director: null,
+        plannedBudget: null,
+        financeTypes: [],
+        gates: {
+          scriptApproved: true,
+          budgetApproved: true,
+          financeApproved: true,
+          talentAttached: false,
+        },
+        version: evaluation.body.data.version,
+      });
+    expect(partial.status).toBe(200);
+    const afterPartial = await state();
+    const stillRefused = await app
+      .post(transition)
+      .send({ version: project.version, toStage: "development" });
+    expect(stillRefused.status).toBe(422);
+    expect(stillRefused.body.error.message).toBe(
+      "This project is not ready for Development: Decision checklist: Talent attached is not met.",
+    );
+    expect(await state()).toEqual(afterPartial);
+
+    await meetEvaluationGates(app, project.id);
+    const advanced = await app
+      .post(transition)
+      .send({ version: project.version, toStage: "development" });
+    expect(advanced.status).toBe(200);
+    expect(advanced.body.data).toMatchObject({
+      stage: "development",
+      version: project.version + 1,
+    });
+    const history = await context.database.client.query(
+      "SELECT from_stage, to_stage FROM project_stage_history WHERE project_id = $1 AND transition_type = 'stage_changed'",
+      [project.id],
+    );
+    expect(history.rows).toEqual([
+      { from_stage: "evaluation", to_stage: "development" },
+    ]);
+  });
+
+  it("refuses Development → Production while readiness blockers remain on the server, then allows it", async () => {
+    const project = await createProject("Greenlight");
+    const transition = `/api/v1/projects/${project.id}/stage-transitions`;
+    await meetEvaluationGates(app, project.id);
+    expect(
+      (
+        await app
+          .post(transition)
+          .send({ version: project.version, toStage: "development" })
+      ).status,
+    ).toBe(200);
+    const toProduction = async () => {
+      const current = (await app.get(`/api/v1/projects/${project.id}`)).body
+        .data;
+      return app
+        .post(transition)
+        .send({ version: current.version, toStage: "production" });
+    };
+    const state = async () => ({
+      project: (await app.get(`/api/v1/projects/${project.id}`)).body.data,
+      history: await countRows("project_stage_history"),
+      audit: await countRows("audit_events"),
+    });
+    const blockerCodes = (response: {
+      body: { error: { details: { blockers: { code: string }[] } } };
+    }) => response.body.error.details.blockers.map((b) => b.code);
+
+    const before = await state();
+    const nothingReady = await toProduction();
+    expect(nothingReady.status).toBe(422);
+    expect(nothingReady.body.error.code).toBe("PROJECT_NOT_READY");
+    expect(nothingReady.body.error.message).toBe(
+      "This project is not ready for Production: Budget is not locked yet. Chain of Title not complete. Key talent not confirmed.",
+    );
+    expect(await state()).toEqual(before);
+
+    const lockedVersionId = await lockBudget(app, project.id, "250000.00");
+    await completeChainOfTitle(app, project.id);
+    await commitCast(app, project.id);
+    const noPlan = await toProduction();
+    expect(noPlan.status).toBe(422);
+    expect(blockerCodes(noPlan)).toEqual(["FINANCE_PLAN_MISSING"]);
+
+    await createFinancePlan(app, project.id, lockedVersionId);
+    await addApprovedSource(app, project.id, "Studio equity", "100000.00");
+    const afterPartialFunding = await state();
+    const gap = await toProduction();
+    expect(gap.status).toBe(422);
+    expect(gap.body.error.details.blockers).toEqual([
+      {
+        code: "FUNDING_GAP",
+        area: "finance",
+        message: "Funding gap of £150,000.00 remains.",
+      },
+    ]);
+    expect(await state()).toEqual(afterPartialFunding);
+
+    await addApprovedSource(app, project.id, "Gap equity", "150000.00");
+    const advanced = await toProduction();
+    expect(advanced.status).toBe(200);
+    expect(advanced.body.data.stage).toBe("production");
+    const audit = await context.database.client.query(
+      "SELECT metadata FROM audit_events WHERE entity_id = $1 AND action = 'project.stage_changed' ORDER BY created_at",
+      [project.id],
+    );
+    expect(audit.rows.map((row) => row.metadata)).toEqual([
+      { fromStage: "evaluation", toStage: "development" },
+      { fromStage: "development", toStage: "production" },
+    ]);
   });
 
   it("refuses edits and stage changes while archived, and restore when not archived", async () => {

@@ -349,7 +349,7 @@ export default function ProjectsPage() {
                             {isStudioAdmin && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 bg-black/20 hover:bg-black/40 backdrop-blur-md border border-white/5 text-white/70 hover:text-white rounded-full transition-all">
+                                <Button variant="ghost" size="icon" aria-label={`Actions for ${project.title}`} className="h-8 w-8 bg-black/20 hover:bg-black/40 backdrop-blur-md border border-white/5 text-white/70 hover:text-white rounded-full transition-all">
                                   <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>

@@ -23,6 +23,7 @@ import { useDeleteScript, useScript, useScripts } from "@/features/scripts/use-s
 import { scriptReaderPath } from "@/features/scripts/labels";
 import { fileContentUrl } from "@/features/files/files-api";
 import { ScriptUploadDialog } from "@/components/script/ScriptUploadDialog";
+import { ApiClientError } from "@/lib/api-client";
 
 /**
  * The project's screenplay: current version, real version history from the
@@ -175,10 +176,26 @@ export default function ScriptView() {
               <Clock className="h-4 w-4 text-muted-foreground" />
               Version History
             </h3>
-            <span className="text-xs text-muted-foreground">{versions.length} version{versions.length === 1 ? "" : "s"}</span>
+            {detailQuery.isSuccess && (
+              <span className="text-xs text-muted-foreground">{versions.length} version{versions.length === 1 ? "" : "s"}</span>
+            )}
           </div>
           <div className="space-y-3">
-            {previousVersions.length > 0 ? (
+            {/* Only a successful load proves "no previous versions"; only the server's 404 means the script is gone. */}
+            {detailQuery.isLoading ? (
+              <div className="text-sm text-muted-foreground py-2">Loading version history…</div>
+            ) : detailQuery.isError ? (
+              detailQuery.error instanceof ApiClientError && detailQuery.error.status === 404 ? (
+                <div className="text-sm text-muted-foreground py-2">This script is no longer available.</div>
+              ) : (
+                <div className="text-sm text-destructive py-2" role="alert">
+                  Version history could not be loaded.{" "}
+                  <Button variant="link" className="h-auto p-0" onClick={() => void detailQuery.refetch()}>
+                    Try again
+                  </Button>
+                </div>
+              )
+            ) : previousVersions.length > 0 ? (
               previousVersions.map((version) => (
                 <div key={version.id} data-testid="script-version-row" className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-secondary/20 transition-colors">
                   <div className="flex items-center gap-4">

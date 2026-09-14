@@ -506,3 +506,163 @@ describe("scripts: new versions keep provenance", () => {
     ).toBe(403);
   });
 });
+
+describe("scripts: the Documents library is not a second path to a live script's lineage", () => {
+  let guardedProjectId: string;
+  let scriptId: string;
+  const documents = () => `/api/v1/projects/${guardedProjectId}/documents`;
+  /** A zip container named .docx: accepted by Files as an ordinary Word document. */
+  const docxBytes = Buffer.concat([
+    Buffer.from([0x50, 0x4b, 0x03, 0x04]),
+    Buffer.alloc(64, 1),
+  ]);
+  const auditCount = async () =>
+    (
+      await context.database.client.query(
+        "SELECT count(*)::int AS n FROM audit_events",
+      )
+    ).rows[0].n as number;
+  const fileStatus = async (fileId: string) =>
+    (
+      await context.database.client.query(
+        "SELECT status FROM file_objects WHERE id = $1",
+        [fileId],
+      )
+    ).rows[0].status as string;
+  const currentVersion = async () =>
+    (await member.get(`${scripts(guardedProjectId)}/${scriptId}`)).body.data
+      .script.currentVersion as {
+      id: string;
+      version: number;
+      versionNumber: number;
+      folder: string;
+      title: string;
+    };
+
+  beforeAll(async () => {
+    guardedProjectId = (
+      await admin.post("/api/v1/projects").send({ title: "Guarded" })
+    ).body.data.id;
+    const created = await member.post(scripts(guardedProjectId)).send({
+      fileObjectId: await stage(member, "Guarded.pdf", v1Bytes),
+      title: "Guarded",
+    });
+    expect(created.status).toBe(201);
+    scriptId = created.body.data.script.id;
+  });
+
+  it("refuses a generic new version (non-PDF or PDF) before claiming, versioning or auditing", async () => {
+    const before = await currentVersion();
+    const auditBefore = await auditCount();
+    const docx = await stage(member, "Revision.docx", docxBytes);
+    const pdf = await stage(member, "Revision.pdf", v2Bytes);
+    for (const fileObjectId of [docx, pdf]) {
+      for (const agent of [member, admin]) {
+        const refused = await agent
+          .post(`${documents()}/${before.id}/versions`)
+          .send({ fileObjectId, version: before.version });
+        expect(refused.status).toBe(409);
+        expect(refused.body.error.code).toBe("DOCUMENT_BACKS_SCRIPT");
+      }
+      expect(await fileStatus(fileObjectId)).toBe("staged");
+    }
+    expect(await currentVersion()).toEqual(before);
+    const lineage = await member.get(`${documents()}/${before.id}`);
+    expect(lineage.body.data.versions).toHaveLength(1);
+    expect(await auditCount()).toBe(auditBefore);
+
+    // The Scripts command remains the one path: its PDF rule refuses the
+    // Word file and accepts the PDF as version 2 of the same lineage.
+    const viaScripts = (fileObjectId: string, version: number) =>
+      member
+        .post(`${scripts(guardedProjectId)}/${scriptId}/versions`)
+        .send({ fileObjectId, currentDocumentVersion: version });
+    const wrongFormat = await viaScripts(docx, before.version);
+    expect(wrongFormat.status).toBe(422);
+    expect(wrongFormat.body.error.code).toBe("SCRIPT_FORMAT_UNSUPPORTED");
+    const added = await viaScripts(pdf, before.version);
+    expect(added.status).toBe(201);
+    expect(added.body.data.script.currentVersion).toMatchObject({
+      lineageId: before.id,
+      versionNumber: 2,
+      file: { id: pdf, mediaType: "application/pdf" },
+    });
+  });
+
+  it("refuses moving the script out of the Script folder, but allows harmless metadata edits", async () => {
+    const before = await currentVersion();
+    const auditBefore = await auditCount();
+    const moved = await member.patch(`${documents()}/${before.id}`).send({
+      folder: "general",
+      title: "Renamed too",
+      version: before.version,
+    });
+    expect(moved.status).toBe(409);
+    expect(moved.body.error.code).toBe("DOCUMENT_BACKS_SCRIPT");
+    expect(await currentVersion()).toEqual(before);
+    expect(await auditCount()).toBe(auditBefore);
+
+    const edited = await member.patch(`${documents()}/${before.id}`).send({
+      title: "Guarded (Revised)",
+      status: "under_review",
+      notes: "Circulated to the team.",
+      folder: "script",
+      version: before.version,
+    });
+    expect(edited.status).toBe(200);
+    expect(edited.body.data).toMatchObject({
+      folder: "script",
+      title: "Guarded (Revised)",
+      status: "under_review",
+    });
+    expect(
+      (await member.get(`${scripts(guardedProjectId)}/${scriptId}`)).body.data
+        .script.title,
+    ).toBe("Guarded (Revised)");
+    expect(await auditCount()).toBe(auditBefore + 1);
+  });
+
+  it("leaves ordinary documents' versioning and filing unchanged", async () => {
+    const created = await member.post(documents()).send({
+      fileObjectId: await stage(member, "Deck.pdf", v1Bytes),
+      folder: "general",
+      title: "Pitch deck",
+    });
+    expect(created.status).toBe(201);
+    const versioned = await member
+      .post(`${documents()}/${created.body.data.id}/versions`)
+      .send({
+        fileObjectId: await stage(member, "Deck.docx", docxBytes),
+        version: created.body.data.version,
+      });
+    expect(versioned.status).toBe(201);
+    expect(versioned.body.data.versionNumber).toBe(2);
+    const refiled = await member
+      .patch(`${documents()}/${versioned.body.data.id}`)
+      .send({ folder: "script", version: versioned.body.data.version });
+    expect(refiled.status).toBe(200);
+    expect(refiled.body.data.folder).toBe("script");
+  });
+
+  it("once the script is removed, its lineage is an ordinary document again", async () => {
+    expect(
+      (await member.delete(`${scripts(guardedProjectId)}/${scriptId}`)).status,
+    ).toBe(204);
+    const current = (
+      await member.get(`${documents()}?folder=script`)
+    ).body.data.items.find(
+      (document: { title: string }) => document.title === "Guarded (Revised)",
+    );
+    const versioned = await member
+      .post(`${documents()}/${current.id}/versions`)
+      .send({
+        fileObjectId: await stage(member, "After.docx", docxBytes),
+        version: current.version,
+      });
+    expect(versioned.status).toBe(201);
+    const moved = await member
+      .patch(`${documents()}/${versioned.body.data.id}`)
+      .send({ folder: "general", version: versioned.body.data.version });
+    expect(moved.status).toBe(200);
+  });
+});

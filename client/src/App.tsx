@@ -2,8 +2,9 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Redirect, Route, Router as WouterRouter, Switch } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { ApiClientError } from "./lib/api-client";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/Auth";
 import ProjectsPage from "@/pages/Projects";
@@ -17,7 +18,9 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 /**
  * Session-gated route. The server answers /auth/me from the session cookie:
  * a user means signed in, 401 means sign in is required, 403 means the
- * account is refused (suspended) and is told so.
+ * account is refused (suspended) and is told so. Anything else (a 5xx, a
+ * network failure) is an outage, not a signed-out user: it is shown as one,
+ * with a retry, and nothing about the session is cleared.
  */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const currentUser = useCurrentUser();
@@ -27,7 +30,17 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (currentUser.data) return <>{children}</>;
   const status = currentUser.error instanceof ApiClientError ? currentUser.error.status : undefined;
   if (status === 403) return <AuthPage accessError />;
-  return <Redirect to="/" />;
+  if (status === 401) return <Redirect to="/" />;
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-8">
+      <div className="text-center space-y-3" role="alert">
+        <p className="text-destructive">The Vault could not confirm your session.</p>
+        <Button variant="outline" disabled={currentUser.isFetching} onClick={() => void currentUser.refetch()}>
+          Try again
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 /** UX gating only: the server refuses admin APIs to ordinary users regardless. */

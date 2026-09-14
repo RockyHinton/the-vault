@@ -3,6 +3,7 @@ import type {
   CreateProjectInput,
   Project,
   ProjectStage,
+  StageBlocker,
   UpdateProjectInput,
 } from "@shared/contracts";
 import type { ProjectRow } from "@shared/schema";
@@ -73,6 +74,36 @@ function requireNotArchived(row: ProjectRow, message: string): void {
   if (row.archivedAt) throw new ApiError(409, "PROJECT_ARCHIVED", message);
 }
 
+/**
+ * What the stage-transition command asks before it changes a stage. Composed
+ * in `server/app.ts` (`createStageReadinessService`) from the domains whose
+ * state decides readiness; the rule is `developmentBlockers` /
+ * `productionBlockers` in `@shared/contracts`.
+ */
+export interface StageReadiness {
+  blockersFor(
+    projectId: string,
+    toStage: ProjectStage,
+  ): Promise<StageBlocker[]>;
+}
+
+const stageLabels: Record<ProjectStage, string> = {
+  evaluation: "Evaluation",
+  development: "Development",
+  production: "Production",
+};
+
+function assertCanTransition(row: ProjectRow, toStage: ProjectStage): void {
+  requireNotArchived(row, "Restore the project before changing its stage.");
+  if (!canTransitionProjectStage(row.stage, toStage)) {
+    throw new ApiError(
+      422,
+      "INVALID_STAGE_TRANSITION",
+      "That project stage transition is not permitted.",
+    );
+  }
+}
+
 /** Empty strings from forms are stored as NULL. */
 const blankToNull = (value: string | null | undefined) =>
   value === undefined ? undefined : value || null;
@@ -83,7 +114,13 @@ const blankToNull = (value: string | null | undefined) =>
  * audit event. A stale version throws inside the transaction, so nothing is
  * written. This is the reference shape for every future domain service.
  */
-export function createProjectService({ db }: { db: Database }) {
+export function createProjectService({
+  db,
+  stageReadiness,
+}: {
+  db: Database;
+  stageReadiness: StageReadiness;
+}) {
   return {
     async list(input: {
       archived: "true" | "false" | "all";
@@ -185,21 +222,29 @@ export function createProjectService({ db }: { db: Database }) {
       input: { toStage: ProjectStage; version: number; note?: string },
       actor: Actor,
     ): Promise<Project> {
+      // Readiness is policy over other domains' state, so it is read the way
+      // every read model reads them: composed from their services, outside a
+      // transaction, from current authoritative state at command time. It is a
+      // precondition of this command, not an invariant kept afterwards (a
+      // blocker may reappear once the project has moved on). Nothing the
+      // client sends is evidence of readiness.
+      assertCanTransition(
+        requireProject(await projectRepository.findById(db, id)),
+        input.toStage,
+      );
+      const blockers = await stageReadiness.blockersFor(id, input.toStage);
+      if (blockers.length > 0)
+        throw new ApiError(
+          422,
+          "PROJECT_NOT_READY",
+          `This project is not ready for ${stageLabels[input.toStage]}: ${blockers.map((blocker) => blocker.message).join(" ")}`,
+          { toStage: input.toStage, blockers },
+        );
       const row = await withTransaction(db, async (tx) => {
         const existing = requireProject(
           await projectRepository.findById(tx, id),
         );
-        requireNotArchived(
-          existing,
-          "Restore the project before changing its stage.",
-        );
-        if (!canTransitionProjectStage(existing.stage, input.toStage)) {
-          throw new ApiError(
-            422,
-            "INVALID_STAGE_TRANSITION",
-            "That project stage transition is not permitted.",
-          );
-        }
+        assertCanTransition(existing, input.toStage);
         const updated = requireFresh(
           await projectRepository.changeStage(tx, {
             id,

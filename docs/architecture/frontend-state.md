@@ -24,7 +24,7 @@ retries: data changes only through mutations and explicit invalidation.
 
 `useVaultMutation` (`client/src/lib/mutations.ts`) is the one pattern: invalidate the
 affected query keys on success, refetch them when the server answers 409, one toast per
-outcome. Components that must react (keep a dialog open, navigate) await `mutateAsync` and
+outcome (Sonner, whose `Toaster` is mounted once in `client/src/App.tsx`). Components that must react (keep a dialog open, navigate) await `mutateAsync` and
 catch; they never add their own toasts. Commands that return the whole aggregate write it into
 the cache immediately (`setQueryData`) so the next edit carries a fresh `version`.
 
