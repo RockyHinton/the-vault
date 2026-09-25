@@ -63,6 +63,44 @@ describe("environment validation", () => {
     ).toThrow("VAULT_MAX_UPLOAD_BYTES");
   });
 
+  it("requires a bucket for a non-local storage provider, in every environment", () => {
+    // Without this, two deployments configured the same way would share one
+    // object store, and a development sweep would delete production bytes.
+    expect(() =>
+      readEnvironment({ ...base, VAULT_STORAGE_PROVIDER: "replit" }),
+    ).toThrow("VAULT_STORAGE_BUCKET is required");
+    expect(() =>
+      readEnvironment({ ...production, VAULT_STORAGE_PROVIDER: "replit" }),
+    ).toThrow("VAULT_STORAGE_BUCKET is required");
+    expect(
+      readEnvironment({
+        ...production,
+        VAULT_STORAGE_PROVIDER: "replit",
+        VAULT_STORAGE_BUCKET: "vault-production",
+      }).VAULT_STORAGE_BUCKET,
+    ).toBe("vault-production");
+    // The local provider is unchanged and needs no bucket.
+    expect(readEnvironment(base).VAULT_STORAGE_BUCKET).toBeUndefined();
+  });
+
+  it("validates the optional storage prefix", () => {
+    const replit = {
+      ...base,
+      VAULT_STORAGE_PROVIDER: "replit",
+      VAULT_STORAGE_BUCKET: "vault-development",
+    };
+    expect(readEnvironment(replit).VAULT_STORAGE_PREFIX).toBeUndefined();
+    expect(
+      readEnvironment({ ...replit, VAULT_STORAGE_PREFIX: "dev" })
+        .VAULT_STORAGE_PREFIX,
+    ).toBe("dev");
+    for (const prefix of ["/dev", "dev//x", "../dev", "dev\\x", "dev x"]) {
+      expect(() =>
+        readEnvironment({ ...replit, VAULT_STORAGE_PREFIX: prefix }),
+      ).toThrow("VAULT_STORAGE_PREFIX");
+    }
+  });
+
   it("derives allowed hosts strictly in production and with loopback elsewhere", () => {
     expect(
       allowedHosts(
@@ -104,5 +142,42 @@ describe("environment validation", () => {
       "localhost",
       "127.0.0.1",
     ]);
+  });
+
+  it("accepts either Replit host variable outside production", () => {
+    // A workspace may expose its preview host as REPLIT_DEV_DOMAIN, as
+    // REPLIT_DOMAINS, or both; refusing one of them would answer
+    // UNTRUSTED_HOST to every request in the development workspace.
+    expect(
+      allowedHosts(
+        readEnvironment({ ...base, REPLIT_DOMAINS: "workspace.replit.dev" }),
+      ),
+    ).toEqual(["workspace.replit.dev", "localhost", "127.0.0.1"]);
+    expect(
+      allowedHosts(
+        readEnvironment({
+          ...base,
+          REPLIT_DEV_DOMAIN: "preview.replit.dev",
+          REPLIT_DOMAINS: "a.replit.dev, b.replit.dev",
+        }),
+      ),
+    ).toEqual([
+      "preview.replit.dev",
+      "a.replit.dev",
+      "b.replit.dev",
+      "localhost",
+      "127.0.0.1",
+    ]);
+    // Production is still exactly the configured list: no loopback, and the
+    // workspace variable is ignored.
+    expect(
+      allowedHosts(
+        readEnvironment({
+          ...production,
+          VAULT_ALLOWED_HOSTS: "vault.studio.example",
+          REPLIT_DEV_DOMAIN: "workspace.replit.dev",
+        }),
+      ),
+    ).toEqual(["vault.studio.example"]);
   });
 });

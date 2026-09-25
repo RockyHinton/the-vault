@@ -26,7 +26,7 @@ provider-specific sits behind a narrow boundary:
 | Boundary | Where | Provider-specific today |
 | --- | --- | --- |
 | Environment | `server/config/env.ts` | `VAULT_ALLOWED_HOSTS` is the hostname allowlist; `REPLIT_DOMAINS` / `REPLIT_DEV_DOMAIN` are read only as Replit-provided fallbacks |
-| File bytes | `server/files/file-storage.ts` interface, `storage-factory.ts` factory | `local` adapter; `replit` names the object-storage adapter, which is not yet implemented and fails closed |
+| File bytes | `server/files/file-storage.ts` interface, `storage-factory.ts` factory | `local` adapter; `replit` is `replit-file-storage.ts` over `@replit/object-storage`, selected by `VAULT_STORAGE_PROVIDER` and addressed by `VAULT_STORAGE_BUCKET` |
 | Build and start | `script/build.ts`, `package.json` scripts, `.replit` | `.replit` runs the same `npm run build` / `npm start` any host would |
 | Proxy | `app.set("trust proxy", 1)` in `server/app.ts` | correct behind one reverse-proxy hop |
 
@@ -41,8 +41,10 @@ needed, a `FileStorage` adapter that passes `tests/support/storage-contract.ts`.
 | --- | --- |
 | `DATABASE_URL` | the instance's PostgreSQL database (migrated explicitly, never at startup) |
 | `VAULT_ALLOWED_HOSTS` | comma-separated bare hostnames the instance serves; the host and origin guards refuse others (on Replit, `REPLIT_DOMAINS` is used when this is unset) |
-| `VAULT_STORAGE_PROVIDER` | `local` on a persistent volume, or the object-storage adapter once it ships |
+| `VAULT_STORAGE_PROVIDER` | `local` on a persistent volume, or `replit` for Replit App Storage |
 | `VAULT_STORAGE_LOCAL_DIR` | directory for the `local` provider |
+| `VAULT_STORAGE_BUCKET` | required for any provider other than `local`: the bucket this instance owns. A different bucket per environment is what stops a development deployment writing into production's store |
+| `VAULT_STORAGE_PREFIX` | optional key prefix inside the bucket (`dev`, `production`); a second line of defence, not a substitute for separate buckets |
 | `PORT` | listening port (the host usually sets it) |
 | `LOG_LEVEL` | `debug`, `info`, `warn` or `error`; events below it are dropped |
 | `VAULT_MAX_UPLOAD_BYTES` | optional upload limit |
@@ -66,8 +68,19 @@ production blocker.
 
 These are tracked, not hidden:
 
-- The object-storage adapter for ephemeral-filesystem hosts is not implemented; `local`
-  storage needs a persistent volume.
+- The Replit App Storage adapter is implemented but **not yet verified against a live
+  bucket**. `@replit/object-storage` reaches a workspace-local sidecar for credentials, so
+  its contract suite can only run inside a Replit workspace:
+  `VAULT_REPLIT_LIVE_STORAGE_BUCKET=<development-bucket> npx vitest run tests/storage/replit-file-storage.live.test.ts`.
+  That is the acceptance gate, and it is Replit-side work (see
+  [../../REPLIT_DEPLOYMENT.md](../../REPLIT_DEPLOYMENT.md)).
+- The `replit` adapter's exclusive create is best-effort: the provider's uploads overwrite
+  and its SDK exposes no conditional-create option, so the adapter checks `exists` first.
+  Storage keys are 32 random bytes used once, so collision is not a practical risk, but the
+  guarantee is weaker than the `local` adapter's atomic hard link.
+- Separate buckets per environment are a configuration boundary. Whether the platform can
+  make it an enforced one (a deployment with no access to the other environment's bucket)
+  is to be verified in Replit.
 - `sweepStagedUploads` (orphaned uploads older than 24 hours) exists but nothing schedules it.
 - Rate limits are in-memory per process; an autoscaled host multiplies them by instance count.
 - The production Content-Security-Policy is helmet's default and is only enabled in

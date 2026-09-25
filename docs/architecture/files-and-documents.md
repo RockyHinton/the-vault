@@ -34,8 +34,10 @@ GET  /files/:id/content           session check → stream bytes; attachment by 
 
 Storage sits behind `FileStorage` (`put`, `open`, `delete`, `exists`) in
 `server/files/file-storage.ts`; `storage-factory.ts` is the only place provider names appear.
-The `local` adapter is a directory with exclusive-create semantics; `replit` is a bounded
-production milestone that fails closed until implemented. Keys are random and validated by
+The `local` adapter is a directory with exclusive-create semantics; `replit` is Replit App
+Storage, addressed by an explicit `VAULT_STORAGE_BUCKET` so one environment can never write
+into another's store, with exclusive create as a best-effort `exists` check because the
+provider has no conditional-create option (ADR 0008). Keys are random and validated by
 pattern before any backend call; nothing produces a URL; no bytes are stored in PostgreSQL.
 
 Object storage and PostgreSQL are not one transaction. The order above guarantees a row never

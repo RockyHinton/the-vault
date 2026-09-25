@@ -37,6 +37,13 @@ export class InvalidStorageKeyError extends StorageError {
     super("Invalid storage key.");
   }
 }
+export class InvalidStoragePrefixError extends StorageError {
+  constructor(readonly prefix: string) {
+    super(
+      "Invalid storage prefix: use slash-separated segments of letters, digits, dot, underscore or hyphen, each starting with a letter or digit.",
+    );
+  }
+}
 
 /**
  * Keys are 32 random bytes as hex, fanned out two levels (`ab/cd/abcd…`).
@@ -53,4 +60,26 @@ export function generateStorageKey(): string {
 /** Every adapter validates keys before touching its backend. */
 export function assertStorageKey(key: string): void {
   if (!STORAGE_KEY_PATTERN.test(key)) throw new InvalidStorageKeyError(key);
+}
+
+/**
+ * A key prefix an object-storage adapter may prepend, so one bucket can hold
+ * more than one environment's objects when the platform offers no stronger
+ * separation. Slash-separated segments of `[A-Za-z0-9._-]`, each beginning
+ * with a letter or digit: that admits `dev/` and `vault/production/` and
+ * refuses a leading slash, an empty segment, `..`, a backslash or whitespace.
+ */
+export const STORAGE_PREFIX_PATTERN =
+  /^[A-Za-z0-9][A-Za-z0-9._-]*(\/[A-Za-z0-9][A-Za-z0-9._-]*)*\/?$/;
+
+/**
+ * Normalises a configured prefix to either `""` or a value ending in exactly
+ * one `/`, so an adapter can concatenate it with a storage key unconditionally.
+ */
+export function normaliseStoragePrefix(prefix: string | undefined): string {
+  const trimmed = (prefix ?? "").trim();
+  if (trimmed === "") return "";
+  if (!STORAGE_PREFIX_PATTERN.test(trimmed))
+    throw new InvalidStoragePrefixError(trimmed);
+  return trimmed.endsWith("/") ? trimmed : `${trimmed}/`;
 }

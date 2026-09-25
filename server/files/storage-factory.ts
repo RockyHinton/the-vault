@@ -3,16 +3,15 @@ import type { Environment } from "../config/env";
 import { log } from "../observability/logger";
 import { StorageError, type FileStorage } from "./file-storage";
 import { createLocalFileStorage } from "./local-file-storage";
+import { createReplitFileStorage } from "./replit-file-storage";
 
 /**
  * Chooses the storage implementation from configuration. This is the only
  * place provider names appear; everything above it sees `FileStorage`.
  *
- * `replit`: production object storage. The adapter is a bounded integration
- * milestone (ADR 0008): it must implement `FileStorage` against the
- * installed `@replit/object-storage` client and be verified on a real
- * deployment. Until then, selecting it fails closed here rather than
- * silently falling back to a deployment filesystem.
+ * `local`: a directory (development, tests, or a persistent volume).
+ * `replit`: Replit App Storage, addressed by an explicit bucket so a
+ * deployment can never inherit another environment's object store.
  */
 export function createFileStorage(env: Environment): FileStorage {
   switch (env.VAULT_STORAGE_PROVIDER) {
@@ -27,9 +26,26 @@ export function createFileStorage(env: Environment): FileStorage {
       }
       return createLocalFileStorage({ rootDirectory, nodeEnv: env.NODE_ENV });
     }
-    case "replit":
-      throw new StorageError(
-        "VAULT_STORAGE_PROVIDER=replit is not implemented in this build. Implement the FileStorage contract over @replit/object-storage (see ADR 0008) before deploying with it.",
-      );
+    case "replit": {
+      // `readEnvironment` already refuses this combination; repeated here so
+      // the factory is safe for any caller that builds an Environment itself.
+      const bucketId = env.VAULT_STORAGE_BUCKET;
+      if (!bucketId) {
+        throw new StorageError(
+          "VAULT_STORAGE_BUCKET is required when VAULT_STORAGE_PROVIDER=replit.",
+        );
+      }
+      // Logged so an operator can confirm which environment's store a running
+      // deployment is attached to. The bucket id is configuration, not a
+      // credential: the SDK obtains credentials from the Replit workspace.
+      log("info", "storage.replit_selected", {
+        bucketId,
+        prefix: env.VAULT_STORAGE_PREFIX ?? "",
+      });
+      return createReplitFileStorage({
+        bucketId,
+        prefix: env.VAULT_STORAGE_PREFIX,
+      });
+    }
   }
 }

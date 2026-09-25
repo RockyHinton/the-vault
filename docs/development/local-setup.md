@@ -48,8 +48,10 @@ win, so hosts and CI override the file. Production never reads the file.
 | `DATABASE_URL` | yes | PostgreSQL connection string |
 | `PORT` | no | default 5000; macOS reserves 5000, so `.env.local` uses 5001 |
 | `LOG_LEVEL` | no | `debug`, `info` (default), `warn`, `error`; events below it are dropped |
-| `VAULT_STORAGE_PROVIDER` | production | `local` (default outside production) or the object-storage adapter |
+| `VAULT_STORAGE_PROVIDER` | production | `local` (default outside production) or `replit` for Replit App Storage |
 | `VAULT_STORAGE_LOCAL_DIR` | no | directory for `local` storage; default `.vault-data/files` (git-ignored) |
+| `VAULT_STORAGE_BUCKET` | any provider but `local` | the bucket this deployment owns; a different one per environment |
+| `VAULT_STORAGE_PREFIX` | no | optional key prefix inside the bucket (`dev`, `production`) |
 | `VAULT_MAX_UPLOAD_BYTES` | no | default 50 MiB |
 | `VAULT_BOOTSTRAP_ADMIN_EMAIL`, `_PASSWORD`, `_NAME` | bootstrap only | read only by `npm run bootstrap:admin`; remove the password afterwards |
 | `VAULT_ALLOWED_HOSTS` | production | comma-separated bare hostnames the deployment serves; outside production they are allowed in addition to loopback |

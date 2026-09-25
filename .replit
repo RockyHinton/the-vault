@@ -1,59 +1,38 @@
+# Replit workspace and deployment configuration for The Vault.
+#
+# This file carries no application configuration: the app is configured
+# entirely by environment variables (see REPLIT_DEPLOYMENT.md and
+# .env.example) so the same build runs on any Node + PostgreSQL + object
+# storage host.
+#
+# The deployment TYPE is not set here. Replit's current configuration format
+# has no supported Reserved VM value for `deployment.deploymentTarget`, and the
+# type is chosen in the Publishing tool under "Adjust settings" →
+# "Deployment type". Choose **Reserved VM** for The Vault: rate limits are
+# in-memory per process, the pg pool is per process, and one company's
+# instance has no need of horizontal scaling.
+
 modules = ["nodejs-20", "web", "postgresql-16"]
+
+# Workspace development: one command serves the API and the Vite client.
 run = "npm run dev"
-hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
+
+hidden = [".git", "node_modules", "dist"]
 
 [nix]
 channel = "stable-24_05"
+# Chromium is here for the Playwright suite (npm run test:e2e).
 packages = ["chromium"]
 
+[env]
+# The server reads PORT from the environment and binds 0.0.0.0.
+PORT = "5000"
+
+# One public web port: the Express process serves both the API and the client.
 [[ports]]
 localPort = 5000
 externalPort = 80
 
-[[ports]]
-localPort = 5001
-externalPort = 3000
-exposeLocalhost = true
-
-[[ports]]
-localPort = 5002
-externalPort = 3001
-
-[[ports]]
-localPort = 5003
-externalPort = 3002
-
-[env]
-PORT = "5000"
-
 [deployment]
-deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
 run = ["npm", "run", "start"]
-
-[workflows]
-runButton = "Project"
-
-[[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Start application"
-
-[[workflows.workflow]]
-name = "Start application"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
-waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
-
-[agent]
-mockupState = "MOCKUP"
