@@ -74,9 +74,11 @@ password is lost.
 The session cookie is `HttpOnly; SameSite=Lax; Path=/`, seven-day lifetime, 24-hour idle
 timeout, `Secure` only in production (local HTTP works). Uploaded bytes live under
 `.vault-data/files` through the `local` adapter; the database holds metadata and a random key.
-To reset local files stop the app and delete that directory together with the `file_objects`
-and `documents` rows, or leave them: a missing object is reported as unavailable, never as
-missing metadata.
+**LOCAL DEVELOPMENT ONLY — NEVER PRODUCTION.** This reset applies only to a disposable
+local `FileStorage` directory and local database, never to Replit App Storage or a live
+deployment. To reset local files, stop the app and delete that directory together with
+the `file_objects` and `documents` rows, or leave them: a missing object is reported
+as unavailable, never as missing metadata.
 
 ## Style
 

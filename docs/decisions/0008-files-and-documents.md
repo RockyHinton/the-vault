@@ -1,5 +1,9 @@
 # ADR 0008: Private files and documents
 
+> **Read the current amendments before implementing this ADR.** The original
+> lifecycle and security wording below is retained for history; where it differs
+> from the current-state amendment, do not use it as operational guidance.
+
 ## Decision
 
 Two domains, one boundary:
@@ -41,11 +45,18 @@ implementation. (1) Sweep order: `sweepStagedUploads` moves a row `staged → de
 compare-and-set (still staged, still older than the cutoff) *before* deleting bytes, and deletes
 bytes only for rows it retired, so it is safe to run concurrently with document claims; a
 failed byte delete leaves a logged orphan object, never a live row without bytes. Scheduling the
-sweep remains deployment work. (2) Staged visibility: a staged file is visible and claimable by
+sweep remains an operational follow-up: no startup hook or automatic scheduler is configured.
+(2) Staged visibility: a staged file is visible and claimable by
 its uploader or a studio_admin, not the uploader alone. Current rules live in
 `docs/architecture/files-and-documents.md`.
 
-## Lifecycle and failure semantics
+**Current operational rule (2026-09-25).** A staged file can be viewed and claimed by
+its uploader **or a studio_admin**. The sweep first retires eligible staged rows by
+compare-and-set, then deletes bytes only for rows it retired. No automatic scheduler
+or startup hook runs it; scheduling is separate operational work. These points
+supersede the original ordering, visibility and scheduling wording below.
+
+## Lifecycle and failure semantics (original wording; superseded where amended above)
 
 Object storage and PostgreSQL are not one transaction, so the order is fixed:
 
@@ -66,7 +77,7 @@ Object storage and PostgreSQL are not one transaction, so the order is fixed:
 5. If bytes go missing after the row exists (operator error, storage loss), download answers
    `502 FILE_UNAVAILABLE` and logs the file id; the row is never treated as proof of the object.
 
-## Security
+## Security (original wording; staged visibility superseded above)
 
 Keys are 32 random bytes and are validated by a strict pattern before any backend call, so a
 key can neither be guessed nor traverse. Filenames are sanitised to a bare name and used only in
@@ -125,6 +136,11 @@ Replit, because the SDK obtains credentials from a workspace-local sidecar, so i
 translation layer — key validation, prefixing, exclusive create, error mapping, compensation,
 the hang guard — is unit-tested against a fake client with the SDK's types
 (`tests/unit/replit-file-storage.test.ts`). That proves the adapter, not the provider.
+
+**Operational update (Replit development, 2026-09-25).** The live storage contract
+passed against this workspace's development bucket. The statement above that it was
+outstanding describes the earlier decision, not the current development status;
+production storage remains unverified.
 
 ## Consequences
 

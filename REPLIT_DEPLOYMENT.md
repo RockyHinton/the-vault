@@ -10,8 +10,13 @@ The **Canonical Vault Full-Stack V1** foundation: a film-production operating sy
 as one TypeScript modular monolith (React/Vite client, Express server, PostgreSQL, private
 file bytes behind a storage adapter). It is a finished, locked architecture, not a prototype.
 
-It is deployed **one isolated instance per production company**. Each client company gets
-its own deployment, its own database, its own file store, its own users and its own secrets.
+**Locked architecture does not mean a Replit production deployment has been validated.**
+The architecture is accepted and the Replit development integration has been verified;
+the production boundary still awaits controlled private candidate verification.
+
+It is intended to be deployed **one isolated instance per production company**. Each
+client company gets its own deployment, its own database, its own file store, its own
+users and its own secrets.
 **It is deliberately not multi-tenant, and no tenant layer may be added.** "Deploy for
 another company" means another instance of this repository, never another row.
 
@@ -132,6 +137,11 @@ bucket at all. Do not assume separation exists until it has been verified in the
 `VAULT_STORAGE_PREFIX` (`dev` / `production`) adds a second, cheaper line of defence. Use it
 in addition to separate buckets, not instead of them.
 
+Replit documentation differs on whether development Secrets sync to a published app.
+Before any production candidate, inspect **Publishing → production app secrets** and
+confirm that no development bootstrap values or bucket settings are present. Do not
+assume a development Secret is isolated from publication.
+
 ## Database policy
 
 - A fresh Replit development database is initialised with **`npm run db:migrate`** and
@@ -211,9 +221,12 @@ These need a live deployment and are deliberately not guessed at locally:
   in production, so a development workspace cannot reveal this.
 - Instance sizing: password hashing is scrypt at 64 MiB per hash, so concurrent sign-ins are
   memory-hungry by design. Do not weaken the parameters; size the instance.
-- Whether `CREATE DATABASE` is permitted on the managed database — the integration and
-  Playwright suites create disposable `vault_test_*` databases, so they may only be runnable
-  locally. Point them at the development database only, never production.
+- **Development database capability verified in this workspace (2026-09-25):**
+  `CREATE DATABASE` and `DROP DATABASE` succeeded on an isolated `vault_test_*` database;
+  the bootstrap and auth PostgreSQL integration tests passed using disposable databases.
+  Replit Agent can run the repository's PostgreSQL integration and E2E database harness
+  here, subject to each suite's other requirements. Point it at the development database
+  only, never production; verify permissions again for any other workspace.
 
 ## Deployment type
 

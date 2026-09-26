@@ -1,4 +1,7 @@
-> **Partly superseded by ADR 0007.** The closed-access, administrator-provisioned model stands; the Clerk identity provider described below has been replaced by first-party password and session authentication. Kept for history; do not reintroduce Clerk.
+> **HISTORICAL / PARTLY SUPERSEDED — DO NOT IMPLEMENT THE CLERK GUIDANCE BELOW.**
+> Closed access and administrator provisioning still apply. ADR 0007 supersedes the
+> identity, credentials and session implementation with first-party password and
+> session authentication. The original Clerk decision is retained only as history.
 
 # ADR 0005: Closed access, administrator-provisioned accounts
 

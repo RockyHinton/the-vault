@@ -1,17 +1,3 @@
-# Replit workspace and deployment configuration for The Vault.
-#
-# This file carries no application configuration: the app is configured
-# entirely by environment variables (see REPLIT_DEPLOYMENT.md and
-# .env.example) so the same build runs on any Node + PostgreSQL + object
-# storage host.
-#
-# The deployment TYPE is not set here. Replit's current configuration format
-# has no supported Reserved VM value for `deployment.deploymentTarget`, and the
-# type is chosen in the Publishing tool under "Adjust settings" →
-# "Deployment type". Choose **Reserved VM** for The Vault: rate limits are
-# in-memory per process, the pg pool is per process, and one company's
-# instance has no need of horizontal scaling.
-
 modules = ["nodejs-20", "web", "postgresql-16"]
 
 # Workspace development: one command serves the API and the Vite client.
@@ -20,7 +6,7 @@ run = "npm run dev"
 hidden = [".git", "node_modules", "dist"]
 
 [nix]
-channel = "stable-24_05"
+channel = "stable-25_05"
 # Chromium is here for the Playwright suite (npm run test:e2e).
 packages = ["chromium"]
 
@@ -28,7 +14,6 @@ packages = ["chromium"]
 # The server reads PORT from the environment and binds 0.0.0.0.
 PORT = "5000"
 
-# One public web port: the Express process serves both the API and the client.
 [[ports]]
 localPort = 5000
 externalPort = 80
@@ -36,3 +21,42 @@ externalPort = 80
 [deployment]
 build = ["npm", "run", "build"]
 run = ["npm", "run", "start"]
+
+[userenv]
+
+[userenv.development]
+# THIS Replit project's development bucket, not a portable template value.
+# Replace it for a new app and never copy it into production.
+VAULT_STORAGE_PREFIX = "dev"
+VAULT_STORAGE_PROVIDER = "replit"
+VAULT_STORAGE_BUCKET = "replit-objstore-29760df7-d32c-4cea-aed0-c01dab49f4a0"
+# Development hosts come from REPLIT_DEV_DOMAIN/REPLIT_DOMAINS, not a pinned
+# preview hostname. Production must configure its own allowed hosts.
+
+[objectStorage]
+# App Storage tooling's default for this same development project.
+defaultBucketID = "replit-objstore-29760df7-d32c-4cea-aed0-c01dab49f4a0"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
